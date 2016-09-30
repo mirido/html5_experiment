@@ -1,0 +1,117 @@
+<html>
+<head>
+<title>DOMってなにー？ │ JavaScriptのサイト</title>
+<meta charset="UTF-8">
+<script type="text/javascript" src="index.js"></script>
+<style type="text/css">
+  #color {
+    float: left;
+    border: 2px solid white;
+    width: 24px; height: 20px;
+  background-color: #800000;
+  }
+  #color_value {
+    position: absolute;
+    left: 40px;
+    margin-top: 4px;
+  }
+  #slider_container {
+    float: left;
+    margin-left: 10px; margin-top: 4px;
+    position: relative;
+  }
+  #slider {
+    float: left;
+    width: 150px; height: 2px;
+    margin-top: 6px; margin-left: 57px; margin-right: 7px;
+    border: 2px solid white;
+    background-color: #f0e0d6;
+  }
+  #handle {
+    position: absolute;
+    left: 66px;
+    width: 7px; height: 15px;
+    border: 2px solid white;
+    background-color: #800000;
+  }
+</style>
+<style>
+  #viewport {
+      /**
+       * Position relative so that canvas elements
+       * inside of it will be relative to the parent
+       */
+      position: relative;
+      border: 2px solid black;
+      width: 400;
+      height: 400;
+  }
+  #viewport canvas {
+      /**
+       * Position absolute provides canvases to be able
+       * to be layered on top of each other
+       * Be sure to remember a z-index!
+       */
+      position: absolute;
+      left: 10;
+      top: 10;
+      width: 300;
+      height: 300;
+      border: 2px solid red;
+  }
+  canvas {
+      /**
+       * Set transparent to let any other canvases render through
+       */
+      background-color: transparent;
+  }
+  </style>
+  <style type="text/css">
+    #movieArea {
+    	position:relative;
+    	height:120px;
+    }
+    #moveImg {
+    	position:absolute;
+    	top:0;
+    	left:0;
+    	cursor:pointer;
+    }
+  </style>
+</head>
+<body id="samplePage">
+  <h1>JavaScriptのサイト</h1>
+  <h2>DOMってなにー？</h2>
+  <p><strong>Document Object Model</strong>の略称です。</p>
+  <!-- 直接指定でのcanvas重ね合わせ -->
+  <!-- <div width=300 height=350 style="position: relative">
+    <canvas id="canvas_0" width=300 height=300 style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
+    <canvas id="canvas_1" width=300 height=300 style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
+  </div> -->
+  <!-- IDとスタイルによる指定でも良い -->
+  <div id="viewport">
+    <canvas id="canvas_0" width=300 height=300 style="z-index: 1;"></canvas>
+    <canvas id="canvas_1" width=300 height=300 style="z-index: 0;"></canvas>
+  </div>
+  <div id="sampleWrap">
+    <div id="movieArea">
+      <p id="moveImg"><img src="img_sample_dom3.gif" alt="クリックすると動くよ！" id="btnMove" /></p>
+    </div>
+
+    <p>
+      <input type="button" value="画像を薄くする" onclick="fadeOut();" />
+      <input type="button" value="画像を濃くする" onclick="fadeIn();" />
+      <input type="button" value="ウィンドウを閉じる" onclick="window.close();" />
+    </p>
+
+    <div id="footer"><p>Copyright &copy; 2009 sakaki All Rights Reserved.<br />
+      <a href="http://piyo-js.com">JavaScript超初心者によるJavaScript入門講座</a>
+      </p>
+    </div>
+  </div>
+  <!--
+  <script type="text/javascript" src="/shared/script/ga.js"></script>
+  <script type="text/javascript" src="/shared/script/getTracker.js"></script>
+-->
+</body>
+</html>
