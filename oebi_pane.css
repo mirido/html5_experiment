@@ -1,0 +1,68 @@
+/*
+ *  横並びレイアウト
+ */
+
+.box {
+  /*float: right;*/
+  float: left;
+  border: thin solid blue;
+  vertical-align: middle;
+}
+
+.boxContainer {
+  overflow: hidden;
+}
+
+/* clearfix */
+.boxContainer:before,
+.boxContainer:after {
+  /*display: table;*/
+  display: block;
+}
+
+.boxContainer:after {
+  clear: both;
+  display: block;
+}
+
+/* For IE 6/7 (trigger hasLayout) */
+.boxContainer {
+  zoom: 1;
+}
+
+/*
+ *  canvas重ねあわせのためのスタイル設定
+ */
+
+#viewport {
+    /**
+     * Position relative so that canvas elements
+     * inside of it will be relative to the parent
+     */
+    position: relative;
+    /*border: thick solid magenta;*/
+    width: 411px;
+    height: 411px;
+    background-color: bgra(255, 255, 255, 255); /*白色キャンバス化を意図したが効かない*/
+}
+
+#viewport canvas {
+    /**
+     * Position absolute provides canvases to be able
+     * to be layered on top of each other
+     * Be sure to remember a z-index!
+     */
+    position: absolute;
+    left: 5px;
+    top: 5px;
+    width: 400px;
+    height: 400px;
+    border: thin solid black;
+}
+
+canvas {
+    /**
+     * Set transparent to let any other canvases render through
+     */
+    background-color: transparent;
+}
