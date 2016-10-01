@@ -2,6 +2,13 @@
 
 console.log("index.js starts.");
 
+let g_view_port;					// 描画領域
+let g_layers;							// レイヤー
+let g_tool_palette;				// ツールパレット
+let g_joint_canvas;				// 合成画像描画先
+
+let g_PictureCanvas;
+
 // イベントハンドラ登録
 window.onload = init;
 
@@ -10,30 +17,35 @@ function init()
 {
 	console.log("init() called.");
 
-  let layers = [
-    document.getElementById("canvas_0"),
-    document.getElementById("canvas_1"),
+	// DOMオブジェクト取得
+	g_view_port = document.getElementById("viewport");
+	g_layers = [
+		document.getElementById("canvas_0"),
+		document.getElementById("canvas_1"),
 		document.getElementById("canvas_2")
-  ];
+	];
+	g_tool_palette = document.getElementById("tool_pallete");
+	g_joint_canvas = document.getElementById("joint_canvas");
 
-	let m_tool_palette = document.getElementById("tool_pallete");
-	let m_joint_canvas = document.getElementById("joint_canvas");
+	// インスタンス生成
+	g_PictureCanvas = new PictureCanvas();
+	// g_layers.addEventListener('mousedown', test);
 
 	// キャンバスを白色でfill
-	erase_canvas(layers);
+	erase_canvas(g_layers);
 
 	// ツールパレットを背景色でfill
 	{
-		let ctx = m_tool_palette.getContext('2d');
+		let ctx = g_tool_palette.getContext('2d');
 		ctx.fillStyle = "rgba(232, 239, 255, 255)";
-		ctx.fillRect(0, 0, m_tool_palette.width, m_tool_palette.height);
+		ctx.fillRect(0, 0, g_tool_palette.width, g_tool_palette.height);
 	}
 
 	// 図形描画
-  sample01(layers);
+  sample01(g_layers);
 
 	// 画像合成
-	get_joint_image(layers, m_joint_canvas);
+	get_joint_image(g_layers, g_joint_canvas);
 }
 
 //
@@ -72,37 +84,11 @@ function sample01(layers)
 }
 
 //
-//  画像をクリックして動かすサンプル
+//	マウスイベントのlistener
 //
 
-var n=0; //変数nの初期値0
-var m=50; //変数mの初期値50
-function startMove() {
-	n=n+m;
-	var moveNode=document.getElementById("moveImg"); //変数moveNodeに、id="moveImg"のノードを代入
-	moveNode.style.left=n+"px"; //moveNodeのスタイルを変更→left:[n]px;
-	if (n>300) { //nが300を超えたら
-		n=0-m; //nを最初の場所に戻す
-	}
-}
-
-var i=1; //変数iの初期値1
-function fadeOut() {
-	var fadeImg=document.getElementById("btnMove"); //変数fadeImgに、id="btnMove"のノードを代入
-	i -= 0.1; //i=i-0.1
-	fadeImg.style.opacity=i; //fadeImgのスタイルを変更→透明度の変更
-	fadeImg.style.filter="alpha(opacity="+(i*100)+")"; //IE対策
-	if (i<0) {
-		i=0;
-	}
-}
-function fadeIn() {
-	var fadeImg=document.getElementById("btnMove"); //変数fadeImgに、id="btnMove"のノードを代入
-	i += 0.1; //i=i+0.1
-	fadeImg.style.opacity=i; //fadeImgのスタイルを変更→透明度の変更
-	fadeImg.style.filter="alpha(opacity="+(i*100)+")"; //IE対策
-	if (i>1) {
-		i=1;
-	}
-
+function listener_OnMouseDown(e)
+{
+	console.log("hello world!");
+	console.dir(e);
 }
