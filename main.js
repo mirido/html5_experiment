@@ -1,12 +1,13 @@
 'use strict';
 
 const {app, BrowserWindow} = require('electron');
-const shell = require('electron').shell;
+//const shell = require('electron').shell;
 
 let win;
 
 function createWindow() {
-    win = new BrowserWindow({width: 350, height: 500});
+//  win = new BrowserWindow({width: 350, height: 500});
+    win = new BrowserWindow({ width: 500, height: 600 });
     win.loadURL('file://' + __dirname + '/index.html');
 //  win.webContents.openDevTools();
 

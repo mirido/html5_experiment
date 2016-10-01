@@ -3,23 +3,24 @@
 <meta charset="UTF-8">
 <title>DOMってなにー？ │ JavaScriptのサイト</title>
 <script type="text/javascript" src="index.js"></script>
+<link href="./ex_style.css" rel="stylesheet" type="text/css">
 </head>
 <body id="samplePage">
-  <link href="./ex_style.css" rel="stylesheet" type="text/css">
   <h1>JavaScriptのサイト</h1>
   <h2>DOMってなにー？</h2>
   <p><strong>Document Object Model</strong>の略称です。</p>
+<div class="boxContainer">
   <!-- 直接指定でのcanvas重ね合わせ -->
-  <!-- <div width=300 height=350 style="position: relative">
+  <!-- <div width=300 height=350 style="position: relative" class="box">
     <canvas id="canvas_0" width=300 height=300 style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
     <canvas id="canvas_1" width=300 height=300 style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
   </div> -->
   <!-- IDとスタイルによる指定でも良い -->
-  <div id="viewport">
+  <div id="viewport" class="box">
     <canvas id="canvas_0" width=300 height=300 style="z-index: 1;"></canvas>
     <canvas id="canvas_1" width=300 height=300 style="z-index: 0;"></canvas>
   </div>
-  <div id="sampleWrap">
+  <div id="sampleWrap" class="box">
     <div id="movieArea">
       <p id="moveImg"><img src="img_sample_dom3.gif" alt="クリックすると動くよ！" id="btnMove" /></p>
     </div>
@@ -29,12 +30,13 @@
       <input type="button" value="画像を濃くする" onclick="fadeIn();" />
       <input type="button" value="ウィンドウを閉じる" onclick="window.close();" />
     </p>
-
-    <div id="footer"><p>Copyright &copy; 2009 sakaki All Rights Reserved.<br />
-      <a href="http://piyo-js.com">JavaScript超初心者によるJavaScript入門講座</a>
-      </p>
-    </div>
   </div>
+</div>
+
+<div id="footer"><p>Copyright &copy; 2009 sakaki All Rights Reserved.<br />
+  <a href="http://piyo-js.com">JavaScript超初心者によるJavaScript入門講座</a>
+  </p>
+</div>
   <!--
   <script type="text/javascript" src="/shared/script/ga.js"></script>
   <script type="text/javascript" src="/shared/script/getTracker.js"></script>
