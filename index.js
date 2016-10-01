@@ -1,18 +1,34 @@
 'use strict';
 
-window.onload=init; //ページの読み込みが完了したとき、initを実行する
-function init() {
-	document.getElementById("btnMove").onclick=startMove;
+console.log("index.js starts.")
 
-  var layers = [
+window.onload = init;	//ページの読み込みが完了したとき、initを実行する
+
+function init() {
+	console.log("init() called.")
+
+  let layers = [
     document.getElementById("canvas_0"),
     document.getElementById("canvas_1")
   ];
 
+	let m_tool_palette = document.getElementById("tool_pallete")
+
+	// キャンバスを白色でfill
+	{
+		let ctx = layers[1].getContext('2d');
+		ctx.fillStyle = "rgba(255, 255, 255, 255)";
+		ctx.fillRect(0, 0, layers[1].width, layers[1].height);
+	}
+
+	// ツールパレットを白色でfill
+	{
+		let ctx = m_tool_palette.getContext('2d');
+		ctx.fillStyle = "rgba(232, 239, 255, 255)";
+		ctx.fillRect(0, 0, m_tool_palette.width, m_tool_palette.height);
+	}
+
   sample01(layers);
-//  var ctx = layers[1].getContext('2d');
-//  ctx.fillStyle = "#552233";
-//  ctx.fillRect(0, 0, layers[1].width, layers[1].height);
 }
 
 //
