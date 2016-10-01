@@ -4,9 +4,14 @@
 <title>PaintBBS NEO Next Generation</title>
 <link href="./default_style.css" rel="stylesheet" type="text/css">
 <link href="./oebi_pane.css" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="dbg-util.js"></script>
 <script type="text/javascript" src="index.js"></script>
 </head>
 <body id="samplePage">
+  <p>
+    TOP
+  </p>
+
   <div class="boxContainer">
     <div class="box">
       <!-- 左側サブペイン ＢＧＮ　-->
@@ -18,12 +23,13 @@
       <div align=right>
         <button id="undo">やり直し</button>
         <button id="undo">元に戻す</button>
-        <button id="undo">塗り潰し</button>
+        <button id="undo" style="margin: 0px 10px 8px 0px;">塗り潰し</button>
       </div>
+
       <!-- キャンバス -->
       <div id="viewport" class="boxContainer">
-        <canvas id="canvas_0" width=400 height=400 style="z-index: 1;"></canvas>
-        <canvas id="canvas_1" width=400 height=400 style="z-index: 0;"></canvas>
+        <canvas id="canvas_0" width=400px height=400px style="z-index: 1;"></canvas>
+        <canvas id="canvas_1" width=400px height=400px style="z-index: 0;"></canvas>
       </div>
 
       <!-- [投稿] | 表題 -->
@@ -60,5 +66,10 @@
       <!-- 右側サブペイン END -->
     </div>
   </div>
+
+  <canvas id="joint_canvas">TEST</canvas>
+  <p>
+    BOTTOM
+  </p>
 </body>
 </html>

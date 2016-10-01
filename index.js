@@ -2,8 +2,10 @@
 
 console.log("index.js starts.")
 
-window.onload = init;	//ページの読み込みが完了したとき、initを実行する
+// イベントハンドラ登録
+window.onload = init;
 
+/// ページのロード完了時に呼ばれる。
 function init() {
 	console.log("init() called.")
 
@@ -12,7 +14,9 @@ function init() {
     document.getElementById("canvas_1")
   ];
 
-	let m_tool_palette = document.getElementById("tool_pallete")
+	let m_tool_palette = document.getElementById("tool_pallete");
+
+	let m_joint_canvas = document.getElementById("joint_canvas");
 
 	// キャンバスを白色でfill
 	{
@@ -28,7 +32,73 @@ function init() {
 		ctx.fillRect(0, 0, m_tool_palette.width, m_tool_palette.height);
 	}
 
+	// 図形描画
   sample01(layers);
+
+	// 画像合成
+	{
+		const n = layers.length;
+
+		// 描画先準備
+		const width = layers[0].width;
+		const height = layers[0].height;
+		m_joint_canvas.setAttribute('width', width);
+		m_joint_canvas.setAttribute('height', height);
+		assert(m_joint_canvas.width == width && m_joint_canvas.height == height);
+		let dst_imgDat;
+		{
+			let btm_ctx = layers[n - 1].getContext('2d');		// 最も下のレイヤーのデータを取得
+			dst_imgDat = btm_ctx.getImageData(0, 0, width, height);
+		}
+		console.log("dst_imgDat.data.length=" + dst_imgDat.data.length);
+
+		// 合成対象データ取得
+		let imageDataList = [];
+		for (let i = 0; i < n - 1; ++i) {
+			let ctx = layers[i].getContext('2d');
+			let imgd = ctx.getImageData(0, 0, width, height);
+			assert(imgd.width == width && imgd.height == height);
+			imageDataList[i] = imgd;
+			console.log("imageDataList[" + i + "].data.length=" + imageDataList[i].data.length);
+		}
+
+		// 合成
+		let pow_total = 255 * n;
+		for (let py = 0; py < height; ++py) {
+			let head = py * 4 * width;
+			for (let px = 0; px < width; ++px) {
+				let base = head + px * 4;
+				for (let i = n - 2; i >= 0; --i) {	// 奥のレイヤーからα合成していく。
+					let R1 = dst_imgDat.data[base + 0];
+					let G1 = dst_imgDat.data[base + 1];
+					let B1 = dst_imgDat.data[base + 2];
+					let A1 = dst_imgDat.data[base + 3];
+					let R2 = imageDataList[i].data[base + 0];
+					let G2 = imageDataList[i].data[base + 1];
+					let B2 = imageDataList[i].data[base + 2];
+					let A2 = imageDataList[i].data[base + 3];
+					dst_imgDat.data[base + 0] += Math.floor(((R1 * A1) + (R2 * A2)) / 510.0);
+					dst_imgDat.data[base + 1] += Math.floor(((G1 * A1) + (G2 * A2)) / 510.0);
+					dst_imgDat.data[base + 2] += Math.floor(((B1 * A1) + (B2 * A2)) / 510.0);
+					dst_imgDat.data[base + 3] += 255;
+				}
+			}
+		}
+		// for (let py = 0; py < height; ++py) {
+		// 	let head = py * 4 * width;
+		// 	for (let px = 0; px < width; ++px) {
+		// 		let base = head + px * 4;
+		// 		dst_imgDat.data[base + 0] = 255;
+		// 		dst_imgDat.data[base + 1] = 255;
+		// 		dst_imgDat.data[base + 2] = 255;
+		// 		dst_imgDat.data[base + 3] = 255;
+		// 	}
+		// }
+
+		// キャンバスに描画
+		let dst_ctx = m_joint_canvas.getContext('2d');
+		dst_ctx.putImageData(dst_imgDat, 0, 0);
+	}
 }
 
 //
