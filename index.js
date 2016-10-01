@@ -76,19 +76,19 @@ function init() {
 					let B2 = imageDataList[i].data[base + 2];
 					let A2 = imageDataList[i].data[base + 3];
 					assert(0 <= A2 && A2 <= 255);
-					{	// UTEST	画素値確認
-						let A1 = dst_imgDat.data[base + 3];
-						if (px == 150 && py == 150) {
-							console.log("R1=" + R1);
-							console.log("G1=" + G1);
-							console.log("B1=" + B1);
-							console.log("A1=" + A1);
-							console.log("R2=" + R2);
-							console.log("G2=" + G2);
-							console.log("B2=" + B2);
-							console.log("A2=" + A2);
-						}
-					}
+					// {	// UTEST	画素値確認
+					// 	let A1 = dst_imgDat.data[base + 3];
+					// 	if (px == 150 && py == 150) {
+					// 		console.log("R1=" + R1);
+					// 		console.log("G1=" + G1);
+					// 		console.log("B1=" + B1);
+					// 		console.log("A1=" + A1);
+					// 		console.log("R2=" + R2);
+					// 		console.log("G2=" + G2);
+					// 		console.log("B2=" + B2);
+					// 		console.log("A2=" + A2);
+					// 	}
+					// }
 
 					// 合成
 					let a = 255 - A2;
