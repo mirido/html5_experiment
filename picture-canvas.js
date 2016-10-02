@@ -132,6 +132,16 @@ PictureCanvas.prototype.setDrawer = function(drawer)
 PictureCanvas.prototype.eraseCanvas = function()
 {
 	erase_canvas(this.m_layers);
+
+	// {	/*UTEST*/	// アンチエリアシング無し描画テスト
+	// 	let ctx = this.m_layers[0].getContext('2d');
+	// 	// ctx.strokeStyle = "#000000";
+	// 	ctx.fillStyle = "#000000";
+	// 	ctx.beginPath();
+	// 	draw_line(0.5, 0.5, 200.5, 200.5, ctx, 1);
+	// 	ctx.stroke();
+	// 	ctx.closePath();
+	// }
 }
 
 /// 全レイヤーを合成する。

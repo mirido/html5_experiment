@@ -12,6 +12,7 @@ let g_pointManager;
 
 // 描画キャンバス
 let g_pictureCanvas;
+let g_toolPalette;
 
 // イベントハンドラ登録
 window.onload = init_wnd;
@@ -35,16 +36,10 @@ function init_wnd()
 	// インスタンス生成
 	g_pointManager = new PointManager();
 	g_pictureCanvas = new PictureCanvas();
+	g_toolPalette = new ToolPalette();
 
 	// キャンバスを白色でfill
 	g_pictureCanvas.eraseCanvas();
-
-	// ツールパレットを背景色でfill
-	{
-		let ctx = g_tool_palette.getContext('2d');
-		ctx.fillStyle = "rgba(232, 239, 255, 255)";
-		ctx.fillRect(0, 0, g_tool_palette.width, g_tool_palette.height);
-	}
 
 	// 図形描画
   sample01(g_layers);
