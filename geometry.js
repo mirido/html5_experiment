@@ -12,6 +12,18 @@ function jsRect(x, y, width, height)
 	return { m_x: x, m_y: y, m_width: width, m_height: height };
 }
 
+/// 2点間のチェビシェフ距離を求める。
+function get_dist_chv(pt1, pt2)
+{
+	return Math.max(Math.abs(pt1.m_x - pt2.m_x), Math.abs(pt1.m_y - pt2.m_y));
+}
+
+/// 2点間のマンハッタン距離を求める。
+function get_dist_chv(pt1, pt2)
+{
+	return Math.abs(pt1.m_x - pt2.m_x) + Math.abs(pt1.m_y - pt2.m_y);
+}
+
 /// 点が矩形に含まれるか判定する。
 function rect_includes(rect, point)
 {
