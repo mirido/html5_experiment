@@ -1,5 +1,9 @@
 'use strict';
 
+//
+//  General
+//
+
 /// HTMLページのクライアント座標系をウィンドウのクライアント座標系に変換する。
 function conv_page_client_to_wnd_client(point)
 {

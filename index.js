@@ -37,7 +37,7 @@ function init_wnd()
 	g_pictureCanvas = new PictureCanvas();
 
 	// キャンバスを白色でfill
-	erase_canvas(g_layers);
+	g_pictureCanvas.eraseCanvas();
 
 	// ツールパレットを背景色でfill
 	{

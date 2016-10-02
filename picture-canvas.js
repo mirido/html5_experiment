@@ -4,6 +4,13 @@
 //	PictureCanvas
 //
 
+// ■ PictureCanvas
+// canvasを重ねた描画領域を表す。
+// 領域内にてマウスまたはタッチパネルイベントを受け付け、
+// 登録された描画ツールに座標と対象レイヤーの情報を配送する。
+// (描画のためのcanvas要素の操作は描画ツールに委譲する。)
+// キャンバス全クリアとレイヤー合成の機能を備える。
+
 /// 新しいインスタンスを初期化する。
 function PictureCanvas()
 {
@@ -15,6 +22,17 @@ function PictureCanvas()
 		document.getElementById("canvas_2")
 	];
 	this.m_joint_canvas = document.getElementById("joint_canvas");
+
+	// 描画担当ツール
+	this.m_drawer = null;
+
+	// 描画担当ツールに引き渡す情報
+	this.m_nTargetLayerNo = this.m_layers.length - 1;		// 描画対象レイヤー
+	this.m_rect_view_port = this.m_view_port.getBoundingClientRect();
+	this.m_rect_layers = this.m_layers[0].getBoundingClientRect();
+
+	// ポインタデバイスのドラッグ状態
+	this.m_bDragging = false;
 
 	// イベントハンドラ登録
 	register_pointer_event_handler(this.m_view_port, this);
@@ -37,6 +55,18 @@ PictureCanvas.prototype.handleEvent = function(e)
 {
 	// console.log("Event: " + e.type);
 	// console.dir(e);
+
+	// 描画ツールに引き渡す情報を構成
+	let mod_e;
+	if (this.m_drawer) {
+		mod_e = Object.assign({ }, e);  // 値コピー
+		let dx = this.m_rect_view_port.left - this.m_rect_layers.left;
+		let dy = this.m_rect_view_port.top - this.m_rect_layers.top;
+		mod_e.clientX += dx;
+		mod_e.clientY += dy;
+	}
+
+	// イベント別処理
 	switch (e.type) {
 	case 'mousedown':
 	case 'touchistart':
@@ -53,10 +83,30 @@ PictureCanvas.prototype.handleEvent = function(e)
 		// 	console.log("e.screenX=" + e.screenX + ", e.screenY=" + e.screenY);
 		//
 		// }
+
+		// mouseupやtouchendを確実に補足するための登録
 		g_pointManager.notifyPointStart(this, e);
+
+		// 描画開始を通知
+		m_bDragging = true;
+		if (this.m_drawer) {
+			m_drawer.OnDrawStart(mod_e, this.m_layers, this.m_nTargetLayerNo);
+		}
 		break;
 	case 'mouseup':
 	case 'touchend':
+		// 描画終了を通知
+		if (this.m_bDragging && m_drawer) {
+			m_drawer.OnDrawEnd(mod_e, this.m_layers, this.m_nTargetLayerNo);
+		}
+		m_bDragging = false;
+		break;
+	case 'mousemove':
+	case 'touchmove':
+		// ポインタの移動を通知
+		if (this.m_bDragging && m_drawer) {
+			m_drawer.OnDrawing(mode_e, this.m_layers, this.m_nTargetLayerNo);
+		}
 		break;
 	default:
 		break;
@@ -67,4 +117,25 @@ PictureCanvas.prototype.handleEvent = function(e)
 PictureCanvas.prototype.getBoundingClientRect = function()
 {
 	return this.m_view_port.getBoundingClientRect();
+}
+
+/// 描画ツールを設定する。
+PictureCanvas.prototype.setDrawer = function(drawer)
+{
+	assert(!this.m_bDragging);
+	let prev = this.m_drawer;
+	this.m_drawer = drawer;
+	return prev;
+}
+
+/// キャンバスを全クリアする。
+PictureCanvas.prototype.eraseCanvas = function()
+{
+	erase_canvas(this.m_layers);
+}
+
+/// 全レイヤーを合成する。
+PictureCanvas.prototype.getJointImage(dstCanvas)
+{
+	get_joint_image(this.m_layers, dstCanvas);
 }
