@@ -1,5 +1,11 @@
 'use strict';
 
+/// HTMLページのクライアント座標系をウィンドウのクライアント座標系に変換する。
+function conv_page_client_to_wnd_client(point)
+{
+  return jsPoint(point.x - window.pageXOffset, point.y - window.pageYOffset);
+}
+
 //
 //  ポインタ状態管理
 //
@@ -37,7 +43,7 @@ PointManager.prototype.notifyPointStart = function(obj, e)
 /// イベントリスナ。
 PointManager.prototype.handleEvent = function(e)
 {
-  console.log("******* " + e);
+  // console.log("******* " + e);
   switch (e.type) {
   case 'mousedown':
   case 'touchstart':
@@ -46,7 +52,18 @@ PointManager.prototype.handleEvent = function(e)
   case 'mouseup':
   case 'touchend':
     if (this.m_objOnLastPointStart) {
-      this.m_objOnLastPointStart.handleEvent(e);
+      let mod_e = Object.assign({ }, e);  // 値コピー
+      this.m_objOnLastPointStart.handleEvent(mod_e);
+      // （e.clientX, e.clientY)は、HTMLページ左上点を原点とする座標。
+      // (e.screenX, e.screenY)は、モニタの左上点を原点とする座標。
+      // いずれもHTMLページのスクロール位置とは無関係。
+      // 原点とスケールが同一HTMLページ内のHTML要素共通であるため、少なくとも上記座標に関しては、
+      // documentのハンドラで受けたeを、異なるHTML要素のハンドラにそのまま渡しても問題無い。
+      // (備考)
+      // (e.clientX, e.clientY)とウィンドウのクライアント領域の左上点を原点とする座標は、
+      // HTMLページのスクロール量だけずれる。前者を後者に座標に変換するには、
+      // （e.clientX - window.pageXOffset, e.clientY - window.pageYOffset)
+      // とする。
     }
     this.m_objOnLastPointStart = null;
     break;
@@ -75,7 +92,7 @@ const g_mouse_pointer_events = [
 
 /// マウスやタッチスクリーン等のポインタ系イベントを一括登録する。
 /// codeObjはhandleEvent()メソッドを有する前提。
-function register_pointer_event_handler(DOMObj, codeObj)
+function register_pointer_event_handler(docObj, codeObj)
 {
   let bSupportTouch = ('ontouchend' in document);
   let pointer_events
@@ -83,6 +100,6 @@ function register_pointer_event_handler(DOMObj, codeObj)
     ? g_touchi_pointer_events
     : g_mouse_pointer_events;
 	for (let i = 0; i < pointer_events.length; ++i) {
-		DOMObj.addEventListener(pointer_events[i], codeObj, false);
+		docObj.addEventListener(pointer_events[i], codeObj, false);
 	}
 }
