@@ -29,7 +29,7 @@ function PictureCanvas()
 	// 描画担当ツールに引き渡す情報
 	this.m_nTargetLayerNo = this.m_layers.length - 1;		// 描画対象レイヤー
 	this.m_rect_view_port = this.m_view_port.getBoundingClientRect();
-	this.m_rect_layers = this.m_layers[0].getBoundingClientRect();
+	this.m_rect_layer = this.m_layers[0].getBoundingClientRect();
 
 	// ポインタデバイスのドラッグ状態
 	this.m_bDragging = false;
@@ -59,11 +59,20 @@ PictureCanvas.prototype.handleEvent = function(e)
 	// 描画ツールに引き渡す情報を構成
 	let mod_e;
 	if (this.m_drawer) {
-		mod_e = Object.assign({ }, e);  // 値コピー
-		let dx = this.m_rect_view_port.left - this.m_rect_layers.left;
-		let dy = this.m_rect_view_port.top - this.m_rect_layers.top;
-		mod_e.clientX += dx;
-		mod_e.clientY += dy;
+		// mod_e = Object.assign({ }, e);  // 値コピー	// NG。うまく機能しない。
+		mod_e = e;		// Alias
+		let dx = this.m_rect_view_port.left - this.m_rect_layer.left;
+		let dy = this.m_rect_view_port.top - this.m_rect_layer.top;
+		//mod_e.clientX += dx;	// 不要かつできない(eはconstオブジェクト)
+		//mod_e.clientY += dy;	// 同上
+		// console.dir(this.m_rect_view_port);	// UTEST
+		// console.dir(this.m_rect_layer);			// UTEST
+		// console.dir(mod_e);		// UTEST
+		// console.dir(e);		// UTEST
+		// 座標周りの考え方は、実は(e.clientX, e.clientY)はHTMLページ左上原点とする
+		// 共通の座標系であり、全HTML要素共通なので、HTML要素毎に変換する必要は無い。
+		// HTML要素内のローカル座標にしたければ、
+		// (HTML要素).getBoundingClientRect()が返すDOMRectの(.x, .y)を引く。
 	}
 
 	// イベント別処理
@@ -105,7 +114,7 @@ PictureCanvas.prototype.handleEvent = function(e)
 	case 'touchmove':
 		// ポインタの移動を通知
 		if (this.m_bDragging && this.m_drawer) {
-			this.m_drawer.OnDrawing(mode_e, this.m_layers, this.m_nTargetLayerNo);
+			this.m_drawer.OnDrawing(mod_e, this.m_layers, this.m_nTargetLayerNo);
 		}
 		break;
 	default:

@@ -56,7 +56,8 @@ PointManager.prototype.handleEvent = function(e)
   case 'mouseup':
   case 'touchend':
     if (this.m_objOnLastPointStart) {
-      let mod_e = Object.assign({ }, e);  // 値コピー
+      // let mod_e = Object.assign({ }, e);  // 値コピー  // NG。うまく機能しない。
+      let mod_e = e;    // Alias
       this.m_objOnLastPointStart.handleEvent(mod_e);
       // （e.clientX, e.clientY)は、HTMLページ左上点を原点とする座標。
       // (e.screenX, e.screenY)は、モニタの左上点を原点とする座標。
@@ -106,4 +107,20 @@ function register_pointer_event_handler(docObj, codeObj)
 	for (let i = 0; i < pointer_events.length; ++i) {
 		docObj.addEventListener(pointer_events[i], codeObj, false);
 	}
+}
+
+//
+//  <select>タグ操作
+//
+
+function change_selection(selector, exp_value)
+{
+  let selection = selector.getElementsByTagName('option');
+  for (let i = 0; i < selection.length; ++i) {
+    if (selection[i].value == exp_value) {
+      selection[i].selected = true;
+      return true;
+    }
+  }
+  return false;
 }

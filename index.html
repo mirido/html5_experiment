@@ -14,6 +14,7 @@
 <script type="text/javascript" src="graphics.js"></script>
 <script type="text/javascript" src="ui-util.js"></script>
 <script type="text/javascript" src="picture-canvas.js"></script>
+<script type="text/javascript" src="oebi-tool.js"></script>
 <script type="text/javascript" src="tool-palette.js"></script>
 <script type="text/javascript" src="index.js"></script>
 </head>
@@ -77,8 +78,39 @@
       <!-- 右側サブペイン END -->
     </div>
   </div>
-
-  <canvas id="joint_canvas">TEST</canvas>
+  <p>
+    投稿先：
+    <select id="target">
+      <option value="jun.2chan.net/oe">お絵sql</option>
+      <option value="zip.2chan.net/p">お絵かき</option>
+      <option value="nov.2chan.net/q">落書き</option>
+      <option value="cgi.2chan.net/u">落書き裏</option>
+    </select>
+    線の太さ：
+    <select id="selThickness10">
+      <option value="0">0</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select>
+    <select id="selThickness01">
+      <option value="0">0</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">4</option>
+      <option value="6">4</option>
+      <option value="7">4</option>
+      <option value="8">4</option>
+      <option value="9">4</option>
+    </select>
+    pixel
+  </p>
+  <p>
+    <canvas id="joint_canvas"></canvas>
+  </p>
   <p>
     BOTTOM
   </p>

@@ -12,7 +12,12 @@ let g_pointManager;
 
 // 描画キャンバス
 let g_pictureCanvas;
+
+// ツールパレット
 let g_toolPalette;
+
+// ツール
+let g_penTool;
 
 // イベントハンドラ登録
 window.onload = init_wnd;
@@ -37,6 +42,10 @@ function init_wnd()
 	g_pointManager = new PointManager();
 	g_pictureCanvas = new PictureCanvas();
 	g_toolPalette = new ToolPalette();
+	g_penTool = new PenTool();
+
+	// 暫定
+	g_pictureCanvas.setDrawer(g_penTool);
 
 	// キャンバスを白色でfill
 	g_pictureCanvas.eraseCanvas();
