@@ -50,7 +50,7 @@ function init_wnd()
   sample01(g_layers);
 
 	// 画像合成
-	get_joint_image(g_layers, g_joint_canvas);
+	g_pictureCanvas.getJointImage(g_joint_canvas);
 }
 
 /// ウィンドウが閉じるとき呼ばれる。

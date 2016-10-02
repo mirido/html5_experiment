@@ -39,7 +39,7 @@ function PointManager()
 /// objはhandleEvent()メソッドを有する前提。
 PointManager.prototype.notifyPointStart = function(obj, e)
 {
-  console.log("******* " + e);
+  // console.log("******* " + e);
   assert(e && (e.type == 'mousedown' || e.type == 'touchstart'));
   this.m_objOnLastPointStart = obj;
 }

@@ -88,24 +88,24 @@ PictureCanvas.prototype.handleEvent = function(e)
 		g_pointManager.notifyPointStart(this, e);
 
 		// 描画開始を通知
-		m_bDragging = true;
+		this.m_bDragging = true;
 		if (this.m_drawer) {
-			m_drawer.OnDrawStart(mod_e, this.m_layers, this.m_nTargetLayerNo);
+			this.m_drawer.OnDrawStart(mod_e, this.m_layers, this.m_nTargetLayerNo);
 		}
 		break;
 	case 'mouseup':
 	case 'touchend':
 		// 描画終了を通知
-		if (this.m_bDragging && m_drawer) {
-			m_drawer.OnDrawEnd(mod_e, this.m_layers, this.m_nTargetLayerNo);
+		if (this.m_bDragging && this.m_drawer) {
+			this.m_drawer.OnDrawEnd(mod_e, this.m_layers, this.m_nTargetLayerNo);
 		}
-		m_bDragging = false;
+		this.m_bDragging = false;
 		break;
 	case 'mousemove':
 	case 'touchmove':
 		// ポインタの移動を通知
-		if (this.m_bDragging && m_drawer) {
-			m_drawer.OnDrawing(mode_e, this.m_layers, this.m_nTargetLayerNo);
+		if (this.m_bDragging && this.m_drawer) {
+			this.m_drawer.OnDrawing(mode_e, this.m_layers, this.m_nTargetLayerNo);
 		}
 		break;
 	default:
@@ -135,7 +135,7 @@ PictureCanvas.prototype.eraseCanvas = function()
 }
 
 /// 全レイヤーを合成する。
-PictureCanvas.prototype.getJointImage(dstCanvas)
+PictureCanvas.prototype.getJointImage = function(dstCanvas)
 {
 	get_joint_image(this.m_layers, dstCanvas);
 }
