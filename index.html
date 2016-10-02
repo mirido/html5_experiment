@@ -1,117 +1,86 @@
 <html>
 <head>
-<title>DOMってなにー？ │ JavaScriptのサイト</title>
-<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>PaintBBS NEO Next Generation</title>
+
+<!-- Style -->
+<link href="./default_style.css" rel="stylesheet" type="text/css">
+<link href="./oebi_pane.css" rel="stylesheet" type="text/css">
+
+<!-- Script -->
+<script type="text/javascript" src="dbg-util.js"></script>
+<script type="text/javascript" src="imaging.js"></script>
+<script type="text/javascript" src="geometry.js"></script>
+<script type="text/javascript" src="graphics.js"></script>
+<script type="text/javascript" src="ui-util.js"></script>
+<script type="text/javascript" src="picture-canvas.js"></script>
+<script type="text/javascript" src="tool-palette.js"></script>
 <script type="text/javascript" src="index.js"></script>
-<style type="text/css">
-  #color {
-    float: left;
-    border: 2px solid white;
-    width: 24px; height: 20px;
-  background-color: #800000;
-  }
-  #color_value {
-    position: absolute;
-    left: 40px;
-    margin-top: 4px;
-  }
-  #slider_container {
-    float: left;
-    margin-left: 10px; margin-top: 4px;
-    position: relative;
-  }
-  #slider {
-    float: left;
-    width: 150px; height: 2px;
-    margin-top: 6px; margin-left: 57px; margin-right: 7px;
-    border: 2px solid white;
-    background-color: #f0e0d6;
-  }
-  #handle {
-    position: absolute;
-    left: 66px;
-    width: 7px; height: 15px;
-    border: 2px solid white;
-    background-color: #800000;
-  }
-</style>
-<style>
-  #viewport {
-      /**
-       * Position relative so that canvas elements
-       * inside of it will be relative to the parent
-       */
-      position: relative;
-      border: 2px solid black;
-      width: 400;
-      height: 400;
-  }
-  #viewport canvas {
-      /**
-       * Position absolute provides canvases to be able
-       * to be layered on top of each other
-       * Be sure to remember a z-index!
-       */
-      position: absolute;
-      left: 10;
-      top: 10;
-      width: 300;
-      height: 300;
-      border: 2px solid red;
-  }
-  canvas {
-      /**
-       * Set transparent to let any other canvases render through
-       */
-      background-color: transparent;
-  }
-  </style>
-  <style type="text/css">
-    #movieArea {
-    	position:relative;
-    	height:120px;
-    }
-    #moveImg {
-    	position:absolute;
-    	top:0;
-    	left:0;
-    	cursor:pointer;
-    }
-  </style>
 </head>
 <body id="samplePage">
-  <h1>JavaScriptのサイト</h1>
-  <h2>DOMってなにー？</h2>
-  <p><strong>Document Object Model</strong>の略称です。</p>
-  <!-- 直接指定でのcanvas重ね合わせ -->
-  <!-- <div width=300 height=350 style="position: relative">
-    <canvas id="canvas_0" width=300 height=300 style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
-    <canvas id="canvas_1" width=300 height=300 style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
-  </div> -->
-  <!-- IDとスタイルによる指定でも良い -->
-  <div id="viewport">
-    <canvas id="canvas_0" width=300 height=300 style="z-index: 1;"></canvas>
-    <canvas id="canvas_1" width=300 height=300 style="z-index: 0;"></canvas>
-  </div>
-  <div id="sampleWrap">
-    <div id="movieArea">
-      <p id="moveImg"><img src="img_sample_dom3.gif" alt="クリックすると動くよ！" id="btnMove" /></p>
-    </div>
+  <p>
+    TOP
+  </p>
 
-    <p>
-      <input type="button" value="画像を薄くする" onclick="fadeOut();" />
-      <input type="button" value="画像を濃くする" onclick="fadeIn();" />
-      <input type="button" value="ウィンドウを閉じる" onclick="window.close();" />
-    </p>
+  <div class="boxContainer">
+    <div class="box">
+      <!-- 左側サブペイン ＢＧＮ　-->
 
-    <div id="footer"><p>Copyright &copy; 2009 sakaki All Rights Reserved.<br />
-      <a href="http://piyo-js.com">JavaScript超初心者によるJavaScript入門講座</a>
-      </p>
+      <!-- [窓] -->
+      <button id="undo">窓</button><BR>
+
+      <!-- [やり直し] | [藻とに戻す] | [塗り潰し] -->
+      <div align=right>
+        <button id="undo">やり直し</button>
+        <button id="undo">元に戻す</button>
+        <button id="undo" style="margin: 0px 10px 8px 0px;">塗り潰し</button>
+      </div>
+
+      <!-- キャンバス -->
+      <div id="viewport" class="boxContainer">
+        <canvas id="canvas_0" width=400px height=400px style="z-index: 0;"></canvas>
+        <canvas id="canvas_1" width=400px height=400px style="z-index: 1;"></canvas>
+        <canvas id="canvas_2" width=400px height=400px style="z-index: 2;"></canvas>
+      </div>
+
+      <!-- [投稿] | 表題 -->
+      <button id="m_submit">投稿</button> (C) PaintBBS NEO Next Generation V0.01 alpha
+
+      <!-- 左側サブペイン ＥＮＤ　-->
+    </div>
+    <div class="box">
+      <!-- 右側サブペイン BGN -->
+
+      <!-- 鉛筆	水彩	テキスト -->
+      <!-- トーン	ぼかし	覆い焼き	焼き込み -->
+      <!-- 四角	線四角	楕円	線楕円 -->
+      <!-- コピー	レイヤ結合	角取り	左右反転	上下反転	傾け -->
+      <!-- 消しペン	消し四角	全消し -->
+      <!-- 手書き	直線	BZ曲線 -->
+      <!-- 通常	マスク	逆マスク	加算	逆加算 -->
+      <!-- 白 黒 -->
+      <!-- 灰 茶 -->
+      <!-- 紫 紅 -->
+      <!-- 青 ピンク -->
+      <!-- 黄 水色 -->
+      <!-- 緑 橙 -->
+      <!-- 肌1 肌2 -->
+      <!-- R -->
+      <!-- G -->
+      <!-- B -->
+      <!-- A -->
+      <!-- 線幅 1px～30 px -->
+      <!-- 1 px黒/5 px白/10 px白 -->
+      <!-- layer1/layer0 -->
+      <canvas id="tool_pallete" width=50 height=443></canvas>
+
+      <!-- 右側サブペイン END -->
     </div>
   </div>
-  <!--
-  <script type="text/javascript" src="/shared/script/ga.js"></script>
-  <script type="text/javascript" src="/shared/script/getTracker.js"></script>
--->
+
+  <canvas id="joint_canvas">TEST</canvas>
+  <p>
+    BOTTOM
+  </p>
 </body>
 </html>

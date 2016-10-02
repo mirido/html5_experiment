@@ -1,0 +1,68 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<title>レイアウトサンプル</title>
+<link href="./layout.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+  <div class="container">
+    <button class="oekaki_button">窓</button>
+
+    <div class="container_row">
+
+      <div class="container_column">
+        <div class="container_row">
+          <button class="oekaki_button">やり直し</button>
+          <button class="oekaki_button">元に戻す</button>
+          <button class="oekaki_button">塗り潰し</button>
+        <div>
+        <div class="container_row" style="{ display: table-cell }">
+          <!-- canvas -->
+          <div id="viewport" class="box">
+            <canvas id="canvas_0" width=300 height=300 style="z-index: 1;"></canvas>
+            <canvas id="canvas_1" width=300 height=300 style="z-index: 0;"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="container_column">
+        ツールパレット
+
+      </div>
+
+    </div>
+
+  </div>
+</body>
+
+
+      <!--
+      <!-- <button class="oekaki_button">やり直し</button>
+      <button class="oekaki_button">元に戻す</button>
+      <button class="oekaki_button">塗り潰し</button>
+
+      <!-- キャンバス周辺 -->
+<!--      <div class="container">
+
+      <div class="container_column">
+        <div class="container">
+        </div>
+        <div class="container">
+          <div class="container_row">
+            <div class="container_column">
+              Message A
+            </div>
+
+            <div class="container_column">
+              <div style="background: #09C;">divボックス</div>
+            </div>
+
+            <div class="container_column">
+              インライン<br>テキスト
+            </div>
+          </div>
+        </div>
+
+      後続するコンテンツ...
+    </div>
+  </div>
+</body> -->

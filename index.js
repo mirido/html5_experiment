@@ -1,18 +1,58 @@
 'use strict';
 
-window.onload=init; //ページの読み込みが完了したとき、initを実行する
-function init() {
-	document.getElementById("btnMove").onclick=startMove;
+console.log("index.js starts.");
 
-  var layers = [
-    document.getElementById("canvas_0"),
-    document.getElementById("canvas_1")
-  ];
+let g_view_port;					// 描画領域
+let g_layers;							// レイヤー
+let g_tool_palette;				// ツールパレット
+let g_joint_canvas;				// 合成画像描画先
 
-  sample01(layers);
-//  var ctx = layers[1].getContext('2d');
-//  ctx.fillStyle = "#552233";
-//  ctx.fillRect(0, 0, layers[1].width, layers[1].height);
+// ポインタ状態管理
+let g_pointManager;
+
+// 描画キャンバス
+let g_pictureCanvas;
+let g_toolPalette;
+
+// イベントハンドラ登録
+window.onload = init_wnd;
+window.onclose = dispose_wnd;
+
+/// ページのロード完了時に呼ばれる。
+function init_wnd()
+{
+	console.log("init() called.");
+
+	// DOMオブジェクト取得
+	g_view_port = document.getElementById("viewport");
+	g_layers = [
+		document.getElementById("canvas_0"),
+		document.getElementById("canvas_1"),
+		document.getElementById("canvas_2")
+	];
+	g_tool_palette = document.getElementById("tool_pallete");
+	g_joint_canvas = document.getElementById("joint_canvas");
+
+	// インスタンス生成
+	g_pointManager = new PointManager();
+	g_pictureCanvas = new PictureCanvas();
+	g_toolPalette = new ToolPalette();
+
+	// キャンバスを白色でfill
+	g_pictureCanvas.eraseCanvas();
+
+	// 図形描画
+  sample01(g_layers);
+
+	// 画像合成
+	g_pictureCanvas.getJointImage(g_joint_canvas);
+}
+
+/// ウィンドウが閉じるとき呼ばれる。
+function dispose_wnd()
+{
+	g_pointManager = null;
+	// TBD
 }
 
 //
@@ -22,9 +62,9 @@ function init() {
 function sample01(layers)
 {
 //  if ( ! layers || ! canvas.getContext ) { return false; }
-  var ctx = layers[0].getContext('2d');
+  var ctx = layers[2].getContext('2d');
   /* 半透明度を指定 */
-  ctx.globalAlpha = 0.7;
+  ctx.globalAlpha = 0.5;
   /* 円 #1 */
   ctx.beginPath();
   ctx.fillStyle = 'rgb(192, 80, 77)'; // 赤
@@ -51,37 +91,11 @@ function sample01(layers)
 }
 
 //
-//  画像をクリックして動かすサンプル
+//	マウスイベントのlistener
 //
 
-var n=0; //変数nの初期値0
-var m=50; //変数mの初期値50
-function startMove() {
-	n=n+m;
-	var moveNode=document.getElementById("moveImg"); //変数moveNodeに、id="moveImg"のノードを代入
-	moveNode.style.left=n+"px"; //moveNodeのスタイルを変更→left:[n]px;
-	if (n>300) { //nが300を超えたら
-		n=0-m; //nを最初の場所に戻す
-	}
-}
-
-var i=1; //変数iの初期値1
-function fadeOut() {
-	var fadeImg=document.getElementById("btnMove"); //変数fadeImgに、id="btnMove"のノードを代入
-	i -= 0.1; //i=i-0.1
-	fadeImg.style.opacity=i; //fadeImgのスタイルを変更→透明度の変更
-	fadeImg.style.filter="alpha(opacity="+(i*100)+")"; //IE対策
-	if (i<0) {
-		i=0;
-	}
-}
-function fadeIn() {
-	var fadeImg=document.getElementById("btnMove"); //変数fadeImgに、id="btnMove"のノードを代入
-	i += 0.1; //i=i+0.1
-	fadeImg.style.opacity=i; //fadeImgのスタイルを変更→透明度の変更
-	fadeImg.style.filter="alpha(opacity="+(i*100)+")"; //IE対策
-	if (i>1) {
-		i=1;
-	}
-
+function listener_OnMouseDown(e)
+{
+	console.log("hello world!");
+	console.dir(e);
 }
