@@ -7,13 +7,18 @@ let g_layers;							// レイヤー
 let g_tool_palette;				// ツールパレット
 let g_joint_canvas;				// 合成画像描画先
 
-let g_PictureCanvas;
+// ポインタ状態管理
+let g_pointManager;
+
+// 描画キャンバス
+let g_pictureCanvas;
 
 // イベントハンドラ登録
-window.onload = init;
+window.onload = init_wnd;
+window.onclose = dispose_wnd;
 
 /// ページのロード完了時に呼ばれる。
-function init()
+function init_wnd()
 {
 	console.log("init() called.");
 
@@ -28,8 +33,8 @@ function init()
 	g_joint_canvas = document.getElementById("joint_canvas");
 
 	// インスタンス生成
-	g_PictureCanvas = new PictureCanvas();
-	// g_layers.addEventListener('mousedown', test);
+	g_pointManager = new PointManager();
+	g_pictureCanvas = new PictureCanvas();
 
 	// キャンバスを白色でfill
 	erase_canvas(g_layers);
@@ -46,6 +51,13 @@ function init()
 
 	// 画像合成
 	get_joint_image(g_layers, g_joint_canvas);
+}
+
+/// ウィンドウが閉じるとき呼ばれる。
+function dispose_wnd()
+{
+	g_pointManager = null;
+	// TBD
 }
 
 //

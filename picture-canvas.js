@@ -17,17 +17,23 @@ function PictureCanvas()
 	this.m_joint_canvas = document.getElementById("joint_canvas");
 
 	// イベントハンドラ登録
-	this.m_view_port.addEventListener('mousedown', this, false);
+	register_pointer_event_handler(this.m_view_port, this);
 }
 
-/// メソッド定義
-PictureCanvas.prototype = function listener_OnMouseDown(e) {
-	console.log("PictureCanvas::OnMouseDown called.");
-	console.dir(e);
-};
-
+/// イベントリスナ。
 PictureCanvas.prototype.handleEvent = function(e)
 {
-	console.log("hello world!");
-	console.dir(e);
+	console.log("Event: " + e.type);
+	switch (e.type) {
+	case 'mousedown':
+	case 'touchistart':
+		g_pointManager.notifyPointStart(this, e);
+		break;
+	case 'mouseup':
+	case 'touchend':
+		break;
+	default:
+		break;
+	}
+	// console.dir(e);
 }
