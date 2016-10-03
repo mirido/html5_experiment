@@ -3,7 +3,7 @@
 /// キャンバスを全消去する。
 /// 最下層キャンバスのみ白色、それ以外は透明になる。
 function erase_canvas(
-  layers      // [ref] canvas[]: レイヤー ([0]が最も奥と想定)
+  layers      // : canvas[]; [ref] レイヤー ([0]が最も奥と想定)
 )
 {
   for (let i = 0; i < layers.length; ++i) {
@@ -20,8 +20,8 @@ function erase_canvas(
 
 /// レイヤーの合成画像を取得する。
 function get_joint_image(
-  layers,       // [in]  canvas[]: レイヤー([0]が最も奥と想定)
-  dst_canvas    // [out] 合成画像出力先キャンバス
+  layers,       // : canvas[];  [in]  レイヤー([0]が最も奥と想定)
+  dst_canvas    // : canvas;    [out] canvas: 合成画像出力先キャンバス
 )
 {
   const n = layers.length;
@@ -44,7 +44,7 @@ function get_joint_image(
   }
 
   // 合成
-  let dst_imgDat = imageDataList[0];	// Ａｌｉａｓ (参照コピーだが問題無い。)
+  let dst_imgDat = imageDataList[0];	// Alias (参照コピーだが問題無い。)
   for (let py = 0; py < height; ++py) {
     let head = py * 4 * width;
     for (let px = 0; px < width; ++px) {
