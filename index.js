@@ -42,7 +42,7 @@ function init_wnd()
 	g_pointManager = new PointManager();
 	g_pictureCanvas = new PictureCanvas();
 	g_toolPalette = new ToolPalette();
-	g_penTool = new PenTool();
+	g_penTool = new PencilTool();
 
 	// 暫定
 	g_pictureCanvas.setDrawer(g_penTool);

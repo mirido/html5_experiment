@@ -1,11 +1,11 @@
 'use strict';
 
 //
-//  PenTool
+//  PencilTool
 //
 
 /// 新しいインスタンスを初期化する。
-function PenTool()
+function PencilTool()
 {
   // DOMオブジェクト取得
   this.m_thick10Selector = document.getElementById("selThickness10");
@@ -23,7 +23,7 @@ function PenTool()
 }
 
 /// 線の太さをセレクタから取得する。
-PenTool.prototype.getThicknessFromSelector = function()
+PencilTool.prototype.getThicknessFromSelector = function()
 {
   let idx01 = this.m_thick01Selector.selectedIndex;
   let idx10 = this.m_thick10Selector.selectedIndex;
@@ -34,7 +34,7 @@ PenTool.prototype.getThicknessFromSelector = function()
 }
 
 /// 線の太さをセレクタに反映する。
-PenTool.prototype.setThicknessToSelector = function(new_val)
+PencilTool.prototype.setThicknessToSelector = function(new_val)
 {
   let bRet;
 
@@ -63,20 +63,20 @@ PenTool.prototype.setThicknessToSelector = function(new_val)
 }
 
 /// ストローク開始時呼ばれる。
-PenTool.prototype.OnDrawStart = function(e, layers, exinf)
+PencilTool.prototype.OnDrawStart = function(e, layers, exinf)
 {
   this.m_thickness = this.getThicknessFromSelector();
-  console.log("PenTool::OnDrawStart() called. (" + e.clientX + ", " + e.clientY + ")");
+  console.log("PencilTool::OnDrawStart() called. (" + e.clientX + ", " + e.clientY + ")");
 }
 
 /// ストローク終了時呼ばれる。
-PenTool.prototype.OnDrawEnd = function(e, layers, exinf)
+PencilTool.prototype.OnDrawEnd = function(e, layers, exinf)
 {
 
 }
 
 /// ストローク中に呼ばれる。
-PenTool.prototype.OnDrawing = function(e, layers, exinf)
+PencilTool.prototype.OnDrawing = function(e, layers, exinf)
 {
 
 }
