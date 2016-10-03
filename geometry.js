@@ -3,46 +3,46 @@
 /// 座標のコンストラクタ。
 function jsPoint(x, y)
 {
-	return { m_x: x, m_y: y };
+	return { x: x, y: y };
 }
 
 /// 矩形のコンストラクタ。
 function jsRect(x, y, width, height)
 {
-	return { m_x: x, m_y: y, m_width: width, m_height: height };
+	return { x: x, y: y, width: width, height: height };
 }
 
 /// 2点間のチェビシェフ距離を求める。
 function get_dist_chv(pt1, pt2)
 {
-	return Math.max(Math.abs(pt1.m_x - pt2.m_x), Math.abs(pt1.m_y - pt2.m_y));
+	return Math.max(Math.abs(pt1.x - pt2.x), Math.abs(pt1.y - pt2.y));
 }
 
 /// 2点間のマンハッタン距離を求める。
 function get_dist_chv(pt1, pt2)
 {
-	return Math.abs(pt1.m_x - pt2.m_x) + Math.abs(pt1.m_y - pt2.m_y);
+	return Math.abs(pt1.x - pt2.x) + Math.abs(pt1.y - pt2.y);
 }
 
 /// 点が矩形に含まれるか判定する。
 function rect_includes(rect, point)
 {
 	return (
-		   (rect.m_x <= point.m_x && point.m_x < rect.m_x + rect.m_width)
-		&& (rect.m_y <= point.m_y && point.m_y < rect.m_y + rect.m_height)
+		   (rect.x <= point.x && point.x < rect.x + rect.width)
+		&& (rect.y <= point.y && point.y < rect.y + rect.height)
 		);
 }
 
 /// 矩形が共通部分を持つか否か判定する。
 function rects_have_common(rect1, rect2)
 {
-	if (rect1.m_x + rect1.m_width <= rect2.m_x)
+	if (rect1.x + rect1.width <= rect2.x)
 		return false;
-	if (rect2.m_x + rect2.m_width <= rect1.m_x)
+	if (rect2.x + rect2.width <= rect1.x)
 		return false;
-	if (rect1.m_y + rect1.m_height <= rect2.m_y)
+	if (rect1.y + rect1.height <= rect2.y)
 		return false;
-	if (rect2.m_y + rect2.m_height <= rect1.m_y)
+	if (rect2.y + rect2.height <= rect1.y)
 		return false;
 	return true;
 }
