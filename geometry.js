@@ -1,15 +1,31 @@
 ﻿'use strict';
 
-/// 座標のコンストラクタ。
+/// Immutableな座標のコンストラクタ。
 function jsPoint(x, y)
 {
 	return { x: x, y: y };
 }
 
-/// 矩形のコンストラクタ。
+/// Immutableな矩形のコンストラクタ。
 function jsRect(x, y, width, height)
 {
 	return { x: x, y: y, width: width, height: height };
+}
+
+/// Mutableな座標のコンストラクタ。
+function JsPoint(x, y)
+{
+	this.x = x;
+	this.y = y;
+}
+
+/// Mutableな座標のコンストラクタ。
+function JsRect(x, y, width, height)
+{
+	this.x = x;
+	this.y = y;
+	this.width = width;
+	this.height = height;
 }
 
 /// 2点間のチェビシェフ距離を求める。
