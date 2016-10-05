@@ -79,19 +79,32 @@ PictureCanvas.prototype.handleEvent = function(e)
 	switch (e.type) {
 	case 'mousedown':
 	case 'touchistart':
-		// {		/*UTEST*/	// 座標確認
-		// 	let rect = this.getBoundingClientRect();
-		// 	console.log("rect.left=" + rect.left + ", rect.top=" + rect.top);
-		// 	let sx0 = window.screenX;
-		// 	let sy0 = window.screenY;
-		// 	console.log("sx0=" + sx0 + ", sy0=" + sy0);
-		// 	let ofsX = window.pageXOffset;
-		// 	let ofsY = window.pageYOffset;
-		// 	console.log("ofsX=" + ofsX + ", ofsY=" + ofsY);
-		// 	console.log("e.clientX=" + e.clientX + ", e.clientY=" + e.clientY);
-		// 	console.log("e.screenX=" + e.screenX + ", e.screenY=" + e.screenY);
-		//
-		// }
+		{		/*UTEST*/	// スクロールバー込みの座標確認
+			// レイヤーのbounding rect
+			// スクロールバーに移動につれ動く。
+			let bounds = this.m_layers[0].getBoundingClientRect();
+			console.dir(bounds);
+
+			// クリック座標をレイヤーローカルな座標に変換
+			// こうするとスクロールバーの影響を受けない。
+			// つまり、HTMLページ左上を原点とする絶対座標系が(clientX, clientY)であり、
+			// かつgetBoundingClientRect()が返す座標系も同じなのでこれで辻褄が合う。
+			let pt = new JsPoint(e.clientX - bounds.x, e.clientY - bounds.y);
+			console.dir(pt);
+
+			// スクロールバーの幅を得る試み
+			console.log(
+				  "scrollHeight=" + this.m_view_port.scrollHeight
+				+ ", offsetHeight=" + this.m_view_port.offsetHeight
+				);
+				console.log(
+					  "scrollHeight=" + this.m_layers[0].scrollHeight
+					+ ", offsetHeight=" + this.m_layers[0].offsetHeight
+				);
+				let bounds2 = this.m_view_port.getBoundingClientRect();
+				console.log("viewport.height - layer[0].height=" + (bounds2.height - bounds.height));
+
+		}
 
 		// mouseupやtouchendを確実に補足するための登録
 		g_pointManager.notifyPointStart(this, e);
