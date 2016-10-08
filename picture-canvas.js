@@ -158,7 +158,7 @@ PictureCanvas.prototype.eraseCanvas = function()
 	// 	// ctx.strokeStyle = "#000000";
 	// 	ctx.fillStyle = "#000000";
 	// 	ctx.beginPath();
-	// 	draw_line(0.5, 0.5, 200.5, 200.5, ctx, 1);
+	// 	draw_line_1px(0.5, 0.5, 200.5, 200.5, ctx, 1);
 	// 	ctx.stroke();
 	// 	ctx.closePath();
 	// }

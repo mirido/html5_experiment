@@ -5,16 +5,16 @@
 //
 
 /// 大きさを持った画素をプリレンダリングする。
-function pre_render_pixel(diameter, color, bFilled)
+function pre_render_pixel(ha, diameter, color, bFilled)
 {
 	// pre-rendering用キャンバス生成
 	let mini_canvas = document.createElement('canvas');
-	mini_canvas.width = diameter + 2;
-	mini_canvas.height = diameter + 2;
+	mini_canvas.width = 2 * ha + 1;
+	mini_canvas.height = 2 * ha + 1;
 
 	// アンチエリアシング対策
 	let radius = diameter / 2;
-	let px = Math.floor(radius + 1);
+	let px = ha;
 
 	// 描画
 	let context = mini_canvas.getContext('2d');
@@ -31,9 +31,49 @@ function pre_render_pixel(diameter, color, bFilled)
 //
 
 /// プレゼンハムのアルゴリズムで指定幅の直線を描画する。
-function draw_line(x0, y0, x1, y1, context, thickness)
+function draw_line(x0, y0, x1, y1, ha, pre_rendered, context)
 {
-	draw_line_1px(x0, y0, x1, y1, context);
+	var tmp;
+
+	var bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
+	if (bSteep) {
+		// swap(x0, y0);
+		tmp = x0, x0 = y0, y0 = tmp;
+
+		// swap(x1, y1)
+		tmp = x1, x1 = y1, y1 = tmp;
+	}
+	if (x0 > x1) {
+		// swap(x0, x1)
+		tmp = x0, x0 = x1, x1 = tmp;
+
+		// swap(y0, y1)
+		tmp = y0, y0 = y1, y1 = tmp;
+	}
+	var deltax = x1 - x0
+	var deltay = Math.abs(y1 - y0)
+	var error = Math.floor(deltax / 2.0);
+	var ystep
+	var y = y0
+	if (y0 < y1) {
+		ystep = 1;
+	} else {
+		ystep = -1;
+	}
+	for (var x = x0; x <= x1; ++x) {
+		if (bSteep) {
+			// plot(y, x);
+			context.drawImage(pre_rendered, y - ha, x - ha);
+		} else {
+			// plot(x, y);
+			context.drawImage(pre_rendered, x - ha, y - ha);
+		}
+		error -= deltay;
+		if (error < 0) {
+			y += ystep;
+			error += deltax;
+		}
+	}
 }
 
 /// プレゼンハムのアルゴリズムで1画素幅の直線を描画する。
@@ -85,10 +125,10 @@ function draw_line_1px(x0, y0, x1, y1, context)
 /// 塗り潰し無しの矩形を描画する。
 function draw_rect(x0, y0, x1, y1, context, thickness)
 {
-	draw_line(x0, y0, x1, y0, context, thickness);
-	draw_line(x0, y0, x0, y1, context, thickness);
-	draw_line(x1, y0, x1, y1, context, thickness);
-	draw_line(x0, y1, x1, y1, context, thickness);
+	draw_line_1px(x0, y0, x1, y0, context, thickness);
+	draw_line_1px(x0, y0, x0, y1, context, thickness);
+	draw_line_1px(x1, y0, x1, y1, context, thickness);
+	draw_line_1px(x0, y1, x1, y1, context, thickness);
 }
 
 /// 塗り潰し無しの矩形を描画する。
