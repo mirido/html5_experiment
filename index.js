@@ -2,11 +2,6 @@
 
 console.log("index.js starts.");
 
-let g_view_port;					// 描画領域
-let g_layers;							// レイヤー
-let g_tool_palette;				// ツールパレット
-let g_joint_canvas;				// 合成画像描画先
-
 // ポインタ状態管理
 let g_pointManager;
 
@@ -28,16 +23,6 @@ function init_wnd()
 {
 	console.log("init() called.");
 
-	// DOMオブジェクト取得
-	g_view_port = document.getElementById("viewport");
-	g_layers = [
-		document.getElementById("canvas_0"),
-		document.getElementById("canvas_1"),
-		document.getElementById("canvas_2")
-	];
-	g_tool_palette = document.getElementById("tool_pallete");
-	g_joint_canvas = document.getElementById("joint_canvas");
-
 	// インスタンス生成
 	g_pointManager = new PointManager();
 	g_pictureCanvas = new PictureCanvas();
@@ -51,10 +36,11 @@ function init_wnd()
 	g_pictureCanvas.eraseCanvas();
 
 	// 図形描画
-  sample01(g_layers);
+  sample01(g_pictureCanvas.m_layers);
 
 	// 画像合成
-	g_pictureCanvas.getJointImage(g_joint_canvas);
+	let joint_canvas = document.getElementById("joint_canvas");
+	g_pictureCanvas.getJointImage(joint_canvas);
 }
 
 /// ウィンドウが閉じるとき呼ばれる。
@@ -97,14 +83,4 @@ function sample01(layers)
   ctx2.fillStyle = "black";
   ctx2.fillRect(0, 0, 140, 140);
   ctx2.putImageData(image, 10, 10);
-}
-
-//
-//	マウスイベントのlistener
-//
-
-function listener_OnMouseDown(e)
-{
-	console.log("hello world!");
-	console.dir(e);
 }
