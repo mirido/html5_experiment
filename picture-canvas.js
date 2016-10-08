@@ -37,17 +37,8 @@ function PictureCanvas()
 	// イベントハンドラ登録
 	register_pointer_event_handler(this.m_view_port, this);
 
-	// {	/*UTEST*/	// 座標確認
-	// 	this.m_layres[0].
-	// 	let rectZ = document.documentElement.getBoundingClientRect();
-	// 	let rect0 = document.body.getBoundingClientRect();
-	// 	let rect1 = this.m_view_port.getBoundingClientRect();
-	// 	let rect2 = this.m_layers[0].getBoundingClientRect();
-	// 	console.log("rectZ=(" + rectZ.left + ", " + rectZ.top + ", " + rectZ.width + ", " + rectZ.height + ")");
-	// 	console.log("rect0=(" + rect0.left + ", " + rect0.top + ", " + rect0.width + ", " + rect0.height + ")");
-	// 	console.log("rect1=(" + rect1.left + ", " + rect1.top + ", " + rect1.width + ", " + rect1.height + ")");
-	// 	console.log("rect2=(" + rect2.left + ", " + rect2.top + ", " + rect2.width + ", " + rect2.height + ")");
-	// }
+	// レイヤーのサイズ調整
+	this.fitCanvas();
 }
 
 /// イベントリスナ。
@@ -79,43 +70,6 @@ PictureCanvas.prototype.handleEvent = function(e)
 	switch (e.type) {
 	case 'mousedown':
 	case 'touchistart':
-		{		/*UTEST*/	// スクロールバー込みの座標確認
-			// レイヤーのbounding rect
-			// スクロールバーに移動につれクライアント座標値が動く。
-			let bounds = this.m_layers[0].getBoundingClientRect();
-			console.dir(bounds);
-
-			// クリック座標をレイヤーローカルな座標に変換
-			// こうするとスクロールバーの影響を受けない。
-			// つまり、HTMLページ左上を原点とする絶対座標系が(clientX, clientY)であり、
-			// かつgetBoundingClientRect()が返す座標系も同じなのでこれで辻褄が合う。
-			let pt = new JsPoint(e.clientX - bounds.x, e.clientY - bounds.y);
-			console.dir(pt);
-
-			// スクロールバーの幅を得る試み
-			console.log(
-				  "scrollHeight=" + this.m_view_port.scrollHeight
-				+ ", offsetHeight=" + this.m_view_port.offsetHeight
-				);
-				console.log(
-					  "scrollHeight=" + this.m_layers[0].scrollHeight
-					+ ", offsetHeight=" + this.m_layers[0].offsetHeight
-				);
-				let bounds2 = this.m_view_port.getBoundingClientRect();
-				console.log("viewport.height - layer[0].height=" + (bounds2.height - bounds.height));
-
-				// ブラウザの表示領域サイズ取得
-				let clientWidth = document.documentElement.clientWidth;
-				let clientHeight = document.documentElement.clientHeight;
-				console.log("clientWidth=" + clientWidth + ", clientHeight=" + clientHeight);
-
-				clientWidth = document.body.clientWidth;
-				clientHeight = document.body.clientHeight;
-				console.log("clientWidth=" + clientWidth + ", clientHeight=" + clientHeight);
-				let bounds3 = document.body.getBoundingClientRect();
-				console.dir(bounds3);
-		}
-
 		// mouseupやtouchendを確実に補足するための登録
 		g_pointManager.notifyPointStart(this, e);
 
@@ -180,4 +134,79 @@ PictureCanvas.prototype.eraseCanvas = function()
 PictureCanvas.prototype.getJointImage = function(dstCanvas)
 {
 	get_joint_image(this.m_layers, dstCanvas);
+}
+
+/// View portをキャンバスにfitさせる。
+PictureCanvas.prototype.fitCanvas = function()
+{
+	const width_margin = 100;
+	const height_margin = 50;
+	const layer_margin_horz = 5;
+	const layer_margin_vert = 5;
+	const layer_client_width_min = 400;
+	const layer_client_height_min = 400;
+
+	// レイヤーのオフセット設定
+	// なぜか明示的に設定せねばプログラムで取得できない。FireFoxにて確認。
+	for (let i = 0; i < this.m_layers.length; ++i) {
+		this.m_layers[0].style.left = layer_margin_horz + "px";
+		this.m_layers[0].style.top = layer_margin_vert + "px";
+	}
+
+	// View portの寸法取得
+	let vport_client_width = this.m_view_port.clientWidth;
+	let vport_client_height = this.m_view_port.clientHeight;
+	let vport_outer_width = this.m_view_port.offsetWidth;
+	let vport_outer_height = this.m_view_port.offsetHeight;
+	{	/*UTEST*/		// スクロールバーの幅の算出
+		// 次の関係が成り立つ。
+		//   vport_client_width < vport_outer_width == vport_bounds.width
+		// vport_client_widthがスクロールバーを含まない領域幅のようだ。
+		let vport_bounds = this.m_view_port.getBoundingClientRect();
+		console.log("vport_client_width=" + vport_client_width
+		 	+ ", vport_outer_width=" + vport_outer_width
+			+ ", vport_bounds.width=" + vport_bounds.width
+		);
+		console.log("scroll bar width(?)=" + (vport_outer_width - vport_client_width));
+		console.log("layer client width=" + this.m_layers[0].clientWidth);
+	}
+
+	// レイヤーの寸法取得
+	let layer_outer_width = this.m_layers[0].offsetWidth;
+	let layer_outer_height = this.m_layers[0].offsetHeight;
+	{
+		let layer_client_width = this.m_layers[0].clientWidth;
+		let layer_client_height = this.m_layers[0].clientHeight;
+		if (layer_client_width < layer_client_width_min) {
+			layer_outer_width += (layer_client_width_min - layer_client_width);
+		}
+		if (layer_client_height < layer_client_height_min) {
+			layer_outer_height += (layer_client_height_min - layer_client_height);
+		}
+	}
+
+	// レイヤーのオフセット取得
+	let layer_left = parseInt(this.m_layers[0].style.left);
+	let layer_top = parseInt(this.m_layers[0].style.top);
+	// console.log("layer_left=" + layer_left + ", layer_top=" + layer_top);
+
+	// View portの必要なサイズを取得
+	let delta_w = layer_left + layer_outer_width - vport_client_width;
+	let delta_h = layer_top + layer_outer_height - vport_client_height;
+	let vport_outer_width_min = vport_outer_width + delta_w;
+	let vport_outer_height_min = vport_outer_height + delta_h;
+
+	// ウィンドウの表示領域サイズで制限をかける
+	// console.log("window.innerWidth=" + window.innerWidth);
+	// console.log("window.innerHeight=" + window.innerHeight);
+	if (vport_outer_width_min > window.innerWidth - width_margin) {
+		vport_outer_width_min = window.innerWidth - width_margin;
+	}
+	if (vport_outer_height_min > window.innerHeight - height_margin) {
+		vport_outer_height_min = window.innerHeight - height_margin;
+	}
+
+	// View portのサイズ設定
+	this.m_view_port.style.width = vport_outer_width_min + "px";
+	this.m_view_port.style.height = vport_outer_height_min + "px";
 }
