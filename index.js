@@ -96,5 +96,8 @@ function sample01(layers)
 	ctx.fillStyle = 'rgb(0, 0, 0)';
 	ctx.globalAlpha = 1.0;
 	draw_circle(200, 200, 100, ctx, false);
+	draw_circle(200, 200, 30, ctx, false);
+	draw_circle(200, 200, 19, ctx, false);
+	draw_circle(200, 200, 10, ctx, false);
 	ctx.fillRect(150, 150, 50, 50);
 }

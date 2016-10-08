@@ -9,12 +9,12 @@ function pre_render_pixel(diameter, color, bFilled)
 {
 	// pre-rendering用キャンバス生成
 	let mini_canvas = document.createElement('canvas');
-	mini_canvas.width = diameter + 1;
-	mini_canvas.height = diameter + 1;
+	mini_canvas.width = diameter + 2;
+	mini_canvas.height = diameter + 2;
 
 	// アンチエリアシング対策
 	let radius = diameter / 2;
-	let px = radius;
+	let px = Math.floor(radius + 1);
 
 	// 描画
 	let context = mini_canvas.getContext('2d');
@@ -30,15 +30,16 @@ function pre_render_pixel(diameter, color, bFilled)
 //	図形描画
 //
 
-/// プレゼンハムのアルゴリズムで直線を描画する。
+/// プレゼンハムのアルゴリズムで指定幅の直線を描画する。
 function draw_line(x0, y0, x1, y1, context, thickness)
 {
-	var tmp;
+	draw_line_1px(x0, y0, x1, y1, context);
+}
 
-	if (!thickness)
-		thickness = 1;
-	var r = thickness / 2;
-	var d = thickness;
+/// プレゼンハムのアルゴリズムで1画素幅の直線を描画する。
+function draw_line_1px(x0, y0, x1, y1, context)
+{
+	var tmp;
 
 	var bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
 	if (bSteep) {
@@ -68,10 +69,10 @@ function draw_line(x0, y0, x1, y1, context, thickness)
 	for (var x = x0; x <= x1; ++x) {
 		if (bSteep) {
 			// plot(y, x);
-			context.fillRect(Math.floor(y - r), Math.floor(x - r), d, d);
+			context.fillRect(y, x, 1, 1);
 		} else {
 			// plot(x, y);
-			context.fillRect(Math.floor(x - r), Math.floor(y - r), d, d);
+			context.fillRect(x, y, 1, 1);
 		}
 		error -= deltay;
 		if (error < 0) {
@@ -107,34 +108,31 @@ function draw_circle(cx, cy, radius, context, bFilled)
 
 	let r = radius;
 	let rr = r * r;
-	let dy_max = (bFilled) ? r : Math.ceil(r / Math.sqrt(2));
-	for (let dy = 0; dy <= dy_max; ++dy) {
-		let dx = Math.sqrt(rr - dy * dy);
+	let prev_px1 = Math.round(cx - r);
+	let prev_px2 = Math.round(cx + r);
+	let prev_py1 = Math.round(cy);
+	let prev_py2 = Math.round(cy);
+	let dy_max = Math.ceil(r);
+	for (let dy = (bFilled) ? 0 : 1; dy <= dy_max; ++dy) {
+		let dx = Math.sqrt(Math.max(0.0, rr - dy * dy));
 		let px1 = Math.round(cx - dx);
 		let px2 = Math.round(cx + dx);
 		let py1 = Math.round(cy - dy);
 		let py2 = Math.round(cy + dy);
 		if (bFilled) {
-			let len = px2 - px1 + 1;
+			let len = px2 - px1;	// +1は無い方が円に見える。
+				// Round結果同士の引き算の誤差がうまくキャンセルされるらしい。
 			context.fillRect(px1, py1, len, 1);
 			context.fillRect(px1, py2, len, 1);
 		} else {
-			context.fillRect(px1, py1, 1, 1);
-			context.fillRect(px1, py2, 1, 1);
-			context.fillRect(px2, py1, 1, 1);
-			context.fillRect(px2, py2, 1, 1);
-
-			// 90°時計回りに回転
-			let rdx = dy;
-			let rdy = -dx;
-			px1 = Math.round(cx - rdx);
-			px2 = Math.round(cx + rdx);
-			py1 = Math.round(cy - rdy);
-			py2 = Math.round(cy + rdy);
-			context.fillRect(px1, py1, 1, 1);
-			context.fillRect(px1, py2, 1, 1);
-			context.fillRect(px2, py1, 1, 1);
-			context.fillRect(px2, py2, 1, 1);
+			draw_line_1px(prev_px1, prev_py1, px1, py1, context);
+			draw_line_1px(prev_px2, prev_py1, px2, py1, context);
+			draw_line_1px(prev_px1, prev_py2, px1, py2, context);
+			draw_line_1px(prev_px2, prev_py2, px2, py2, context);
+			prev_px1 = px1;
+			prev_py1 = py1;
+			prev_px2 = px2;
+			prev_py2 = py2;
 		}
 	}
 }
