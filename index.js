@@ -5,6 +5,9 @@ console.log("index.js starts.");
 // ポインタ状態管理
 let g_pointManager;
 
+// キー入力管理
+let g_keyStateManager;
+
 // 描画キャンバス
 let g_pictureCanvas;
 
@@ -25,11 +28,13 @@ function init_wnd()
 
 	// インスタンス生成
 	g_pointManager = new PointManager();
+	g_keyStateManager = new KeyStateManager();
 	g_pictureCanvas = new PictureCanvas();
 	g_toolPalette = new ToolPalette();
 	g_pencilTool = new PencilTool();
 
-	// 暫定
+	// 鉛筆ツール選択
+	// 暫定的にここで行う。将来的にはToolPaletteクラスで行う予定。
 	g_pictureCanvas.setDrawer(g_pencilTool);
 
 	// キャンバスを白色でfill
@@ -46,7 +51,10 @@ function init_wnd()
 /// ウィンドウが閉じるとき呼ばれる。
 function dispose_wnd()
 {
+	g_pointManager.dispose();
 	g_pointManager = null;
+	g_keyStateManager.dispose();
+	g_keyStateManager = null;
 	// TBD
 }
 

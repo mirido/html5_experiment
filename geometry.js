@@ -29,13 +29,13 @@ function JsRect(x, y, width, height)
 }
 
 /// 2点間のチェビシェフ距離を求める。
-function get_dist_chv(pt1, pt2)
+function get_chv_dist(pt1, pt2)
 {
 	return Math.max(Math.abs(pt1.x - pt2.x), Math.abs(pt1.y - pt2.y));
 }
 
 /// 2点間のマンハッタン距離を求める。
-function get_dist_chv(pt1, pt2)
+function get_mht_dist(pt1, pt2)
 {
 	return Math.abs(pt1.x - pt2.x) + Math.abs(pt1.y - pt2.y);
 }

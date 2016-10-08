@@ -35,6 +35,19 @@ function PointManager()
   }
 }
 
+/// インスタンスが保持する資源を解放する。
+PointManager.prototype.dispose = function()
+{
+  let bSupportTouch = ('ontouchend' in document);
+  if (bSupportTouch) {
+    document.removeEventListener('touchstart', this);
+    document.removeEventListener('touchend', this);
+  } else {
+    document.removeEventListener('mousedown', this);
+    document.removeEventListener('mouseup', this);
+  }
+}
+
 /// mousedownまたはtouchstartが起きたオブジェクトを記憶する。
 /// objはhandleEvent()メソッドを有する前提。
 PointManager.prototype.notifyPointStart = function(obj, e)
@@ -113,6 +126,7 @@ function register_pointer_event_handler(docObj, codeObj)
 //  <select>タグ操作
 //
 
+/// Selection boxの選択項目をプログラムから変更する。
 function change_selection(selector, exp_value)
 {
   let selection = selector.getElementsByTagName('option');
@@ -123,4 +137,73 @@ function change_selection(selector, exp_value)
     }
   }
   return false;
+}
+
+//
+//  キー状態管理
+//
+
+// Description:
+// キー状態を管理する。
+
+const SpKey = {
+  KY_SHIFT: 0x1,
+  KY_CTRL: 0x2,
+  KY_ALT: 0x4,
+  KY_META: 0x8
+};
+
+/// 新しいインスタンスを初期化する。
+function KeyStateManager()
+{
+  // 特殊キー押下状態
+  this.m_bShiftDown = false;
+  this.m_bCtrlDown = false;
+  this.m_bAltDown = false;
+  this.m_bMetaDown = false;
+
+  // イベントハンドラ登録
+  document.addEventListener('keydown', this);
+  document.addEventListener('keyup', this);
+}
+
+/// インスタンスが保持する資源を解放する。
+KeyStateManager.prototype.dispose = function()
+{
+  document.removeEventListener('keydown', this);
+  document.removeEventListener('keyup', this);
+}
+
+/// イベントリスナ。
+KeyStateManager.prototype.handleEvent = function(e)
+{
+  let key_event = (e || window.event);
+  this.m_bShiftDown = (key_event.shiftKey);
+	this.m_bCtrlDown = (key_event.ctrlKey);
+	this.m_bAltDown = (key_event.altKey);
+	this.m_bMetaDown = (key_event.metaKey);
+  // console.log("m_bShiftDown=" + this.m_bShiftDown
+  //   + ", this.m_bCtrlDown=" + this.m_bCtrlDown
+  //   + ", this.m_bAltDown=" + this.m_bAltDown
+  //   + ", this.m_bMetaDown=" + this.m_bMetaDown
+  // );
+}
+
+/// 特殊キーの押下状態を取得する。
+KeyStateManager.prototype.getSpKeyState = function()
+{
+  let state = 0x0;
+  if (this.m_bShiftDown) {
+    state |= SpKey.KY_SHIFT;
+  }
+  if (this.m_bCtrlDown) {
+    state |= SpKey.KY_CTRL;
+  }
+  if (this.m_bAltDown) {
+    state |= SpKey.KY_ALT;
+  }
+  if (this.m_bMetaDown) {
+    state |= SpKey.KY_META;
+  }
+  return state;
 }

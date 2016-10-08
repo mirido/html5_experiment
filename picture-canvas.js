@@ -1,6 +1,25 @@
 ﻿'use strict';
 
 //
+//	DrawEvent
+//
+
+// Description:
+// Canvas上で生じたイベントを表す。
+
+/// 新しいインスタンスを初期化する。
+function DrawEvent(sender, e)
+{
+	this.m_sender = sender;
+	let bounds = sender.getBoundingClientRect();
+	this.m_point = jsPoint(
+		e.clientX - bounds.x - sender.m_layer_left - 1,		// -1はborder幅
+		e.clientY - bounds.y - sender.m_layer_top - 1
+	);
+	this.m_spkey = g_keyStateManager.getSpKeyState();
+}
+
+//
 //	PictureCanvas
 //
 
@@ -33,12 +52,18 @@ function PictureCanvas()
 
 	// ポインタデバイスのドラッグ状態
 	this.m_bDragging = false;
+	this.m_lastEvent = null;
 
 	// イベントハンドラ登録
 	register_pointer_event_handler(this.m_view_port, this);
 
 	// レイヤーのサイズ調整
 	this.fitCanvas();
+
+	// レイヤーのオフセット取得
+	// fitCanvas()呼出し後である必要がある。
+	this.m_layer_left = parseInt(this.m_layers[0].style.left);
+	this.m_layer_top = parseInt(this.m_layers[0].style.top);
 }
 
 /// イベントリスナ。
@@ -48,23 +73,9 @@ PictureCanvas.prototype.handleEvent = function(e)
 	// console.dir(e);
 
 	// 描画ツールに引き渡す情報を構成
-	let mod_e;
-	if (this.m_drawer) {
-		// mod_e = Object.assign({ }, e);  // 値コピー	// NG。うまく機能しない。
-		mod_e = e;		// Alias
-		let dx = this.m_rect_view_port.left - this.m_rect_layer.left;
-		let dy = this.m_rect_view_port.top - this.m_rect_layer.top;
-		//mod_e.clientX += dx;	// 不要かつできない(eはconstオブジェクト)
-		//mod_e.clientY += dy;	// 同上
-		// console.dir(this.m_rect_view_port);	// UTEST
-		// console.dir(this.m_rect_layer);			// UTEST
-		// console.dir(mod_e);		// UTEST
-		// console.dir(e);		// UTEST
-		// 座標周りの考え方は、実は(e.clientX, e.clientY)はHTMLページ左上原点とする
-		// 共通の座標系であり、全HTML要素共通なので、HTML要素毎に変換する必要は無い。
-		// HTML要素内のローカル座標にしたければ、
-		// (HTML要素).getBoundingClientRect()が返すDOMRectの(.x, .y)を引く。
-	}
+	let mod_e = new DrawEvent(this, e);
+	this.m_lastEvent = Object.assign({ }, mod_e);		// 値コピー
+	// console.dir(this.m_lastEvent);
 
 	// イベント別処理
 	switch (e.type) {
@@ -76,14 +87,14 @@ PictureCanvas.prototype.handleEvent = function(e)
 		// 描画開始を通知
 		this.m_bDragging = true;
 		if (this.m_drawer) {
-			this.m_drawer.OnDrawStart(mod_e, this.m_layers, this.m_nTargetLayerNo);
+			this.m_drawer.OnDrawStart(mod_e);
 		}
 		break;
 	case 'mouseup':
 	case 'touchend':
 		// 描画終了を通知
 		if (this.m_bDragging && this.m_drawer) {
-			this.m_drawer.OnDrawEnd(mod_e, this.m_layers, this.m_nTargetLayerNo);
+			this.m_drawer.OnDrawEnd(mod_e);
 		}
 		this.m_bDragging = false;
 		break;
@@ -91,7 +102,7 @@ PictureCanvas.prototype.handleEvent = function(e)
 	case 'touchmove':
 		// ポインタの移動を通知
 		if (this.m_bDragging && this.m_drawer) {
-			this.m_drawer.OnDrawing(mod_e, this.m_layers, this.m_nTargetLayerNo);
+			this.m_drawer.OnDrawing(mod_e);
 		}
 		break;
 	default:
@@ -114,11 +125,34 @@ PictureCanvas.prototype.setDrawer = function(drawer)
 	return prev;
 }
 
+/// 外部から描画を終了させる。
+/// 選択中ツールが変化したとき等に、ツールパレットから呼ばれる想定。
+PictureCanvas.prototype.closeDrawing = function(drawer)
+{
+	// ツールに確実にOnDrawEndを送る。
+	if (this.m_bDragging && this.m_drawer) {
+		this.m_drawer.OnDrawEnd(this.m_lastEvent);
+	}
+	this.m_bDragging = false;
+}
+
+/// カレントレイヤーを変更する。
+PictureCanvas.prototype.changeLayer = function(layerNo)
+{
+	assert(1 <= layerNo && layerNo < this.m_layers.length);
+	m_nTargetLayerNo = layerIdx;
+}
+
+/// カレントレイヤーを取得する。
+PictureCanvas.prototype.getLayer = function()
+{
+	return this.m_layers[this.m_nTargetLayerNo];
+}
+
 /// キャンバスを全クリアする。
 PictureCanvas.prototype.eraseCanvas = function()
 {
 	erase_canvas(this.m_layers);
-
 	// {	/*UTEST*/	// アンチエリアシング無し描画テスト
 	// 	let ctx = this.m_layers[0].getContext('2d');
 	// 	// ctx.strokeStyle = "#000000";
@@ -147,7 +181,8 @@ PictureCanvas.prototype.fitCanvas = function()
 	const layer_client_height_min = 400;
 
 	// レイヤーのオフセット設定
-	// なぜか明示的に設定せねばプログラムで取得できない。FireFoxにて確認。
+	// オフセットの値はCSSで指定してあるが、なぜかプログラムから
+	// 1回は明示的に設定せねばプログラムで値を取得できない。FireFoxにて確認。
 	for (let i = 0; i < this.m_layers.length; ++i) {
 		this.m_layers[0].style.left = layer_margin_horz + "px";
 		this.m_layers[0].style.top = layer_margin_vert + "px";
@@ -158,18 +193,18 @@ PictureCanvas.prototype.fitCanvas = function()
 	let vport_client_height = this.m_view_port.clientHeight;
 	let vport_outer_width = this.m_view_port.offsetWidth;
 	let vport_outer_height = this.m_view_port.offsetHeight;
-	{	/*UTEST*/		// スクロールバーの幅の算出
-		// 次の関係が成り立つ。
-		//   vport_client_width < vport_outer_width == vport_bounds.width
-		// vport_client_widthがスクロールバーを含まない領域幅のようだ。
-		let vport_bounds = this.m_view_port.getBoundingClientRect();
-		console.log("vport_client_width=" + vport_client_width
-		 	+ ", vport_outer_width=" + vport_outer_width
-			+ ", vport_bounds.width=" + vport_bounds.width
-		);
-		console.log("scroll bar width(?)=" + (vport_outer_width - vport_client_width));
-		console.log("layer client width=" + this.m_layers[0].clientWidth);
-	}
+	// {	/*UTEST*/		// スクロールバーの幅の算出
+	// 	// 次の関係が成り立つ。
+	// 	//   vport_client_width < vport_outer_width == vport_bounds.width
+	// 	// vport_client_widthがスクロールバーを含まない領域幅のようだ。
+	// 	let vport_bounds = this.m_view_port.getBoundingClientRect();
+	// 	console.log("vport_client_width=" + vport_client_width
+	// 	 	+ ", vport_outer_width=" + vport_outer_width
+	// 		+ ", vport_bounds.width=" + vport_bounds.width
+	// 	);
+	// 	console.log("scroll bar width(?)=" + (vport_outer_width - vport_client_width));
+	// 	console.log("layer client width=" + this.m_layers[0].clientWidth);
+	// }
 
 	// レイヤーの寸法取得
 	let layer_outer_width = this.m_layers[0].offsetWidth;
