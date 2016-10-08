@@ -1,5 +1,42 @@
 'use strict';
 
+//
+//  単一キャンバス操作
+//
+
+/// キャンバスを不透明にする。
+function make_opaque(canvas)
+{
+  const width = canvas.width;
+  const height = canvas.height;
+
+  // 画像データ取得
+  let ctx = canvas.getContext('2d');
+  let imgd = ctx.getImageData(0, 0, width, height);
+
+  // 全画素のα値を255に変更
+  // 透明度が0.5未満の画素は、透明な黒に変更する。
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base = head + px * 4;
+      if (imgd.data[base + 3] < 128) {  // (透明度0.5未満)
+        imgd.data[base + 0] = 0;
+        imgd.data[base + 1] = 0;
+        imgd.data[base + 2] = 0;
+      }
+      imgd.data[base + 3] = 255;    // α値を255に変更
+    }
+  }
+
+  // 再描画
+  ctx.putImageData(imgd, 0, 0);
+}
+
+//
+//  マルチレイヤー操作
+//
+
 /// キャンバスを全消去する。
 /// 最下層キャンバスのみ白色、それ以外は透明になる。
 function erase_canvas(

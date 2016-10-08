@@ -73,13 +73,13 @@ function ToolPalette()
 		ctx.fillStyle = "rgba(232, 239, 255, 255)";
 		ctx.fillRect(0, 0, width, height);
 
-    if (true) {
+    if (false) {
       ctx.strokeStyle = "rgb(0, 0, 0, 0)";
   		ctx.lineWidth = 1;
       for (let i = 0; i < this.m_toolBounds.length; ++i) {
         let rect = this.m_toolBounds[i];
         // console.dir(rect);
-        ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width, rect.height); // アンチエリアスがかかるのでNG。
+        ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width, rect.height);
       }
     } else {
       ctx.strokeStyle = "rgb(0, 0, 0, 0)";
@@ -89,7 +89,7 @@ function ToolPalette()
       for (let i = 0; i < this.m_toolBounds.length; ++i) {
         let rect = this.m_toolBounds[i];
         // console.dir(rect);
-        draw_rect_R(rect.x + 0.5, rect.y + 0.5, rect.width, rect.height, ctx, 1);
+        draw_rect_R(rect.x, rect.y, rect.width, rect.height, ctx, 1);
       }
       ctx.stroke();
       ctx.closePath();

@@ -91,4 +91,10 @@ function sample01(layers)
   ctx2.fillStyle = "black";
   ctx2.fillRect(0, 0, 140, 140);
   ctx2.putImageData(image, 10, 10);
+
+	// draw_circle()のテスト
+	ctx.fillStyle = 'rgb(0, 0, 0)';
+	ctx.globalAlpha = 1.0;
+	draw_circle(200, 200, 100, ctx, false);
+	ctx.fillRect(150, 150, 50, 50);
 }

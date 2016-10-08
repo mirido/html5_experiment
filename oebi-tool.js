@@ -4,8 +4,6 @@
 //  PencilTool
 //
 
-const stroke_span_min = 3;
-
 /// 新しいインスタンスを初期化する。
 /// 暫定的に、selection boxで線の太さを与えている。
 function PencilTool()
@@ -80,6 +78,22 @@ PencilTool.prototype.OnDrawStart = function(e)
   this.m_thickness = this.getThicknessFromSelector();
   this.m_lastSender = e.m_sender;
   this.m_lastPoint = e.m_point;
+  {   /*UTEST*/   // プリレンダリング実験
+    let diameter = 19;
+    let ofs = Math.floor(diameter / 2);
+    let px = this.m_lastPoint.x - ofs;
+    let py = this.m_lastPoint.y - ofs;
+
+    let mini_canvas = pre_render_pixel(diameter, 'rgb(255, 0, 0)', true);
+    // make_opaque(mini_canvas);
+    let ctx = this.m_lastSender.getLayer().getContext('2d');
+    ctx.globalAlpha = 1.0;
+    ctx.drawImage(mini_canvas, px, py);
+
+    mini_canvas = pre_render_pixel(diameter, 'rgb(0, 255, 0)', false);
+    // make_opaque(mini_canvas);
+    ctx.drawImage(mini_canvas, px, py)
+  }
 }
 
 /// ストローク終了時呼ばれる。
@@ -98,6 +112,6 @@ PencilTool.prototype.OnDrawing = function(e)
   let ctx = this.m_lastSender.getLayer().getContext('2d');
   ctx.globalAlpha = this.m_alpha;
   ctx.fillStyle = this.m_color;
-  draw_line(this.m_lastPoint.x + 0.5, this.m_lastPoint.y + 0.5, cur_pt.x + 0.5, cur_pt.y + 0.5, ctx, this.m_thickness);
+  draw_line(this.m_lastPoint.x, this.m_lastPoint.y, cur_pt.x, cur_pt.y, ctx, this.m_thickness);
   this.m_lastPoint = cur_pt;
 }
