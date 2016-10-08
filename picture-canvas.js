@@ -81,7 +81,7 @@ PictureCanvas.prototype.handleEvent = function(e)
 	case 'touchistart':
 		{		/*UTEST*/	// スクロールバー込みの座標確認
 			// レイヤーのbounding rect
-			// スクロールバーに移動につれ動く。
+			// スクロールバーに移動につれクライアント座標値が動く。
 			let bounds = this.m_layers[0].getBoundingClientRect();
 			console.dir(bounds);
 
@@ -104,6 +104,16 @@ PictureCanvas.prototype.handleEvent = function(e)
 				let bounds2 = this.m_view_port.getBoundingClientRect();
 				console.log("viewport.height - layer[0].height=" + (bounds2.height - bounds.height));
 
+				// ブラウザの表示領域サイズ取得
+				let clientWidth = document.documentElement.clientWidth;
+				let clientHeight = document.documentElement.clientHeight;
+				console.log("clientWidth=" + clientWidth + ", clientHeight=" + clientHeight);
+
+				clientWidth = document.body.clientWidth;
+				clientHeight = document.body.clientHeight;
+				console.log("clientWidth=" + clientWidth + ", clientHeight=" + clientHeight);
+				let bounds3 = document.body.getBoundingClientRect();
+				console.dir(bounds3);
 		}
 
 		// mouseupやtouchendを確実に補足するための登録
