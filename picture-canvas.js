@@ -112,8 +112,6 @@ PictureCanvas.prototype.handleEvent = function(e)
 PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 {
 	let bounds = this.m_layers[0].getBoundingClientRect();
-	bounds.x -= (this.m_layer_left + 1);	// +1はborder幅。本当は決め打ちではなく、取得した方が良い。
-	bounds.y -= (this.m_layer_top + 1);
 	return bounds;
 }
 
