@@ -5,7 +5,11 @@
 //
 
 // Description:
-// ツール選択を変えても変化しない、描画処理共通の設定を表す。
+// ツール選択変更時も保存される、描画処理共通の設定を表す。
+// 値の変更は、特定のツールが行う。
+//   例: 描画色の変更メソッドsetColor()は、カラーピッカーツールが専ら呼び出す。
+// 値の取得は、描画開始イベント受信(OnDrawStart()呼び出し)タイミングで、
+// ツール個別に最新値を取得する。
 
 /// 新しいインスタンスを初期化する。
 function CommonSetting(nlayers)
@@ -14,7 +18,7 @@ function CommonSetting(nlayers)
   this.m_color = 'rgb(0, 0, 0)';        // 描画色
   this.m_thickness = 1;                 // 線幅
   this.m_curLayerNo = nlayers - 1;      // カレントレイヤー
-  this.m_layerVisibility = [ ];         // レイヤーの可視属性
+  this.m_layerVisibility = [];          // レイヤーの可視属性
   for (let i = 0; i < nlayers; ++i) {
     this.m_layerVisibility[i] = true;
   }
@@ -40,8 +44,13 @@ CommonSetting.prototype.setThickness = function(value) {
 //
 
 // Description:
-// ツールパレット上で同一区画(bounds)を占めるツール群を保持する。
-// ツールへのイベント発行を行う。
+// ツールパレット上で同一のアイコン区画(iconBounds)を占めるツール群を保持する。
+// 自身のiconBounds外のポインティングイベントは無視する。
+// 自身のiconBounds内でポインティングイベントがあれば、ツールへのイベント発行を行う。
+// 本クラスは、ツールAに対しOnSelected()を呼んだ後、
+// 次のツールBのOnSelected()を呼ぶ前に、
+// 必ずAに対してOnDiselected()を呼ぶ。
+// (同じツールについて、OnSelected()とOnDiselected()が対で呼ばれることを保証する。)
 
 /// 新しいインスタンスを初期化する。
 function ToolChain(iconBounds)
@@ -156,6 +165,13 @@ ToolChain.prototype.getToolPaletteCanvas = function()
 ToolChain.prototype.getIconBounds = function()
 {
   return this.m_iconBounds;
+}
+
+/// 共通設定を参照する。
+/// イベント通知を受けたツールから呼ばれる想定。
+ToolChain.prototype.refCommonSetting = function()
+{
+  return this.m_lastEvent.m_sender.refCommonSetting();
 }
 
 //
@@ -320,21 +336,31 @@ ToolPalette.prototype.handleEvent = function(e)
 }
 
 /// 描画ツールを設定する。
+/// イベント通知先ツールから呼ばれる想定。
 ToolPalette.prototype.setDrawer = function(drawer)
 {
   return this.m_pictCanvas.setDrawer(drawer);
 }
 
 /// ツールパレットのキャンバス(ツールアイコンの描画先)を取得する。
+/// イベント通知先ツールから呼ばれる想定。
 ToolPalette.prototype.getToolPaletteCanvas = function()
 {
   return this.m_palette;
 }
 
 /// 描画領域の絶対座標を返す。
+/// イベント通知先ツールから呼ばれる想定。
 ToolPalette.prototype.getBoundingDrawAreaRect = function()
 {
   // ツールパレットはpad幅0なので、client boudsが即draw area boundsである。
   let bounds = this.m_palette.getBoundingClientRect();
 	return bounds;
+}
+
+/// 共通設定を参照する。
+/// イベント通知を受けたツールから呼ばれる想定。
+ToolPalette.prototype.refCommonSetting = function()
+{
+  return this.m_setting;
 }

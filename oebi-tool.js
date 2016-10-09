@@ -11,9 +11,11 @@ const pre_rendering_ha = 32;
 function PencilTool(rect)
 {
   // 描画パラメータ
-  this.m_thickness = 1;     // 線の幅
-  this.m_alpha = 1.0;       // α値
-  this.m_color = 'rgb(0, 0, 0)';
+  // 描画途中に線幅が万が一変わると破綻する要素(pre-rendering)があるので、
+  // 線幅についてはthis.m_settingを都度参照するのではなく、
+  // ツール選択時に本オブジェクト側で記憶する。
+  this.m_setting = null;
+  this.m_thickness = null;
 
   // 描画状態
   this.m_lastSender = null;
@@ -28,11 +30,17 @@ PencilTool.prototype.OnSelected = function(e)
   console.log("PencilTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
   // console.dir(e.m_sender);
 
+  // 最新設定への参照取得
+  this.m_setting = e.m_sender.refCommonSetting();
+  this.m_thickness = this.m_setting.getThickness();
+
+  // アイコン描画準備
   let iconBounds = e.m_sender.getIconBounds();
   let toolPalette = e.m_sender.getToolPaletteCanvas();
   let ctx = toolPalette.getContext('2d');
 
   // 選択前アイコン保存(Ad-hoc)
+  // TODO: 構築時と非選択状態に戻ったとき新規に描き直す方式にする。
   this.m_sv_icon = ctx.getImageData(iconBounds.x, iconBounds.y, iconBounds.width, iconBounds.height);
 
   // 選択時アイコン描画
@@ -54,7 +62,7 @@ PencilTool.prototype.OnDiselected = function(e)
   let ctx = toolPalette.getContext('2d');
 
   // 選択前アイコン復元(Ad-hoc)
-  // 非選択状態に戻ったとき新規に描き直した方が良い。
+  // TODO: 構築時と非選択状態に戻ったとき新規に描き直す方式にする。
   ctx.putImageData(this.m_sv_icon, iconBounds.x, iconBounds.y);
 
   // 描画ツール解除
