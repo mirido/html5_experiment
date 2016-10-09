@@ -140,6 +140,56 @@ function change_selection(selector, exp_value)
 }
 
 //
+//  線幅セレクタ
+//
+
+/// 新しいインスタンスを初期化する。
+function ThicknessSelector()
+{
+  // DOMオブジェクト取得
+  this.m_thick10Selector = document.getElementById("selThickness10");
+  this.m_thick01Selector = document.getElementById("selThickness01");
+
+  // セレクタの値一覧取得
+  this.m_thick01List = this.m_thick01Selector.getElementsByTagName('option');
+  this.m_thick10List = this.m_thick10Selector.getElementsByTagName('option');
+}
+
+/// 線の太さをセレクタから取得する。(暫定処置)
+ThicknessSelector.prototype.getThickness = function()
+{
+  let idx01 = this.m_thick01Selector.selectedIndex;
+  let idx10 = this.m_thick10Selector.selectedIndex;
+  let val01 = this.m_thick01List[idx01].value;
+  let val10 = this.m_thick10List[idx10].value;
+  console.log("val10=" + val10 + ", val01=" + val01);
+  let thickness = 10 * parseInt(val10) + parseInt(val01);
+  return thickness;
+}
+
+/// 線の太さをセレクタに反映する．
+ThicknessSelector.prototype.setThickness = function(value)
+{
+  let bRet;
+
+  let val01 = value % 10;
+  let val10 = Math.floor(value / 10);
+
+  let suc = true;
+  bRet = change_selection(this.m_thick01Selector, val01);
+  if (!bRet) {
+    suc = false;
+  }
+  bRet = change_selection(this.m_thick10Selector, val10);
+  if (!bRet) {
+    suc = false;
+  }
+
+  assert(suc);
+  return suc;
+}
+
+//
 //  キー状態管理
 //
 

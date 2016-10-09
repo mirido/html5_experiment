@@ -14,9 +14,6 @@ let g_pictureCanvas;
 // ツールパレット
 let g_toolPalette;
 
-// ツール
-let g_pencilTool;
-
 // イベントハンドラ登録
 window.onload = init_wnd;
 window.onclose = dispose_wnd;
@@ -30,12 +27,7 @@ function init_wnd()
 	g_pointManager = new PointManager();
 	g_keyStateManager = new KeyStateManager();
 	g_pictureCanvas = new PictureCanvas();
-	g_toolPalette = new ToolPalette();
-	g_pencilTool = new PencilTool();
-
-	// 鉛筆ツール選択
-	// 暫定的にここで行う。将来的にはToolPaletteクラスで行う予定。
-	g_pictureCanvas.setDrawer(g_pencilTool);
+	g_toolPalette = new ToolPalette(g_pictureCanvas);
 
 	// キャンバスを白色でfill
 	g_pictureCanvas.eraseCanvas();

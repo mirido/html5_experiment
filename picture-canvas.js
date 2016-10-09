@@ -1,20 +1,20 @@
 ﻿'use strict';
 
 //
-//	DrawEvent
+//	PointingEvent
 //
 
 // Description:
-// Canvas上で生じたイベントを表す。
+// ポインティングイベントを表す。
 
 /// 新しいインスタンスを初期化する。
-function DrawEvent(sender, e)
+function PointingEvent(sender, e)
 {
 	this.m_sender = sender;
-	let bounds = sender.getBoundingClientRect();
+	let bounds = sender.getBoundingDrawAreaRect();
 	this.m_point = jsPoint(
-		e.clientX - bounds.x - sender.m_layer_left - 1,		// -1はborder幅
-		e.clientY - bounds.y - sender.m_layer_top - 1
+		e.clientX - bounds.x,
+		e.clientY - bounds.y
 	);
 	this.m_spkey = g_keyStateManager.getSpKeyState();
 }
@@ -47,8 +47,6 @@ function PictureCanvas()
 
 	// 描画担当ツールに引き渡す情報
 	this.m_nTargetLayerNo = this.m_layers.length - 1;		// 描画対象レイヤー
-	this.m_rect_view_port = this.m_view_port.getBoundingClientRect();
-	this.m_rect_layer = this.m_layers[0].getBoundingClientRect();
 
 	// ポインタデバイスのドラッグ状態
 	this.m_bDragging = false;
@@ -73,14 +71,14 @@ PictureCanvas.prototype.handleEvent = function(e)
 	// console.dir(e);
 
 	// 描画ツールに引き渡す情報を構成
-	let mod_e = new DrawEvent(this, e);
-	this.m_lastEvent = Object.assign({ }, mod_e);		// 値コピー
+	let mod_e = new PointingEvent(this, e);
+	this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー
 	// console.dir(this.m_lastEvent);
 
 	// イベント別処理
 	switch (e.type) {
 	case 'mousedown':
-	case 'touchistart':
+	case 'touchstart':
 		// mouseupやtouchendを確実に補足するための登録
 		g_pointManager.notifyPointStart(this, e);
 
@@ -111,9 +109,12 @@ PictureCanvas.prototype.handleEvent = function(e)
 }
 
 /// 要素の絶対座標を返す。
-PictureCanvas.prototype.getBoundingClientRect = function()
+PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 {
-	return this.m_view_port.getBoundingClientRect();
+	let bounds = this.m_layers[0].getBoundingClientRect();
+	bounds.x -= (this.m_layer_left + 1);	// +1はborder幅。本当は決め打ちではなく、取得した方が良い。
+	bounds.y -= (this.m_layer_top + 1);
+	return bounds;
 }
 
 /// 描画ツールを設定する。
@@ -123,17 +124,6 @@ PictureCanvas.prototype.setDrawer = function(drawer)
 	let prev = this.m_drawer;
 	this.m_drawer = drawer;
 	return prev;
-}
-
-/// 外部から描画を終了させる。
-/// 選択中ツールが変化したとき等に、ツールパレットから呼ばれる想定。
-PictureCanvas.prototype.closeDrawing = function(drawer)
-{
-	// ツールに確実にOnDrawEndを送る。
-	if (this.m_bDragging && this.m_drawer) {
-		this.m_drawer.OnDrawEnd(this.m_lastEvent);
-	}
-	this.m_bDragging = false;
 }
 
 /// カレントレイヤーを変更する。

@@ -8,78 +8,71 @@ const pre_rendering_ha = 32;
 
 /// 新しいインスタンスを初期化する。
 /// 暫定的に、selection boxで線の太さを与えている。
-function PencilTool()
+function PencilTool(rect)
 {
-  // DOMオブジェクト取得
-  this.m_thick10Selector = document.getElementById("selThickness10");
-  this.m_thick01Selector = document.getElementById("selThickness01");
-
-  // セレクタの値一覧取得
-  this.m_thick01List = this.m_thick01Selector.getElementsByTagName('option');
-  this.m_thick10List = this.m_thick10Selector.getElementsByTagName('option');
-
   // 描画パラメータ
   this.m_thickness = 1;     // 線の幅
   this.m_alpha = 1.0;       // α値
   this.m_color = 'rgb(0, 0, 0)';
-  this.m_pre_rendered = null;
 
   // 描画状態
   this.m_lastSender = null;
   this.m_lastPoint = null;
-
-  // UIに逆反映
-  console.log("x01=" + this.m_thick01List[this.m_thick01Selector.selectedIndex].value);
-  console.log("x10=" + this.m_thick10List[this.m_thick10Selector.selectedIndex].value);
-  this.setThicknessToSelector(this.m_thickness);
+  this.m_pre_rendered = null;
+  this.m_sv_icon = null;    // 変更前のアイコン領域画像(Ad-hoc)
 }
 
-/// 線の太さをセレクタから取得する。(暫定処置)
-PencilTool.prototype.getThicknessFromSelector = function()
+/// 選択時呼ばれる。
+PencilTool.prototype.OnSelected = function(e)
 {
-  let idx01 = this.m_thick01Selector.selectedIndex;
-  let idx10 = this.m_thick10Selector.selectedIndex;
-  let val01 = this.m_thick01List[idx01].value;
-  let val10 = this.m_thick10List[idx10].value;
-  console.log("val10=" + val10 + ", val01=" + val01);
-  let thickness = 10 * parseInt(val10) + parseInt(val01);
-  return thickness;
+  console.log("PencilTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  // console.dir(e.m_sender);
+
+  let iconBounds = e.m_sender.getIconBounds();
+  let toolPalette = e.m_sender.getToolPaletteCanvas();
+  let ctx = toolPalette.getContext('2d');
+
+  // 選択前アイコン保存(Ad-hoc)
+  this.m_sv_icon = ctx.getImageData(iconBounds.x, iconBounds.y, iconBounds.width, iconBounds.height);
+
+  // 選択時アイコン描画
+  ctx.globalAlpha = 1.0;
+  ctx.fillStyle = 'rgb(255, 255, 128)';
+  ctx.strokeStyle = 'rgb(255, 255, 128)';
+  ctx.fillRect(iconBounds.x, iconBounds.y, iconBounds.width, iconBounds.height);
+
+  // 描画ツール設定
+  e.m_sender.setDrawer(this);
 }
 
-/// 線の太さをセレクタに反映する。(暫定処置)
-PencilTool.prototype.setThicknessToSelector = function(new_val)
+/// 選択解除時呼ばれる。
+PencilTool.prototype.OnDiselected = function(e)
 {
-  let bRet;
+  console.log("PencilTool::OnDiselected() called. ");
+  let iconBounds = e.m_sender.getIconBounds();
+  let toolPalette = e.m_sender.getToolPaletteCanvas();
+  let ctx = toolPalette.getContext('2d');
 
-  let val01 = new_val % 10;
-  let val10 = Math.floor(this.m_thickness / 10);
+  // 選択前アイコン復元(Ad-hoc)
+  // 非選択状態に戻ったとき新規に描き直した方が良い。
+  ctx.putImageData(this.m_sv_icon, iconBounds.x, iconBounds.y);
 
-  let suc = true;
-  bRet = change_selection(this.m_thick01Selector, val01);
-  if (!bRet) {
-    suc = false;
-  }
-  bRet = change_selection(this.m_thick10Selector, val10);
-  if (!bRet) {
-    suc = false;
-  }
+  // 描画ツール解除
+  e.m_sender.setDrawer(null);
+}
 
-  // エラーからの回復
-  if (suc = false) {
-    assert(false);    // ここに来たらバグ
-    change_selection(this.m_thick01Selector, 1);
-    change_selection(this.m_thick10Selector, 0);
-    this.m_thickness = 1;
-  }
-
-  return suc;
+/// 再ポイントされたとき呼ばれる。
+PencilTool.prototype.OnPicked = function(e)
+{
+  console.log("PencilTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  /*NOP*/
 }
 
 /// ストローク開始時呼ばれる。
 PencilTool.prototype.OnDrawStart = function(e)
 {
   console.log("PencilTool::OnDrawStart() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
-  this.m_thickness = this.getThicknessFromSelector();
+  // this.m_thickness = this.getThicknessFromSelector();
   this.m_lastSender = e.m_sender;
   this.m_lastPoint = e.m_point;
   // {   /*UTEST*/   // プリレンダリング実験
