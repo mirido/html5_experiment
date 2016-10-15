@@ -1,5 +1,24 @@
 'use strict';
 
+/// UTEST: プリレンダリング実験。
+function utest_pre_rendering()
+{
+  let diameter = 19;
+  let ha = 32;
+  let px = this.m_lastPoint.x - ha;
+  let py = this.m_lastPoint.y - ha;
+
+  let mini_canvas = pre_render_pixel(ha, diameter, 'rgb(255, 0, 0)', true);
+  // make_opaque(mini_canvas);
+  let ctx = this.m_lastSender.getLayer().getContext('2d');
+  ctx.globalAlpha = 1.0;
+  ctx.drawImage(mini_canvas, px, py);
+
+  mini_canvas = pre_render_pixel(ha, diameter, 'rgb(0, 255, 0)', false);
+  // make_opaque(mini_canvas);
+  ctx.drawImage(mini_canvas, px, py)
+}
+
 /// UTEST: ImagePatchのテスト。
 function utest_ImagePatch()
 {

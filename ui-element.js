@@ -18,16 +18,12 @@ function ImagePatch(src_ctx, src_width, src_height, points, margin)
 
   // 点列pointsを包含する矩形を取得
   this.m_bounds = get_outbounds(points, margin);
-  console.dir(points);
-  console.log("margin=" + margin);
-  console.dir(this.m_bounds);
 
   // 中心点を記憶
   this.m_center = new JsPoint(
     Math.floor(this.m_bounds.x + this.m_bounds.width / 2),
     Math.floor(this.m_bounds.y + this.m_bounds.height / 2)
   );
-  console.dir(this.m_center);
 
   // 領域のクリッピング
   this.m_abs_dirty = clip_rect(this.m_bounds, src_width, src_height);
@@ -69,10 +65,6 @@ ImagePatch.prototype.put = function(cx, cy, dst_ctx, dst_width, dst_height)
   let dirty = get_common_rect(this.m_abs_dirty, mod_img_bounds);
   dirty.x -= this.m_abs_dirty.x;
   dirty.y -= this.m_abs_dirty.y;
-  console.dir(this.m_bounds);
-  console.dir(mod_img_bounds);
-  console.dir(dirty);
-  console.log("sx=" + sx + ", sy=" + sy);
 
   // 描画
   dst_ctx.putImageData(
@@ -81,3 +73,296 @@ ImagePatch.prototype.put = function(cx, cy, dst_ctx, dst_width, dst_height)
     dirty.x, dirty.y, dirty.width, dirty.height
   );
 }
+
+//
+//  DrawerBase
+//
+
+/// 新しいインスタンスを初期化する。
+function DrawerBase(drawOp, effect, cursor)
+{
+  // 関連オブジェクト
+  this.m_drawOp = drawOp;
+  this.m_effect = effect;
+  this.m_cursor = cursor;
+
+  // 描画管理
+  this.m_points = [];
+  this.m_imagePatch = null;
+}
+
+/// 描画ストローク開始時に呼ばれる。
+DrawerBase.prototype.OnDrawStart = function(e)
+{
+  let curLayer = e.m_sender.getCurLayer();
+  let w = curLayer.clientWidth;
+  let h = curLayer.clientHeight;
+  let context = curLayer.getContext('2d');
+  let cur_pt = e.m_point;
+  let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
+
+  // 点列記憶
+  this.m_points.splice(0, this.m_points.length);   // 全クリア
+  this.m_points.push(cur_pt);
+
+  // 描画内容確定 or ガイド表示
+  let bFixed = this.m_drawOp.testOnDrawStart(e, this.m_points, context);
+  if (bFixed) {
+    this.m_effect.apply(this.m_points, context);
+    this.m_points.splice(0, this.m_points.length - 1);  // 末尾以外を削除
+  } else {
+    this.m_imagePatch = new ImagePatch(context, w, h, this.m_points, margin);
+    this.m_drawOp.guideOnDrawStart(e, this.m_points, context);
+    this.m_cursor.put(e, cur_pt, context);
+  }
+}
+
+/// 描画ストローク中に随時呼ばれる。
+DrawerBase.prototype.OnDrawing = function(e)
+{
+  let curLayer = e.m_sender.getCurLayer();
+  let w = curLayer.clientWidth;
+  let h = curLayer.clientHeight;
+  let context = curLayer.getContext('2d');
+  let cur_pt = e.m_point;
+  let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
+
+  // カーソルクリア
+  this.m_cursor.clear(context);
+
+  // 領域復元
+  if (this.m_imagePatch != null) {
+    this.m_imagePatch.restore(context);
+    this.m_imagePatch = null;
+  }
+
+  // 点列記憶
+  this.m_points.push(cur_pt);
+
+  // 描画内容確定 or ガイド表示
+  let bFixed = this.m_drawOp.testOnDrawing(e, this.m_points, context);
+  if (bFixed) {
+    this.m_effect.apply(this.m_points, context);
+    this.m_points.splice(0, this.m_points.length - 1);  // 末尾以外を削除
+  } else {
+    this.m_imagePatch = new ImagePatch(context, w, h, this.m_points, margin);
+    this.m_drawOp.guideOnDrawing(e, this.m_points, context);
+  }
+
+  // カーソル描画
+  this.m_cursor.put(e, cur_pt, context);
+}
+
+/// 描画ストローク終了時に呼ばれる。
+DrawerBase.prototype.OnDrawEnd = function(e)
+{
+  let curLayer = e.m_sender.getCurLayer();
+  let w = curLayer.clientWidth;
+  let h = curLayer.clientHeight;
+  let context = curLayer.getContext('2d');
+  let cur_pt = e.m_point;
+  let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
+
+  // カーソルクリア
+  this.m_cursor.clear(context);
+
+  // 領域復元
+  if (this.m_imagePatch != null) {
+    this.m_imagePatch.restore(context);
+    this.m_imagePatch = null;
+  }
+
+  // 点列記憶
+  this.m_points.push(cur_pt);
+
+  // 描画内容確定判断
+  let bFixed = this.m_drawOp.testOnDrawEnd(e, this.m_points, context);
+  if (bFixed) {
+    this.m_effect.apply(this.m_points, context);
+  }
+}
+
+//
+//  描画オペレーター0: NullDrawOp
+//
+
+/// 新しいインスタンスを初期化する。
+function NullDrawOp() { }
+
+/// 描画ストローク開始時の画素固定判断を行う。
+NullDrawOp.prototype.testOnDrawStart = function(e, points, context) { return false; }
+
+/// 描画ストローク中の画素固定判断を行う。
+NullDrawOp.prototype.testOnDrawing = function(e, points, context) { return false; }
+
+/// 描画ストローク終了時の画素固定判断を行う。
+NullDrawOp.prototype.testOnDrawEnd = function(e, points, context) { return false; }
+
+/// 描画ストローク開始時ガイド表示処理。
+NullDrawOp.prototype.guideOnDrawStart = function(e, points, context) { }
+
+/// 描画ストローク中ガイド表示処理。
+NullDrawOp.prototype.guideOnDrawing = function(e, points, context) { }
+
+/// 描画ストローク終了時ガイド表示処理。
+NullDrawOp.prototype.guideOnDrawEnd = function(e, points, context) { }
+
+/// マージンを取得する。
+NullDrawOp.prototype.getMargin = function() { return 0; }
+
+//
+//  エフェクト0: NullEffect
+//
+
+/// 新しいインスタンスを取得する。
+function NullEffect() { }
+
+/// エフェクトを適用する。
+NullEffect.prototype.apply = function(points, context) { }
+
+/// マージンを取得する。
+NullEffect.prototype.getMargin = function() { return 0; }
+
+//
+//  カーソル0: NullCursor
+//
+
+/// 新しいインスタンスを取得する。
+function NullCursor() { }
+
+/// カーソルを描画する。
+NullCursor.prototype.put = function(e, cur_pt, context) { }
+
+/// カーソルをクリアする。
+NullCursor.prototype.clear = function(context) { }
+
+//
+//  描画オペレーター1: 手書き
+//
+
+/// 新しいインスタンスを初期化する。
+function DrawOp_FreeHand()
+{
+  this.m_bLineMode = false;
+}
+
+/// 描画ストローク開始時の画素固定判断を行う。
+DrawOp_FreeHand.prototype.testOnDrawStart = function(e, points, context)
+{
+  return this.testOnDrawing(e, points, context);
+}
+
+/// 描画ストローク中の画素固定判断を行う。
+DrawOp_FreeHand.prototype.testOnDrawing = function(e, points, context)
+{
+  // console.log("testOnDrawing: e.m_spKey=" + e.m_spKey);
+
+  if (this.m_bLineMode) {   // (直線ガイドモード)
+    if (points.length > 2) {
+      points.splice(1, points.length - 2);  // 先頭と末尾以外を削除
+    }
+    if ((e.m_spKey & SpKey.KY_SHIFT) != 0) {  // (SHIFTキー押下)
+      // 引き続き直線ガイドモード
+      return false;
+    } else {
+      // 手書きモードに遷移
+      this.m_bLineMode = false;
+      return true;    // 直線ガイド内容でエフェクトをかける。
+    }
+  } else {    // (手書きモード)
+    if ((e.m_spKey & SpKey.KY_SHIFT) != 0) {  // (SHIFTキー押下)
+      // 直線ガイドモードに遷移
+      this.m_bLineMode = true;
+      return false;
+    } else {
+      // 手書きの標準動作: 即effect。
+      return true;
+    }
+  }
+  assert(false);
+}
+
+/// 描画ストローク終了時の画素固定判断を行う。
+DrawOp_FreeHand.prototype.testOnDrawEnd = function(e, points, context)
+{
+  return true;
+}
+
+/// 描画ストローク開始時ガイド表示処理。
+DrawOp_FreeHand.prototype.guideOnDrawStart = function(e, points, context)
+{
+  return this.testOnDrawing(e, points, context);
+}
+
+/// 描画ストローク中ガイド表示処理。
+DrawOp_FreeHand.prototype.guideOnDrawing = function(e, points, context)
+{
+  // console.log("guideOnDrawing() called.");
+  if (points.length >= 2) {
+    let pt1 = points[0];
+    let pt2 = points[points.length - 1];
+    context.globalAlpha = 1.0;
+    context.globalCompositeOperation = 'xor';
+    context.fillStyle = 'rgb(0,0,0)';
+    draw_line_1px(pt1.x, pt1.y, pt2.x, pt2.y, context);
+    // console.log(
+    //   "draw_line_1px called. (" + pt1.x + ", " + pt1.y + ")-(" + pt2.x + ", " + pt2.y + ")"
+    // );
+  }
+}
+
+/// 描画ストローク終了時ガイド表示処理。
+// DrawOp_FreeHand.prototype.guideOnDrawEnd = function(e, points, context)
+
+/// マージンを取得する。
+DrawOp_FreeHand.prototype.getMargin = function() { return 0; }
+
+//
+//  エフェクト1: 鉛筆
+//
+
+/// 新しいインスタンスを取得する。
+function Effect_Pencil(diameter, color)
+{
+  const margin = 2;
+
+  this.m_pre_rendered = null;
+  this.m_color = color;
+  this.m_ha = 0;
+
+  if (diameter > 1) {
+    this.m_ha = Math.ceil(diameter / 2 + margin);
+    this.m_pre_rendered = pre_render_pixel(this.m_ha, diameter, color, true);
+  }
+}
+
+/// エフェクトを適用する。
+Effect_Pencil.prototype.apply = function(points, context)
+{
+  context.globalCompositeOperation = 'source-over';
+  if (points.length == 1) {
+    let pt = points[0];
+    if (this.m_pre_rendered) {
+      draw_line(pt.x, pt.y, pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
+    } else {
+      context.fillStyle = this.m_color;
+      draw_line_1px(pt.x, pt.y, pt.x, pt.y, context);
+    }
+  } else {
+    assert(points.length > 0);
+    let prev = points[0];
+    for (let i = 1; i < points.length; ++i) {
+      let pt = points[i];
+      if (this.m_pre_rendered) {
+        draw_line(prev.x, prev.y, pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
+      } else {
+        context.fillStyle = this.m_color;
+        draw_line_1px(prev.x, prev.y, pt.x, pt.y, context);
+      }
+      prev = pt;
+    }
+  }
+}
+
+/// マージンを取得する。
+Effect_Pencil.prototype.getMargin = function() { return this.m_ha; }

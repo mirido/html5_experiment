@@ -16,7 +16,7 @@ function PointingEvent(sender, e)
 		e.clientX - bounds.x,
 		e.clientY - bounds.y
 	);
-	this.m_spkey = g_keyStateManager.getSpKeyState();
+	this.m_spKey = g_keyStateManager.getSpKeyState();
 }
 
 //

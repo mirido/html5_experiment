@@ -1,10 +1,12 @@
 ﻿'use strict'
 
 //
-//	プレレンダリング
+//	プリレンダリング
 //
 
 /// 大きさを持った画素をプリレンダリングする。
+/// diameterが画素の大きさにあたる。
+/// 通常はha = Math.ceil(diameter / 2 + マージン)とする。
 function pre_render_pixel(ha, diameter, color, bFilled)
 {
 	// pre-rendering用キャンバス生成

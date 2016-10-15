@@ -100,32 +100,24 @@ ToolChain.prototype.OnSelection = function(e)
 
   // イベント発行
   if (action != null) {
-    // イベントオブジェクト構成
-    // ツールからgetIconBounds()を呼べるように、
-    // e.m_senderは当オブジェクトに書き換える。
-    let mod_e = Object.assign({}, e);
-    this.m_lastEvent = Object.assign({}, mod_e);		 // 値コピー
-    mod_e.m_sender = this;  // e.m_sender書き換え。
-    // this.m_lastEvent.m_senderは書き換え前の値を保持する。
-
     // イベント発行
     switch (action) {
     case 1:   // カレントツールのアクティブ化
       this.m_bActive = true;
-      this.m_tools[cur_idx].OnSelected(mod_e);
+      this.m_tools[cur_idx].OnSelected(e);
       break;
     case 2:   // カレントツールのpick
       assert(this.m_bActive);
-      this.m_tools[cur_idx].OnPicked(mod_e);
+      this.m_tools[cur_idx].OnPicked(e);
       break;
     case 3:   // 当ツールチェーン内の次のツールに変更
       assert(this.m_bActive);
-      this.m_tools[cur_idx].OnDiselected(mod_e);
+      this.m_tools[cur_idx].OnDiselected(e);
       this.m_curToolNo = nxt_idx;
-      this.m_tools[nxt_idx].OnSelected(mod_e);
+      this.m_tools[nxt_idx].OnSelected(e);
       break;
     case 4:   // 当ツールチェーンの選択解除
-      this.m_tools[cur_idx].OnDiselected(mod_e);
+      this.m_tools[cur_idx].OnDiselected(e);
       this.m_bActive = false;
       break;
     default:
@@ -145,33 +137,10 @@ ToolChain.prototype.addTool = function(toolObj)
   this.m_tools[end_idx] = toolObj;
 }
 
-/// 描画ツールを設定する。
-/// イベント通知を受けたツールから呼ばれる想定。
-ToolChain.prototype.setDrawer = function(drawer)
-{
-  return this.m_lastEvent.m_sender.setDrawer(drawer);
-}
-
-/// ツールパレットのキャンバス(ツールアイコンの描画先)を取得する。
-/// イベント通知を受けたツールから呼ばれる想定。
-ToolChain.prototype.getToolPaletteCanvas = function()
-{
-  return this.m_lastEvent.m_sender.getToolPaletteCanvas();
-}
-
-/// ツールに対しアイコン用に割り当てられた領域を取得する。
-/// 座標はキャンバスローカルな座標。(そのまま描画に使える。)
-/// イベント通知を受けたツールから呼ばれる想定。
+/// Icon描画領域を取得する。
 ToolChain.prototype.getIconBounds = function()
 {
   return this.m_iconBounds;
-}
-
-/// 共通設定を参照する。
-/// イベント通知を受けたツールから呼ばれる想定。
-ToolChain.prototype.refCommonSetting = function()
-{
-  return this.m_lastEvent.m_sender.refCommonSetting();
 }
 
 //

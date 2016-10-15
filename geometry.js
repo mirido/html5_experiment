@@ -101,6 +101,9 @@ function clip_rect(rect, width, height)
 /// 点列を包含する矩形を取得する。
 function get_outbounds(points, margin)
 {
+	if (points.length <= 0) {
+		return null;
+	}
 	let sx = points[0].x;
 	let sy = points[0].y;
 	let lx = sx;
