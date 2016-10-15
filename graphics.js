@@ -32,6 +32,18 @@ function pre_render_pixel(ha, diameter, color, bFilled)
 //	図形描画
 //
 
+/// 点を打つ。
+function put_point(px, py, ha, pre_rendered, context)
+{
+	context.drawImage(pre_rendered, px - ha, py - ha);
+}
+
+/// 1 pxの点を打つ。
+function put_point_1px(px, py, context)
+{
+	context.fillRect(px, py, 1, 1);
+}
+
 /// プレゼンハムのアルゴリズムで指定幅の直線を描画する。
 function draw_line(x0, y0, x1, y1, ha, pre_rendered, context)
 {
@@ -148,26 +160,33 @@ function draw_rect_R(rect, context, thickness)
 function draw_circle(cx, cy, radius, context, bFilled)
 {
 	if (radius <= 0.5) {
-		context.fillRect(cx + ofs_px, cy + ofs_py, 1, 1);
+		context.fillRect(Math.floor(cx), Math.floor(cy), 1, 1);
 		return;
 	}
 
-	let r = radius;
-	let rr = r * r;
-	let prev_px1 = Math.round(cx - r);
-	let prev_px2 = Math.round(cx + r);
+	// 以下、Math.floor()とMath.ceil()の使い分けは、
+	// (cx, cy)が整数座標である前提。
+	// (cx, cy)が整数座標でない場合は、破綻はしないが円がやや歪になる恐れがある。
+	let fr = radius;
+	let frr = fr * fr;
+	let r = Math.floor(fr);
+	let prev_px1 = Math.round(cx - r);	// fr∈[1.0, 2.0)がcxの左隣
+	let prev_px2 = Math.round(cx + r);	// fr∈[1.0, 2.0)がcxの右隣
 	let prev_py1 = Math.round(cy);
 	let prev_py2 = Math.round(cy);
 	let dy_max = Math.ceil(r);
 	for (let dy = (bFilled) ? 0 : 1; dy <= dy_max; ++dy) {
-		let dx = Math.sqrt(Math.max(0.0, rr - dy * dy));
+		let fd = frr - dy * dy;
+		if (fd < 0.0)
+			break;
+		let fdx = Math.sqrt(fd);
+		let dx = Math.floor(fdx);
 		let px1 = Math.round(cx - dx);
 		let px2 = Math.round(cx + dx);
 		let py1 = Math.round(cy - dy);
-		let py2 = Math.round(cy + dy);
+		let py2 = Math.round(cx + dy);
 		if (bFilled) {
-			let len = px2 - px1;	// +1は無い方が円に見える。
-				// Round結果同士の引き算の誤差がうまくキャンセルされるらしい。
+			let len = px2 - px1 + 1;
 			context.fillRect(px1, py1, len, 1);
 			context.fillRect(px1, py2, len, 1);
 		} else {
@@ -180,6 +199,11 @@ function draw_circle(cx, cy, radius, context, bFilled)
 			prev_px2 = px2;
 			prev_py2 = py2;
 		}
+	}
+	if (!bFilled && prev_px1 != prev_px2) {
+		assert(prev_px1 < prev_px2);
+		draw_line_1px(prev_px1, prev_py1, prev_px2, prev_py1, context);
+		draw_line_1px(prev_px1, prev_py2, prev_px2, prev_py2, context);
 	}
 }
 /// ■ 備考
