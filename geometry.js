@@ -81,12 +81,21 @@ function clip_coords(width, height, coords)
 }
 
 /// 矩形を座標内にクリップする。
-function clip_rect(width, height, rect)
+function clip_rect_in_place(width, height, rect)
 {
 	let coords = [];
 	decode_rect(rect, coords);
 	clip_coords(width, height, coords);
 	encode_rect_in_place(coords, rect);
+}
+
+/// 矩形を座標内にクリップする。
+function clip_rect(rect, width, height)
+{
+	let coords = [];
+	decode_rect(rect, coords);
+	clip_coords(width, height, coords);
+	return encode_rect(coords);
 }
 
 /// 点列を包含する矩形を取得する。
