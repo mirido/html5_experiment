@@ -28,6 +28,98 @@ function JsRect(x, y, width, height)
 	this.height = height;
 }
 
+/// 矩形をデコードする。
+function decode_rect(rect, coords)
+{
+	coords[0] = rect.x;
+	coords[1] = rect.y;
+	coords[2] = rect.x + rect.width;
+	coords[3] = rect.y + rect.height;
+}
+
+/// 矩形にエンコードする。
+function encode_rect(coords)
+{
+	let rect = jsRect(
+		coords[0],
+		coords[1],
+		coords[2] - coords[0],
+		coords[3] - coords[1]
+	);
+	return rect;
+}
+
+/// 矩形にエンコードする。(in-place)
+function encode_rect_in_place(coords, rect)
+{
+	rect.x = coords[0];
+	rect.y = coords[1];
+	rect.width  = coords[2] - coords[0];
+	rect.height = coords[3] - coords[1];
+}
+
+/// 座標列を画像内にクリップする。
+function clip_coords(width, height, coords)
+{
+	assert(coords.length % 2 == 0);
+	for (let i = 0; i < coords.length; i += 2) {
+		let px = coords[i];
+		let py = coords[i + 1];
+		if (px < 0) {
+			px = 0;
+		} else if (px >= width) {
+			px = width - 1;
+		}
+		if (py < 0) {
+			py = 0;
+		} else if (py >= height) {
+			py = height - 1;
+		}
+		coords[i] = px;
+		coords[i + 1] = py;
+	}
+}
+
+/// 矩形を座標内にクリップする。
+function clip_rect(width, height, rect)
+{
+	let coords = [];
+	decode_rect(rect, coords);
+	clip_coords(width, height, coords);
+	encode_rect_in_place(coords, rect);
+}
+
+/// 点列を包含する矩形を取得する。
+function get_outbounds(points, margin)
+{
+	let sx = points[0].x;
+	let sy = points[0].y;
+	let lx = sx;
+	let ly = sy;
+  for (let i = 1; i < points.length; ++i) {
+    sx = Math.min(sx, points[i].x);
+    sy = Math.min(sy, points[i].y);
+    lx = Math.max(lx, points[i].x);
+    ly = Math.max(ly, points[i].y);
+  }
+  sx -= margin;
+  sy -= margin;
+  lx += margin;
+  ly += margin;
+  let bounds = new JsRect(sx, sy, lx - sx + 1, ly - sy + 1);
+	return bounds;
+}
+
+/// 矩形の共通部分を取得する。
+function get_common_rect(rectA, rectB)
+{
+	let sx = Math.max(rectA.x, rectB.x);
+	let sy = Math.max(rectA.y, rectB.y);
+	let ex = Math.min(rectA.x + rectA.width, rectB.x + rectB.width);
+	let ey = Math.min(rectA.y + rectA.height, rectB.y + rectB.height);
+	return new JsRect(sx, sy, ex - sx, ey - sy);
+}
+
 /// 2点間のチェビシェフ距離を求める。
 function get_chv_dist(pt1, pt2)
 {

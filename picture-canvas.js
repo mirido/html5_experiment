@@ -23,13 +23,6 @@ function PointingEvent(sender, e)
 //	PictureCanvas
 //
 
-// ■ PictureCanvas
-// canvasを重ねた描画領域を表す。
-// 領域内にてマウスまたはタッチパネルイベントを受け付け、
-// 登録された描画ツールに座標と対象レイヤーの情報を配送する。
-// (描画のためのcanvas要素の操作は描画ツールに委譲する。)
-// キャンバス全クリアとレイヤー合成の機能を備える。
-
 /// 新しいインスタンスを初期化する。
 function PictureCanvas()
 {
@@ -124,15 +117,22 @@ PictureCanvas.prototype.setDrawer = function(drawer)
 	return prev;
 }
 
+/// レイヤーを取得する。
+PictureCanvas.prototype.getLayer = function(layerNo)
+{
+	assert(1 <= layerNo && layerNo < this.m_layers.length);
+	return this.m_layers[layerNo];
+}
+
 /// カレントレイヤーを変更する。
 PictureCanvas.prototype.changeLayer = function(layerNo)
 {
 	assert(1 <= layerNo && layerNo < this.m_layers.length);
-	m_nTargetLayerNo = layerIdx;
+	this.m_nTargetLayerNo = layerNo;
 }
 
 /// カレントレイヤーを取得する。
-PictureCanvas.prototype.getLayer = function()
+PictureCanvas.prototype.getCurLayer = function()
 {
 	return this.m_layers[this.m_nTargetLayerNo];
 }
@@ -141,15 +141,6 @@ PictureCanvas.prototype.getLayer = function()
 PictureCanvas.prototype.eraseCanvas = function()
 {
 	erase_canvas(this.m_layers);
-	// {	/*UTEST*/	// アンチエリアシング無し描画テスト
-	// 	let ctx = this.m_layers[0].getContext('2d');
-	// 	// ctx.strokeStyle = "#000000";
-	// 	ctx.fillStyle = "#000000";
-	// 	ctx.beginPath();
-	// 	draw_line_1px(0.5, 0.5, 200.5, 200.5, ctx, 1);
-	// 	ctx.stroke();
-	// 	ctx.closePath();
-	// }
 }
 
 /// 全レイヤーを合成する。

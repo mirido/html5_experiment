@@ -132,9 +132,13 @@ function draw_rect(x0, y0, x1, y1, context, thickness)
 }
 
 /// 塗り潰し無しの矩形を描画する。
-function draw_rect_R(x0, y0, width, height, context, thickness)
+function draw_rect_R(rect, context, thickness)
 {
-	draw_rect(x0, y0, x0 + width - 1, y0 + height - 1, context, thickness);
+	draw_rect(
+		rect.x, rect.y,
+		rect.x + rect.width - 1, rect.x + rect.height - 1,
+		context, thickness
+	);
 }
 
 /// 円を描画する。
