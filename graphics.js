@@ -136,21 +136,22 @@ function draw_line_1px(x0, y0, x1, y1, context)
 }
 
 /// 塗り潰し無しの矩形を描画する。
-function draw_rect(x0, y0, x1, y1, context, thickness)
+function draw_rect(x0, y0, x1, y1, context)
 {
-	draw_line_1px(x0, y0, x1, y0, context, thickness);
-	draw_line_1px(x0, y0, x0, y1, context, thickness);
-	draw_line_1px(x1, y0, x1, y1, context, thickness);
-	draw_line_1px(x0, y1, x1, y1, context, thickness);
+	// console.log("draw_rect: (" + x0 + ", " + y0 + ")-(" + x1 + ", " + y1 + ")");
+	draw_line_1px(x0, y0, x1, y0, context);
+	draw_line_1px(x0, y0, x0, y1, context);
+	draw_line_1px(x1, y0, x1, y1, context);
+	draw_line_1px(x0, y1, x1, y1, context);
 }
 
 /// 塗り潰し無しの矩形を描画する。
-function draw_rect_R(rect, context, thickness)
+function draw_rect_R(rect, context)
 {
 	draw_rect(
 		rect.x, rect.y,
-		rect.x + rect.width - 1, rect.x + rect.height - 1,
-		context, thickness
+		rect.x + rect.width - 1, rect.y + rect.height - 1,
+		context
 	);
 }
 
