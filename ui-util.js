@@ -257,3 +257,58 @@ KeyStateManager.prototype.getSpKeyState = function()
   }
   return state;
 }
+
+//
+//  アイコン描画
+//
+
+/// アイコンを描画する。
+function draw_icon_face(iconBounds, colors, context)
+{
+  let sx = iconBounds.x;
+  let sy = iconBounds.y;
+  let w = iconBounds.width;
+  let h = iconBounds.height;
+
+  // 枠線
+  context.fillStyle = colors[0];
+  draw_rect_R(iconBounds, context);
+
+  // ボタン面
+  context.fillStyle = colors[1];
+  context.fillRect(sx + 2, sy + 2, w - 4, h - 4);
+
+  // 左上効果
+  context.fillStyle = colors[2];
+  context.fillRect(sx + 1, sy + 1, w - 3, 1);
+  context.fillRect(sx + 1, sy + 2, 1, h - 3);
+
+  // 右下効果
+  context.fillStyle = colors[3];
+  context.fillRect(sx + 2, sy + h - 2, w - 3, 1);
+  context.fillRect(sx + w - 2, sy + 1, 1, h - 3);
+}
+
+const activeIconColors = [
+  'rgb(116,116,171)',   // 枠線
+  'rgb(147,151,178)',   // ボタン面
+  'rgb(147,151,178)',   // 左上
+  'rgb(255,255,255)'    // 右下
+];
+
+const inactiveIconColors = [
+  'rgb(116,116,171)',   // 枠線
+  'rgb(210,216,255)',   // ボタン面
+  'rgb(255,255,255)',   // 左上
+  'rgb(147,151,178)'    // 右下
+];
+
+/// アイコンを描画する。
+function draw_icon_face_wrp(iconBounds, bActive, e)
+{
+  let tool_canvas = e.m_sender.getToolPaletteCanvas();
+  let context = tool_canvas.getContext('2d');
+
+  let colors = (bActive) ? activeIconColors : inactiveIconColors;
+  draw_icon_face(iconBounds, colors, context);
+}

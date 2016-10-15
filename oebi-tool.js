@@ -5,7 +5,6 @@
 //
 
 /// 新しいインスタンスを初期化する。
-/// 暫定的に、selection boxで線の太さを与えている。
 function PencilTool(rect)
 {
   this.m_iconBounds = rect;
@@ -24,7 +23,7 @@ PencilTool.prototype.OnSelected = function(e)
   console.log("PencilTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
 
   // 選択時アイコン描画
-  // TBD
+  draw_icon_face_wrp(this.m_iconBounds, true, e);
 
   // 描画ツール設定
   e.m_sender.setDrawer(this.m_drawerCore);
@@ -39,7 +38,7 @@ PencilTool.prototype.OnDiselected = function(e)
   e.m_sender.setDrawer(null);
 
   // 非選択時アイコン描画
-  // TBD
+  draw_icon_face_wrp(this.m_iconBounds, false, e);
 }
 
 /// 再ポイントされたとき呼ばれる。

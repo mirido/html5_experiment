@@ -220,7 +220,7 @@ function ToolPalette(pictCanvas)
     sy = Math.min(sy, rect[1]);
     ex = Math.max(ex, rect[0] + rect[2]);
     ey = Math.max(ey, rect[1] + rect[3]);
-    let iconBounds = jsRect(rect[0], rect[1], rect[2] - 1, rect[3] - 1);
+    let iconBounds = jsRect(rect[0], rect[1], rect[2], rect[3]);
     this.m_toolMap[i] = new ToolChain(iconBounds);
     // console.dir(toolBounds[i]);
   }
