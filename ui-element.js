@@ -113,8 +113,10 @@ DrawerBase.prototype.OnDrawStart = function(e)
   } else {
     this.m_imagePatch = new ImagePatch(context, w, h, this.m_points, margin);
     this.m_drawOp.guideOnDrawStart(e, this.m_points, context);
-    this.m_cursor.put(e, cur_pt, context);
   }
+
+  // カーソル描画
+  this.m_cursor.put(e, cur_pt, context);
 }
 
 /// 描画ストローク中に随時呼ばれる。
@@ -324,7 +326,7 @@ DrawOp_FreeHand.prototype.getMargin = function() { return 0; }
 /// 新しいインスタンスを取得する。
 function Effect_Pencil(diameter, color)
 {
-  const margin = 2;
+  const margin = Math.ceil(diameter / 2);
 
   this.m_pre_rendered = null;
   this.m_color = color;
@@ -343,10 +345,10 @@ Effect_Pencil.prototype.apply = function(points, context)
   if (points.length == 1) {
     let pt = points[0];
     if (this.m_pre_rendered) {
-      draw_line(pt.x, pt.y, pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
+      put_point(pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
     } else {
       context.fillStyle = this.m_color;
-      draw_line_1px(pt.x, pt.y, pt.x, pt.y, context);
+      put_point_1px(pt.x, pt.y, context);
     }
   } else {
     assert(points.length > 0);
@@ -366,3 +368,51 @@ Effect_Pencil.prototype.apply = function(points, context)
 
 /// マージンを取得する。
 Effect_Pencil.prototype.getMargin = function() { return this.m_ha; }
+
+//
+//  カーソル1: 円形カーソル
+//
+
+/// 新しいインスタンスを取得する。
+function Cursor_Circle(diameter)
+{
+  const margin = Math.ceil(diameter / 2);
+  const color = 'rbg(0,0,0)';
+
+  this.m_pre_rendered = null;
+  this.m_ha = 0;
+  this.m_prev_pt = null;
+
+  if (diameter > 1) {
+    this.m_ha = Math.ceil(diameter / 2 + margin);
+    this.m_pre_rendered = pre_render_pixel(this.m_ha, diameter, color, false);
+  }
+
+  this.m_imagePatch = null;
+}
+
+/// カーソルを描画する。
+Cursor_Circle.prototype.put = function(e, cur_pt, context)
+{
+  let layer = e.m_sender.getCurLayer();
+  let w = layer.clientWidth;
+  let h = layer.clientHeight;
+
+  context.globalCompositeOperation = 'xor';
+  this.m_imagePatch = new ImagePatch(context, w, h, [ cur_pt ], this.m_ha);
+  if (this.m_pre_rendered) {
+    put_point(cur_pt.x, cur_pt.y, this.m_ha, this.m_pre_rendered, context);
+  } else {
+    put_point_1px(cur_pt.x, cur_pt.y, context);
+  }
+  this.m_prev_pt = cur_pt;
+}
+
+/// カーソルをクリアする。
+Cursor_Circle.prototype.clear = function(context)
+{
+  if (this.m_imagePatch) {
+    this.m_imagePatch.restore(context);
+  }
+  this.m_imagePatch = null;
+}

@@ -12,8 +12,9 @@ function PencilTool(rect)
 
   // this.m_drawOp = new NullDrawOp();
   this.m_drawOp = new DrawOp_FreeHand();
-  this.m_effect = new Effect_Pencil(10, 'rgb(128,0,0)');
-  this.m_cursor = new NullCursor();
+  // this.m_effect = new NullEffect();
+  this.m_effect = new Effect_Pencil(19, 'rgb(128,0,0)');
+  this.m_cursor = new Cursor_Circle(19);
   this.m_drawerCore = new DrawerBase(this.m_drawOp, this.m_effect, this.m_cursor);
 }
 
