@@ -20,7 +20,6 @@ function pre_render_pixel(ha, diameter, color, bFilled)
 
 	// 描画
 	let context = mini_canvas.getContext('2d');
-	context.globalAlpha = 1.0;
 	context.fillStyle = color;
 	context.strokeStyle = color;
 	draw_circle(px, px, radius, context, bFilled);

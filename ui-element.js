@@ -303,10 +303,10 @@ DrawOp_FreeHand.prototype.guideOnDrawing = function(e, points, context)
   if (points.length >= 2) {
     let pt1 = points[0];
     let pt2 = points[points.length - 1];
-    context.globalAlpha = 1.0;
     context.globalCompositeOperation = 'xor';
     context.fillStyle = 'rgb(0,0,0)';
     draw_line_1px(pt1.x, pt1.y, pt2.x, pt2.y, context);
+    context.globalCompositeOperation = 'source-over';
     // console.log(
     //   "draw_line_1px called. (" + pt1.x + ", " + pt1.y + ")-(" + pt2.x + ", " + pt2.y + ")"
     // );
@@ -341,7 +341,6 @@ function Effect_Pencil(diameter, color)
 /// エフェクトを適用する。
 Effect_Pencil.prototype.apply = function(points, context)
 {
-  context.globalCompositeOperation = 'source-over';
   if (points.length == 1) {
     let pt = points[0];
     if (this.m_pre_rendered) {
@@ -405,6 +404,7 @@ Cursor_Circle.prototype.put = function(e, cur_pt, context)
   } else {
     put_point_1px(cur_pt.x, cur_pt.y, context);
   }
+  context.globalCompositeOperation = 'source-over';
   this.m_prev_pt = cur_pt;
 }
 
