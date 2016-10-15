@@ -4,6 +4,8 @@
 //  PencilTool
 //
 
+const textPencilTool = '鉛筆';
+
 /// 新しいインスタンスを初期化する。
 function PencilTool(rect)
 {
@@ -23,7 +25,7 @@ PencilTool.prototype.OnSelected = function(e)
   console.log("PencilTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
 
   // 選択時アイコン描画
-  draw_icon_face_wrp(this.m_iconBounds, true, e);
+  draw_icon_wrp(this.m_iconBounds, textPencilTool, null, true, e);
 
   // 描画ツール設定
   e.m_sender.setDrawer(this.m_drawerCore);
@@ -38,7 +40,7 @@ PencilTool.prototype.OnDiselected = function(e)
   e.m_sender.setDrawer(null);
 
   // 非選択時アイコン描画
-  draw_icon_face_wrp(this.m_iconBounds, false, e);
+  draw_icon_wrp(this.m_iconBounds, textPencilTool, null, false, e);
 }
 
 /// 再ポイントされたとき呼ばれる。

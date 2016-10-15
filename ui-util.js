@@ -303,6 +303,9 @@ const inactiveIconColors = [
   'rgb(147,151,178)'    // 右下
 ];
 
+const textColor = 'rgb(90,87,129)';
+const textCharWidth = 12;
+
 /// アイコンを描画する。
 function draw_icon_face_wrp(iconBounds, bActive, e)
 {
@@ -311,4 +314,28 @@ function draw_icon_face_wrp(iconBounds, bActive, e)
 
   let colors = (bActive) ? activeIconColors : inactiveIconColors;
   draw_icon_face(iconBounds, colors, context);
+}
+
+/// アイコンを描画する。
+function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e)
+{
+  // ボタン面描画
+  draw_icon_face_wrp(iconBounds, bActive, e);
+
+  let tool_canvas = e.m_sender.getToolPaletteCanvas();
+  let context = tool_canvas.getContext('2d');
+
+  // アイコンのグラフィック描画
+  if (iconGraphicFunc) {
+    iconGraphicFunc(iconBounds, context);
+  }
+
+  // 文字描画
+  let sx = iconBounds.x;
+  let sy = iconBounds.y;
+  let h = iconBounds.height;
+  let nchs = text.length;
+  let textMaxWidth = textCharWidth * nchs;
+  context.fillStyle = textColor;
+  context.fillText(text, sx + 2, sy + h - 3, textMaxWidth);
 }
