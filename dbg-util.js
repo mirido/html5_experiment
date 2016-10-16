@@ -28,3 +28,19 @@ function assert(condition, message) {
         throw message; // Fallback
     }
 }
+
+/// 変数内容を簡単に確認するためのログ出力関数。
+function dbgv(vars)
+{
+	let str_vars = '';
+	for (let i = 0; i < vars.length; ++i) {
+		if (i <= 0) {
+			str_vars += '\"';
+		} else {
+			str_vars += ' + \", ';
+		}
+		str_vars += (vars[i] + '=\" + (' + vars[i] + ')');
+	}
+	let cmd = "console.log(" + str_vars + ");";
+	return cmd;
+}
