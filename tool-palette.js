@@ -220,6 +220,23 @@ const g_toolMap = [
   [  0, 421, 50, 22 ]   // [27] Layer
 ];
 
+const colorPaletteDef = [
+  [  7, 'rgb(255,255,255)' ],
+  [  8, 'rgb(0,0,0)' ],
+  [  9, 'rgb(136,136,136)' ],
+  [ 10, 'rgb(180,117,117)' ],
+  [ 11, 'rgb(192,150,192)' ],
+  [ 12, 'rgb(250,0,10)' ],
+  [ 13, 'rgb(128,128,255)' ],
+  [ 14, 'rgb(255,182,255)' ],
+  [ 15, 'rgb(231,229,141)' ],
+  [ 16, 'rgb(37,199,201)' ],
+  [ 17, 'rgb(153,203,123)' ],
+  [ 18, 'rgb(231,150,45)' ],
+  [ 19, 'rgb(249,221,207)' ],
+  [ 20, 'rgb(252,236,226)' ]
+];
+
 /// ツール登録のためのヘルパ関数。
 function addToolHelper(toolChain, toolName, toolId, toolDic)
 {
@@ -278,61 +295,10 @@ function ToolPalette(pictCanvas)
   // パレット初期描画
   // このステップは暫定処置で、将来的には無くす予定。
   // (ツールアイコン区画内の描画は個々のツールに完全委譲する。)
-	{
-		let ctx = this.m_palette.getContext('2d');
-		ctx.fillStyle = "rgba(232, 239, 255, 255)";
-		ctx.fillRect(0, 0, width, height);
+	this.drawToolChainBounds(width, height);
 
-    ctx.strokeStyle = "rgb(0, 0, 0)";
-    ctx.fillStyle = "rgb(0, 0, 0)";
-    ctx.lineWidth = 1;
-    for (let i = 0; i < this.m_toolMap.length; ++i) {
-      let rect = this.m_toolMap[i].getIconBounds();
-      if (false) {   // この条件はtrue/falseどちらでも良い。
-        // HTML5の矩形描画機能を使用
-        ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width, rect.height);
-      } else {
-        // 自作のdraw_rect_R()使用
-        draw_rect_R(rect, ctx);
-      }
-    }
-	}
-
-  // ツールアイコン区画をツールに割付け
-  let toolDic = {};
-  addToolHelper(this.m_toolMap[0], 'PencilTool', 0, toolDic);
-  addToolHelper(this.m_toolMap[25], 'ThicknessTool', 2500, toolDic);
-  const colorPaletteDef = [
-    [  700, 'rgb(255,255,255)' ],
-    [  800, 'rgb(0,0,0)' ],
-    [  900, 'rgb(136,136,136)' ],
-    [ 1000, 'rgb(180,117,117)' ],
-    [ 1100, 'rgb(192,150,192)' ],
-    [ 1200, 'rgb(250,0,10)' ],
-    [ 1300, 'rgb(128,128,255)' ],
-    [ 1400, 'rgb(255,182,255)' ],
-    [ 1500, 'rgb(231,229,141)' ],
-    [ 1600, 'rgb(37,199,201)' ],
-    [ 1700, 'rgb(153,203,123)' ],
-    [ 1800, 'rgb(231,150,45)' ],
-    [ 1900, 'rgb(249,221,207)' ],
-    [ 2000, 'rgb(252,236,226)' ]
-  ];
-  for (let i = 0; i < colorPaletteDef.length; ++i) {
-    let idx = 7 + i;
-    let id = colorPaletteDef[i][0];
-    addToolHelper(this.m_toolMap[idx], 'ColorPalette', id, toolDic);
-  }
-  // console.dir(toolDic);
-  // console.dir(this.m_toolMap[25]);
-
-  // ツール固有の初期化
-  toolDic[2500].show(this.m_setting, this.m_palette);     // 線幅ツール
-  for (let i = 0; i < colorPaletteDef.length; ++i) {
-    let id = colorPaletteDef[i][0];
-    let color = colorPaletteDef[i][1];
-    toolDic[id].show(color, false, this.m_palette);   // カラーパレット1
-  }
+  // ツールチェーン初期化
+  this.initToolChain();
 
   // 初期表示
   let tg_idx = 0;
@@ -342,6 +308,53 @@ function ToolPalette(pictCanvas)
   this.m_bDragging = false;
   this.m_selectedToolIdx = tg_idx;
 	register_pointer_event_handler(this.m_palette, this);
+}
+
+/// ツールチェーンの枠線を描く。
+ToolPalette.prototype.drawToolChainBounds = function(width, height)
+{
+  let ctx = this.m_palette.getContext('2d');
+  ctx.fillStyle = "rgba(232, 239, 255, 255)";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = "rgb(0, 0, 0)";
+  ctx.fillStyle = "rgb(0, 0, 0)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < this.m_toolMap.length; ++i) {
+    let rect = this.m_toolMap[i].getIconBounds();
+    if (false) {   // この条件はtrue/falseどちらでも良い。
+      // HTML5の矩形描画機能を使用
+      ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width, rect.height);
+    } else {
+      // 自作のdraw_rect_R()使用
+      draw_rect_R(rect, ctx);
+    }
+  }
+}
+
+/// ツールチェーンを初期化する。
+ToolPalette.prototype.initToolChain = function()
+{
+  // ツールアイコン区画をツールに割付け
+  let toolDic = {};
+  addToolHelper(this.m_toolMap[0], 'PencilTool', 0, toolDic);
+  addToolHelper(this.m_toolMap[25], 'ThicknessTool', 2500, toolDic);
+  for (let i = 0; i < colorPaletteDef.length; ++i) {
+    let idx = colorPaletteDef[i][0];
+    let id = idx * 10;
+    addToolHelper(this.m_toolMap[idx], 'ColorPalette', id, toolDic);
+  }
+  // console.dir(toolDic);
+  // console.dir(this.m_toolMap[25]);
+
+  // ツール固有の初期化
+  toolDic[2500].show(this.m_setting, this.m_palette);     // 線幅ツール
+  for (let i = 0; i < colorPaletteDef.length; ++i) {
+    let idx = colorPaletteDef[i][0];
+    let id = idx * 10;
+    let color = colorPaletteDef[i][1];
+    toolDic[id].show(color, false, this.m_palette);   // カラーパレット1
+  }
 }
 
 /// イベントリスナ。
