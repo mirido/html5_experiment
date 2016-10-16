@@ -289,15 +289,17 @@ function draw_icon_face(iconBounds, colors, context)
   context.fillRect(sx + w - 2, sy + 1, 1, h - 3);
 }
 
+const borderColor = 'rgb(116,116,171)';   // 枠線
+
 const activeIconColors = [
-  'rgb(116,116,171)',   // 枠線
+  borderColor,          // 枠線
   'rgb(147,151,178)',   // ボタン面
   'rgb(147,151,178)',   // 左上
   'rgb(255,255,255)'    // 右下
 ];
 
 const inactiveIconColors = [
-  'rgb(116,116,171)',   // 枠線
+  borderColor,          // 枠線
   'rgb(210,216,255)',   // ボタン面
   'rgb(255,255,255)',   // 左上
   'rgb(147,151,178)'    // 右下
@@ -338,6 +340,20 @@ function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e)
   let textMaxWidth = textCharWidth * nchs;
   context.fillStyle = textColor;
   context.fillText(text, sx + 2, sy + h - 3, textMaxWidth);
+}
+
+//
+//  カラーパレット描画
+//
+
+/// カラーパレットを描画する。
+function draw_color_palette(iconBounds, color, bActive, context)
+{
+  let color_src = (bActive) ? activeIconColors : inactiveIconColors;
+  let mod_colors = Object.assign([], color_src);
+  mod_colors[1] = color;
+
+  draw_icon_face(iconBounds, mod_colors, context);
 }
 
 //
