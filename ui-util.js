@@ -424,7 +424,11 @@ function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e)
 function draw_color_palette(iconBounds, color, bActive, context)
 {
   let color_src = (bActive) ? activeIconColors : inactiveIconColors;
-  let mod_colors = Object.assign([], color_src);
+  // let mod_colors = Object.assign([], color_src); -- NG. IEは非サポート。
+  let mod_colors = [];
+  for (let i = 0; i < color_src.length; ++i) {
+    mod_colors[i] = color_src[i];
+  }
   mod_colors[1] = color;
 
   draw_icon_face(iconBounds, mod_colors, context);

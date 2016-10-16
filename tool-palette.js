@@ -474,7 +474,8 @@ ToolPalette.prototype.handleEvent = function(e)
 
   // 描画ツールに引き渡す情報を構成
 	let mod_e = new PointingEvent(this, e);
-	this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー
+	// this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー  -- NG. IEは非サポート。
+  this.m_lastEvent = new PointingEvent(this, e);
   // console.dir(this.m_lastEvent);
 
   // イベント通知すべきグループを特定
