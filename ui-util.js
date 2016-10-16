@@ -84,8 +84,8 @@ function remove_from_unique_list(list, elem)
 /// 新しいインスタンスを初期化する。
 function PointManager()
 {
-  // 最後にmousedownまたはtouchstartが起きたオブジェクト
-  this.m_objOnLastPointStart = null;
+  // 最後にmousedownまたはtouchstartが起きたオブジェクトのリスト
+  this.m_objOnLastPointStart = [];
 
   let bSupportTouch = ('ontouchend' in document);
   if (bSupportTouch) {
@@ -116,7 +116,7 @@ PointManager.prototype.notifyPointStart = function(obj, e)
 {
   // console.log("******* " + e);
   assert(e && (e.type == 'mousedown' || e.type == 'touchstart'));
-  this.m_objOnLastPointStart = obj;
+  add_to_unique_list(this.m_objOnLastPointStart, obj);
 }
 
 /// イベントリスナ。
@@ -133,8 +133,10 @@ PointManager.prototype.handleEvent = function(e)
     if (this.m_objOnLastPointStart) {
       // let mod_e = Object.assign({ }, e);  // 値コピー  // NG。うまく機能しない。
       let mod_e = e;    // Alias
-      this.m_objOnLastPointStart.handleEvent(mod_e);
-      // （e.clientX, e.clientY)は、HTMLページ左上点を原点とする座標。
+      for (let i = 0; i < this.m_objOnLastPointStart.length; ++i) {
+        this.m_objOnLastPointStart[i].handleEvent(mod_e);
+      }
+      // (e.clientX, e.clientY)は、HTMLページ左上点を原点とする座標。
       // (e.screenX, e.screenY)は、モニタの左上点を原点とする座標。
       // いずれもHTMLページのスクロール位置とは無関係。
       // 原点とスケールが同一HTMLページ内のHTML要素共通であるため、少なくとも上記座標に関しては、
@@ -145,7 +147,7 @@ PointManager.prototype.handleEvent = function(e)
       // （e.clientX - window.pageXOffset, e.clientY - window.pageYOffset)
       // とする。
     }
-    this.m_objOnLastPointStart = null;
+    this.m_objOnLastPointStart = [];
     break;
   default:
     /*NOP*/

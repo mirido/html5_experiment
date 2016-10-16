@@ -455,6 +455,9 @@ ToolPalette.prototype.handleEvent = function(e)
   if (!this.m_bDragging) {
     if (e.type == 'mousedown' || e.type == 'touchstart') {
       this.m_bDragging = true;
+
+      // mouseupやtouchendを確実に補足するための登録
+  		g_pointManager.notifyPointStart(this, e);
     }
   } else {
     if (e.type == 'mouseup' || e.type == 'touchend') {
