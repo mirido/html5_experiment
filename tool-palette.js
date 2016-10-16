@@ -188,6 +188,7 @@ ToolChain.prototype.getIconBounds = function()
 // ツールに対するポインタイベントがあれば、当該ツールや関連するツールに通知する。
 // アクティブなツールにキャンバスからのポインタイベントを配送する。
 
+// ツール配置マップ
 const g_toolMap = [
   // px1'	py1'	width	height
   [  0,   0, 50, 21 ],  // [ 0] 鉛筆 ...
@@ -220,6 +221,7 @@ const g_toolMap = [
   [  0, 421, 50, 22 ]   // [27] Layer
 ];
 
+// カラーパレットの定義
 const colorPaletteDef = [
   [  7, 'rgb(255,255,255)' ],
   [  8, 'rgb(0,0,0)' ],
@@ -235,6 +237,18 @@ const colorPaletteDef = [
   [ 18, 'rgb(231,150,45)' ],
   [ 19, 'rgb(249,221,207)' ],
   [ 20, 'rgb(252,236,226)' ]
+];
+
+// ツールチェーンの独立群
+const toolChainGroups = [
+    [ 0, 1, 2, 3, 4 ],  // エフェクト
+    [ 5 ],  // 描画オペレータ
+    [ 6 ],  // マスク
+    [ 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], // カラーパレット
+    [ 21, 22, 23, 24 ],   // カラースライダ
+    [ 25 ], // 線幅
+    [ 26 ], // 描画プリセット
+    [ 27 ]  // レイヤー選択
 ];
 
 /// ツール登録のためのヘルパ関数。
@@ -301,12 +315,14 @@ function ToolPalette(pictCanvas)
   this.initToolChain();
 
   // 初期表示
-  let tg_idx = 0;
-  this.m_toolMap[tg_idx].activate(this);
+  this.m_toolMap[toolChainGroups[0][0]].activate(this);   // 鉛筆ツール
+  this.m_toolMap[toolChainGroups[3][1]].activate(this);   // カラーパレットの黒色
+  this.m_selectedToolIndexOf = [];
+  this.m_selectedToolIndexOf[0] = 0;   // 独立群[0]の選択状態
+  this.m_selectedToolIndexOf[3] = 1;   // 独立群[1]の選択状態
 
 	// イベントハンドラ登録
   this.m_bDragging = false;
-  this.m_selectedToolIdx = tg_idx;
 	register_pointer_event_handler(this.m_palette, this);
 }
 
@@ -357,6 +373,35 @@ ToolPalette.prototype.initToolChain = function()
   }
 }
 
+/// 指定したツールチェーン群にイベントを通知する。
+ToolPalette.prototype.notifyEvent = function(mod_e, groupIdx, selectingIdx)
+{
+  let selectedToolIdx = this.m_selectedToolIndexOf[groupIdx];
+
+  // 選択中ツールチェーンにイベント通知
+  // (選択解除の機会を与える意味もある。)
+  let bHit = false;
+  if (selectedToolIdx != null) {
+    bHit = this.m_toolMap[selectedToolIdx].OnSelection(mod_e);
+  }
+
+  // ツールチェーン切替処理
+  if (!bHit) {
+    // 選択解除を記憶
+    this.m_selectedToolIndexOf[groupIdx] = null;
+
+    // 選択切替
+    if (selectingIdx != null) {   // (次への選択有り)
+      bHit = this.m_toolMap[selectingIdx].OnSelection(mod_e);
+      if (bHit) {
+        this.m_selectedToolIndexOf[groupIdx] = selectingIdx;
+      }
+    }
+  }
+
+  return bHit;
+}
+
 /// イベントリスナ。
 ToolPalette.prototype.handleEvent = function(e)
 {
@@ -386,38 +431,26 @@ ToolPalette.prototype.handleEvent = function(e)
 	this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー
   // console.dir(this.m_lastEvent);
 
-  // 選択中ツールチェーンにイベント通知
-  // (選択解除の機会を与える意味もある。)
-  let bHit = false;
-  if (this.m_selectedToolIdx != null) {
-    bHit = this.m_toolMap[this.m_selectedToolIdx].OnSelection(mod_e);
-  }
-
-  // ツールチェーン切替処理
-  if (!bHit) {
-    // 選択解除を記憶
-    this.m_selectedToolIdx = null;
-
-    // 処理先ツールチェーン検索
-    let selIdx = null;
-    for (let i = 0; i < this.m_toolMap.length; ++i) {
-      // console.log("ToolPalette: i=" + i);
-      let bHit = this.m_toolMap[i].isInControl(mod_e);
-      if (bHit) {
-        // console.log("bHit: i=" + i);
-        selIdx = i;
+  // イベント通知すべきグループを特定
+  let selGroupIdx = null;
+  let selToolIdx = null;
+  for (let k = 0; k < toolChainGroups.length; ++k) {
+    let indicesInGroup = toolChainGroups[k]
+    for (let i = 0; i < indicesInGroup.length; ++i) {
+      let idx = indicesInGroup[i];
+      let bPreHit = this.m_toolMap[idx].isInControl(mod_e);
+      if (bPreHit) {
+        selGroupIdx = k;
+        selToolIdx = idx;
         break;
       }
     }
-
-    // 選択切替
-    if (selIdx != null) {   // (次への選択有り)
-      bHit = this.m_toolMap[selIdx].OnSelection(mod_e);
-      if (bHit) {
-        this.m_selectedToolIdx = selIdx;
-      }
-    }
+    if (selGroupIdx != null)
+      break;
   }
+
+  // ツールチェーンにイベント通知
+  this.notifyEvent(mod_e, selGroupIdx, selToolIdx);
 }
 
 /// 描画ツールを追加する。
