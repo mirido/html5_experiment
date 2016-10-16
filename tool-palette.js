@@ -16,6 +16,7 @@ function CommonSetting(nlayers)
 {
   // 設定値
   this.m_color = 'rgb(0, 0, 0)';        // 描画色
+  this.m_alpha = [ 255, 217 ];          // α値
   this.m_thickness = 1;                 // 線幅
   this.m_curLayerNo = nlayers - 1;      // カレントレイヤー
   this.m_layerVisibility = [];          // レイヤーの可視属性
@@ -30,6 +31,8 @@ function CommonSetting(nlayers)
 // Getter, Setter
 CommonSetting.prototype.getColor = function() { return this.m_color; }
 CommonSetting.prototype.setColor = function(value) { this.m_color = value; }
+CommonSetting.prototype.getAlpha = function(idx) { return this.m_alpha[idx]; }
+CommonSetting.prototype.setAlpha = function(idx, value) { this.m_alpha[idx] = value; }
 CommonSetting.prototype.getThickness = function() {
   // this.m_thickness = this.m_thicknessSelector.getThickness();
   return this.m_thickness;
@@ -360,6 +363,10 @@ ToolPalette.prototype.initToolChain = function()
     let id = idx * 10;
     addToolHelper(this.m_toolMap[idx], 'ColorPalette', id, toolDic);
   }
+  addToolHelper(this.m_toolMap[21], 'ColorCompoTool', 2100, toolDic);
+  addToolHelper(this.m_toolMap[22], 'ColorCompoTool', 2200, toolDic);
+  addToolHelper(this.m_toolMap[23], 'ColorCompoTool', 2300, toolDic);
+  addToolHelper(this.m_toolMap[24], 'ColorCompoTool', 2400, toolDic);
   // console.dir(toolDic);
   // console.dir(this.m_toolMap[25]);
 
@@ -371,6 +378,10 @@ ToolPalette.prototype.initToolChain = function()
     let color = colorPaletteDef[i][1];
     toolDic[id].show(color, false, this.m_palette);   // カラーパレット1
   }
+  toolDic[2100].show(this.m_setting, 0, 0, this.m_palette);   // R
+  toolDic[2200].show(this.m_setting, 1, 0, this.m_palette);   // G
+  toolDic[2300].show(this.m_setting, 2, 0, this.m_palette);   // B
+  toolDic[2400].show(this.m_setting, 3, 0, this.m_palette);   // A
 }
 
 /// 指定したツールチェーン群にイベントを通知する。

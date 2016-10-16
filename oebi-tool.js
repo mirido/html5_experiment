@@ -88,15 +88,17 @@ function ThicknessTool(iconBounds)
 /// 最初の表示を行う。
 ThicknessTool.prototype.show = function(setting, toolCanvas)
 {
+  let val = setting.getThickness();
   let context = toolCanvas.getContext('2d');
-  this.m_slideBar.show(setting, context);
+  this.m_slideBar.show(val, context);
 }
 
 /// 選択時呼ばれる。
 ThicknessTool.prototype.OnSelected = function(e)
 {
   // console.log("ThicknessTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
-  this.m_slideBar.OnSelected(e);
+  let val = e.m_sender.getCommonSetting().getThickness();
+  this.m_slideBar.OnSelected(e, val);
 }
 
 /// 選択解除時呼ばれる。
@@ -110,7 +112,11 @@ ThicknessTool.prototype.OnDiselected = function(e)
 ThicknessTool.prototype.OnPicked = function(e)
 {
   // console.log("ThicknessTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
-  this.m_slideBar.OnPicked(e);
+  let val = this.m_slideBar.OnPicked(e);
+
+  // 共通設定変更
+  let setting = e.m_sender.getCommonSetting();  // Alias
+  setting.setThickness(val);
 }
 
 //
@@ -143,7 +149,7 @@ ColorPalette.prototype.show = function(color, bActive, toolCanvas)
 /// 選択時呼ばれる。
 ColorPalette.prototype.OnSelected = function(e)
 {
-  console.log("ColorPalette::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  // console.log("ColorPalette::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
 
   // アイコン描画(選択状態)
   let context = e.m_sender.getToolPaletteCanvas().getContext('2d');
@@ -163,7 +169,7 @@ ColorPalette.prototype.OnSelected = function(e)
 /// 選択解除時呼ばれる。
 ColorPalette.prototype.OnDiselected = function(e)
 {
-  console.log("ColorPalette::OnDiselected() called. ");
+  // console.log("ColorPalette::OnDiselected() called. ");
 
   // 登録解除
   e.m_sender.removeDrawer(this);
@@ -176,7 +182,7 @@ ColorPalette.prototype.OnDiselected = function(e)
 /// 再ポイントされたとき呼ばれる。
 ColorPalette.prototype.OnPicked = function(e)
 {
-  console.log("ColorPalette::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  // console.log("ColorPalette::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
   /*NOP*/
 }
 
@@ -194,7 +200,7 @@ ColorPalette.prototype.OnDrawStart = function(e)
     assert(px_data.data.length == 4);
 
     // 設定更新
-    let color = 'rgb(' + px_data.data[0] + ',' + px_data.data[1] + ',' + px_data.data[2] + ')';
+    let color = get_color_as_RGB(px_data.data);
     eval(dbgv([ 'color' ]));
     this.m_color = color;
     this.m_setting.setColor(this.m_color);
@@ -203,4 +209,146 @@ ColorPalette.prototype.OnDrawStart = function(e)
     let context = this.m_toolCanvas.getContext('2d');
     draw_color_palette(this.m_iconBounds, this.m_color, true, context);
   }
+}
+
+//
+//  色ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function ColorCompoTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_slideBar = null;
+  this.m_colorCompoIdx = null;
+}
+
+/// 最初の表示を行う。
+/// ここで与える引数により、RGBAのどのツールなのかが決まる。
+ColorCompoTool.prototype.show = function(setting, colorCompoIdx, alphaIdx, toolCanvas)
+{
+  this.m_colorCompoIdx = colorCompoIdx;
+  this.m_alphaIdx = alphaIdx;
+
+  // 現在の色を取得する。
+  let color = setting.getColor();
+  let colors = color.match(/\d+/g);
+  assert(colors.length >= 3);
+
+  // 色成分別処理
+  let viewColor, pfx, iniVal;
+  switch (colorCompoIdx) {
+  case 0:
+    viewColor = 'rgb(255,150,150)';
+    pfx = 'R';
+    iniVal = colors[0];
+    break;
+  case 1:
+    viewColor = 'rgb(130,242,56)';
+    pfx = 'G';
+    iniVal = colors[1];
+    break;
+  case 2:
+    viewColor = 'rgb(128,128,255)';
+    pfx = 'B';
+    iniVal = colors[2];
+    break;
+  case 3:
+    viewColor = 'rgb(170,170,170)';
+    pfx = 'A';
+    iniVal = setting.getAlpha(alphaIdx);
+    break;
+  default:
+    assert(false);
+    return;
+  }
+  eval(dbgv([ 'iniVal' ]));
+
+  // スライドバー構成
+  this.m_slideBar = new MicroSlideBar(
+    this.m_iconBounds, false,
+    viewColor,
+    0, 255, iniVal,
+    pfx, "",
+    -1, 255     // 値0でも色つきの線を表示させるため、exValMin=-1とする。
+  );
+
+  // 最初の表示
+  let context = toolCanvas.getContext('2d');
+  this.m_slideBar.show(iniVal, context);
+}
+
+/// 共通設定から必要な値を取得する。
+ColorCompoTool.prototype.getValue = function(setting)
+{
+  let val = null;
+
+  switch (this.m_colorCompoIdx) {
+  case 0:
+  case 1:
+  case 2:
+    {
+      let color = setting.getColor();
+      let colors = get_components_from_RGBx(color);
+      val = colors[this.m_colorCompoIdx];
+    }
+    break;
+  case 3:
+    val = setting.getAlpha(this.m_alphaIdx);
+    break;
+  default:
+    assert(false);
+    break;
+  }
+
+  return val;
+}
+
+/// 共通設定を変更する。
+ColorCompoTool.prototype.setValue = function(val, setting)
+{
+  switch (this.m_colorCompoIdx) {
+  case 0:
+  case 1:
+  case 2:
+    {
+      let color = setting.getColor();
+      let colors = get_components_from_RGBx(color);
+      colors[this.m_colorCompoIdx] = val;
+      color = get_color_as_RGB(colors);
+      setting.setColor(color);
+    }
+    break;
+  case 3:
+    setting.setColor(this.m_alphaIdx, val);
+    break;
+  default:
+    assert(false);
+    break;
+  }
+}
+
+/// 選択時呼ばれる。
+ColorCompoTool.prototype.OnSelected = function(e)
+{
+  // console.log("ColorCompoTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  let setting = e.m_sender.getCommonSetting();
+  let val = this.getValue(setting);
+  this.m_slideBar.OnSelected(e, val);
+}
+
+/// 選択解除時呼ばれる。
+ColorCompoTool.prototype.OnDiselected = function(e)
+{
+  // console.log("ColorCompoTool::OnDiselected() called. ");
+  /*NOP*/
+}
+
+/// 再ポイントされたとき呼ばれる。
+ColorCompoTool.prototype.OnPicked = function(e)
+{
+  // console.log("ColorCompoTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  let val = this.m_slideBar.OnPicked(e);
+  let setting = e.m_sender.getCommonSetting();
+  this.setValue(val, setting);
 }

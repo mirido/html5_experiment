@@ -10,6 +10,38 @@ function conv_page_client_to_wnd_client(point)
   return jsPoint(point.x - window.pageXOffset, point.y - window.pageYOffset);
 }
 
+/// コンポーネント値からRGB色表現を取得する。
+function get_color_as_RGB(colors)
+{
+  let color = 'rgb(' + colors[0] + ',' + colors[1] + ',' + colors[2] + ')';
+  return color;
+}
+
+/// コンポーネント値からRGBA色表現を取得する。
+function get_color_as_RGBA(colors)
+{
+  let color = 'rgba(' + colors[0] + ',' + colors[1] + ',' + colors[2] + ',' + colors[3] + ')';
+  return color;
+}
+
+/// RGBまたはRGBAをコンポーネントに分解する。
+function get_components_from_RGBx(color)
+{
+  let colors = [];
+  if (color.match(/^#/)) {
+    let hexColors = color.match(/\d\d/g);
+    for (let i = 0; i < hexColors.length; ++i) {
+      colors[i] = parseInt(hexColors[i], 16);
+    }
+  } else {
+    let decColors = color.match(/\d+/g);
+    for (let i = 0; i < decColors.length; ++i) {
+      colors[i] = parseInt(decColors[i], 10);
+    }
+  }
+  return colors;
+}
+
 //
 //  ポインタ状態管理
 //
@@ -519,21 +551,18 @@ MicroSlideBar.prototype.drawValue = function(val, context)
 }
 
 /// 最初の表示を行う。
-MicroSlideBar.prototype.show = function(setting, context)
+MicroSlideBar.prototype.show = function(val, context)
 {
-  let val = setting.getThickness();
-  // eval(dbgv([ 'val' ]));
   this.drawValue(val, context);
 }
 
 /// 選択直後の初期表示を行う。
-MicroSlideBar.prototype.OnSelected = function(e)
+MicroSlideBar.prototype.OnSelected = function(e, val)
 {
   let tool_canvas = e.m_sender.getToolPaletteCanvas();
   let context = tool_canvas.getContext('2d');
-  let setting = e.m_sender.getCommonSetting();  // Alias
 
-  this.show(setting, context);
+  this.show(val, context);
 }
 
 /// 数値を表示に反映する。
@@ -541,14 +570,12 @@ MicroSlideBar.prototype.OnPicked = function(e)
 {
   let tool_canvas = e.m_sender.getToolPaletteCanvas();
   let context = tool_canvas.getContext('2d');
-  let setting = e.m_sender.getCommonSetting();  // Alias
 
   let val = this.decodePoint(e.m_point);
   if (val != null) {
     val = Math.round(val);
     this.drawValue(val, context);
-
-    // 共通設定変更
-    setting.setThickness(val);
   }
+
+  return this.m_value;
 }

@@ -66,3 +66,14 @@ function utest_ImagePatch()
   patch.put(399, 399, ctx2, layer2.clientWidth, layer2.clientHeight);	// 右下隅にpatch中心を一致させる	OK
   // patch.put(-200, 399, ctx2, layer2.clientWidth, layer2.clientHeight);	// 全くの範囲外	OK
 }
+
+/// UTEST: 色表現の変換
+function utesst_ColorConversion()
+{
+  let colors1 = get_components_from_RGBx("#123456");
+	console.dir(colors1);
+	let colors2 = get_components_from_RGBx("rgb(1,2,3)");
+	console.dir(colors2);
+	let colors3 = get_components_from_RGBx("rgba(4,5,6,7)");
+	console.dir(colors3);
+}
