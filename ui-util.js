@@ -339,3 +339,200 @@ function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e)
   context.fillStyle = textColor;
   context.fillText(text, sx + 2, sy + h - 3, textMaxWidth);
 }
+
+//
+//  マイクロスライドバー
+//
+
+/// 新しいインスタンスを初期化する。
+function MicroSlideBar(
+  iconBounds,         // [in]  描画領域
+  bVert,              // [in]  垂直バーか否か(true: 垂直, false: 水平)
+  color,              // [in]  値を示すバーの色
+  valMin, valMax,     // [in, in] 値域
+  valIni,             // [in]  初期値
+  pfx, sfx,           // [in]  テキストのprefixとpostfix
+  exValMin, exValMax  // [in]  表示上の値域(バー先頭位置を決める内分にはこちらを使う)
+)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_bVert = bVert;
+  this.m_valMin = (valMin != null) ? valMin : 0;
+  this.m_valMax = (valMax != null) ? valMax : 255;
+  this.m_value = (valIni != null) ? valIni : 128;
+  this.m_pfx = (pfx != null) ? pfx : "";
+  this.m_sfx = (sfx != null) ? sfx : "";
+  this.m_exValMin = (exValMin != null) ? exValMin : this.m_valMin;
+  this.m_exValMax = (exValMax != null) ? exValMax : this.m_valMax;
+
+  this.m_borderColor = inactiveIconColors[0];
+  this.m_inRangeColor = color;
+  this.m_outRangeColor = inactiveIconColors[1];
+  this.m_textColor = textColor;
+  // console.dir(this.m_iconBounds);
+}
+
+/// 座標をスライドバー数値に換算する。
+MicroSlideBar.prototype.decodePoint = function(point)
+{
+  let bIncluds = rect_includes(this.m_iconBounds, point);
+  if (!bIncluds)
+    return null;
+
+  let sx = this.m_iconBounds.x;
+  let sy = this.m_iconBounds.y;
+  let w = this.m_iconBounds.width;
+  let h = this.m_iconBounds.height;
+
+  // 数値の下限、上限に対応する座標値を特定
+  let pt_min, pt_max, pt_inp;
+  if (this.m_bVert) {
+    pt_min = sy + 1;
+    pt_max = sy + h - 2;
+    pt_inp = point.y;
+  } else {
+    pt_min = sx + 1;
+    pt_max = sx + w - 2;
+    pt_inp = point.x;
+  }
+
+  // 内分して数値化
+  let val = this.m_exValMin
+    + ((this.m_exValMax - this.m_exValMin) * (pt_inp - pt_min)) / (pt_max - pt_min);
+  // eval(dbgv([ 'this.m_exValMin', 'this.m_exValMax', 'val' ]));
+  // eval(dbgv([ 'pt_min', 'pt_max', 'pt_inp' ]));
+  // eval(dbgv([ '(this.m_exValMax - this.exValMin)' ]));
+
+  // クリッピング
+  if (val < this.m_valMin) {
+    val = this.m_valMin;
+  } else if (val > this.m_valMax) {
+    val = this.m_valMax;
+  }
+
+  return val;
+}
+
+/// 数値を座標に変換する。
+MicroSlideBar.prototype.encodeToPoint = function(val)
+{
+  let sx = this.m_iconBounds.x;
+  let sy = this.m_iconBounds.y;
+  let w = this.m_iconBounds.width;
+  let h = this.m_iconBounds.height;
+
+  // 数値の下限、上限に対応する座標値を特定
+  let pt_min, pt_max;
+  if (this.m_bVert) {
+    pt_min = sy + 1;
+    pt_max = sy + h - 2;
+  } else {
+    pt_min = sx + 1;
+    pt_max = sx + w - 2;
+  }
+  // eval(dbgv([ 'pt_min', 'pt_max' ]));
+  // eval(dbgv([ 'sx', 'sy', 'w', 'h' ]));
+
+  // 内分して座標化
+  let pt = pt_min
+    + ((pt_max - pt_min) * (val - this.m_exValMin)) / (this.m_exValMax - this.m_exValMin);
+  // eval(dbgv(['this.m_exValMin' ]));
+  // eval(dbgv([ 'val - this.m_exValMin' ]));
+  // eval(dbgv([ 'pt' ]));
+
+  // クリッピング
+  if (pt < pt_min) {
+    pt = pt_min;
+  } else if (pt > pt_max) {
+    pt = pt_max;
+  }
+
+  // 矩形化
+  let valBounds;
+  if (this.m_bVert) {
+    valBounds = jsRect(sx + 1, sy + 1, w - 2, Math.ceil(pt) - pt_min);
+  } else {
+    valBounds = jsRect(sx + 1, sy + 1, Math.ceil(pt) - pt_min, h - 2);
+  }
+  // console.dir(valBounds);
+
+  return valBounds;
+}
+
+/// 境界と内側を描画する。
+MicroSlideBar.prototype.drawBase = function(context)
+{
+  let sx = this.m_iconBounds.x;
+  let sy = this.m_iconBounds.y;
+  let w = this.m_iconBounds.width;
+  let h = this.m_iconBounds.height;
+
+  // 枠線
+  context.fillStyle = this.m_borderColor;
+  draw_rect_R(this.m_iconBounds, context);
+
+  // 内側
+  context.fillStyle = this.m_outRangeColor;
+  context.fillRect(sx + 1, sy + 1, w - 2, h - 2);
+}
+
+/// 数値を表示に反映する。
+MicroSlideBar.prototype.drawValue = function(val, context)
+{
+  let sx = this.m_iconBounds.x;
+  let sy = this.m_iconBounds.y;
+  // let w = this.m_iconBounds.width;
+  let h = this.m_iconBounds.height;
+
+  // 数値記憶
+  this.m_value = val;
+
+  // 基礎部分描画
+  this.drawBase(context);
+
+  // In-range描画
+  let vb = this.encodeToPoint(val);
+  context.fillStyle = this.m_inRangeColor;
+  context.fillRect(vb.x, vb.y, vb.width, vb.height, context);
+
+  // テキスト描画
+  let textMaxWidth = this.m_iconBounds.width - 3;
+  let text = this.m_pfx + val + this.m_sfx;
+  context.fillStyle = this.m_textColor;
+  context.fillText(text, sx + 1, sy + h - 2, textMaxWidth);
+}
+
+/// 最初の表示を行う。
+MicroSlideBar.prototype.show = function(setting, context)
+{
+  let val = setting.getThickness();
+  // eval(dbgv([ 'val' ]));
+  this.drawValue(val, context);
+}
+
+/// 選択直後の初期表示を行う。
+MicroSlideBar.prototype.OnSelected = function(e)
+{
+  let tool_canvas = e.m_sender.getToolPaletteCanvas();
+  let context = tool_canvas.getContext('2d');
+  let setting = e.m_sender.getCommonSetting();  // Alias
+
+  this.show(setting, context);
+}
+
+/// 数値を表示に反映する。
+MicroSlideBar.prototype.OnPicked = function(e)
+{
+  let tool_canvas = e.m_sender.getToolPaletteCanvas();
+  let context = tool_canvas.getContext('2d');
+  let setting = e.m_sender.getCommonSetting();  // Alias
+
+  let val = this.decodePoint(e.m_point);
+  if (val != null) {
+    val = Math.round(val);
+    this.drawValue(val, context);
+
+    // 共通設定変更
+    setting.setThickness(val);
+  }
+}
