@@ -89,6 +89,7 @@ function DrawerBase(drawOp, effect, cursor)
   // 描画管理
   this.m_points = [];
   this.m_imagePatch = null;
+  this.m_bWrtProtect = false;
 }
 
 /// 描画ストローク開始時に呼ばれる。
@@ -100,6 +101,12 @@ DrawerBase.prototype.OnDrawStart = function(e)
   let context = curLayer.getContext('2d');
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
+
+  // CTRLキー押下とともに開始された場合はストローク終了まで一切描画しない。
+  if ((e.m_spKey & SpKey.KY_CTRL) != 0) {
+    this.m_bWrtProtect = true;
+    return;
+  }
 
   // 点列記憶
   this.m_points.splice(0, this.m_points.length);   // 全クリア
@@ -128,6 +135,11 @@ DrawerBase.prototype.OnDrawing = function(e)
   let context = curLayer.getContext('2d');
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
+
+  // CTRLキー押下とともに開始された場合はストローク終了まで一切描画しない。
+  if (this.m_bWrtProtect) {
+    return;
+  }
 
   // カーソルクリア
   this.m_cursor.clear(context);
@@ -164,6 +176,12 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   let context = curLayer.getContext('2d');
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
+
+  // CTRLキー押下とともに開始された場合はストローク終了まで一切描画しない。
+  if (this.m_bWrtProtect) {
+    this.m_bWrtProtect = false;
+    return;
+  }
 
   // カーソルクリア
   this.m_cursor.clear(context);
