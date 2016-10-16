@@ -47,7 +47,49 @@ PencilTool.prototype.OnDiselected = function(e)
 PencilTool.prototype.OnPicked = function(e)
 {
   console.log("PencilTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  /*NOP*/
+}
 
-  // 必要があればアクション
-  // TBD
+//
+//  線幅ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function ThicknessTool(iconBounds)
+{
+  this.m_slideBar = new MicroSlideBar(
+    iconBounds, true,
+    'rgb(0,0,0)',
+    1, 30, 1,
+    "", "px",
+    0, 30
+  );
+}
+
+/// 最初の表示を行う。
+ThicknessTool.prototype.show = function(setting, toolCanvas)
+{
+  let context = toolCanvas.getContext('2d');
+  this.m_slideBar.show(setting, context);
+}
+
+/// 選択時呼ばれる。
+ThicknessTool.prototype.OnSelected = function(e)
+{
+  console.log("ThicknessTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  this.m_slideBar.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+ThicknessTool.prototype.OnDiselected = function(e)
+{
+  console.log("ThicknessTool::OnDiselected() called. ");
+  /*NOP*/
+}
+
+/// 再ポイントされたとき呼ばれる。
+ThicknessTool.prototype.OnPicked = function(e)
+{
+  console.log("ThicknessTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  this.m_slideBar.OnPicked(e);
 }

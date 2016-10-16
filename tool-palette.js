@@ -31,12 +31,12 @@ function CommonSetting(nlayers)
 CommonSetting.prototype.getColor = function() { return this.m_color; }
 CommonSetting.prototype.setColor = function(value) { this.m_color = value; }
 CommonSetting.prototype.getThickness = function() {
-  this.m_thickness = this.m_thicknessSelector.getThickness();
+  // this.m_thickness = this.m_thicknessSelector.getThickness();
   return this.m_thickness;
 }
 CommonSetting.prototype.setThickness = function(value) {
   this.m_thickness = value;
-  this.m_thicknessSelector.setThickness(this.m_thickness);
+  // this.m_thicknessSelector.setThickness(this.m_thickness);
 }
 
 //
@@ -62,7 +62,41 @@ function ToolChain(iconBounds)
   this.m_lastEvent = null;
 }
 
-/// ツール選択時にツールパレットから呼ばれる。
+/// アクティブにする。
+ToolChain.prototype.activate = function(toolPalette)
+{
+  let drawArea = toolPalette.getBoundingDrawAreaRect();
+  let iconBounds = this.m_iconBounds;
+  let dummy_e = {
+    clientX: drawArea.x + iconBounds.x + iconBounds.width / 2,
+    clientY: drawArea.y + iconBounds.y + iconBounds.height / 2
+  };
+  let mod_e = new PointingEvent(toolPalette, dummy_e);
+  this.OnSelection(mod_e);
+}
+
+/// 非アクティブにする。
+ToolChain.prototype.inactivate = function(toolPalette)
+{
+  let drawArea = toolPalette.getBoundingDrawAreaRect();
+  let iconBounds = this.m_iconBounds;
+  let dummy_e = {
+    clientX: -1,
+    clientY: -1
+  };
+  let mod_e = new PointingEvent(toolPalette, dummy_e);
+  this.OnSelection(mod_e);
+}
+
+/// イベントが管轄内か否か判定する。
+/// 検索用で、OnSelection()より軽量。
+ToolChain.prototype.isInControl = function(e)
+{
+  let bIncludes = rect_includes(this.m_iconBounds, e.m_point);
+  return bIncludes;
+}
+
+/// ツール選択変更時にツールパレットから呼ばれる。
 ToolChain.prototype.OnSelection = function(e)
 {
   let bHit = false;
@@ -97,6 +131,7 @@ ToolChain.prototype.OnSelection = function(e)
     }
   }
   // console.log("action=" + action);
+  // eval(dbgv([ 'this.m_bActive', 'bIncludes' ]));
 
   // イベント発行
   if (action != null) {
@@ -105,6 +140,7 @@ ToolChain.prototype.OnSelection = function(e)
     case 1:   // カレントツールのアクティブ化
       this.m_bActive = true;
       this.m_tools[cur_idx].OnSelected(e);
+      // console.dir(this.m_iconBounds);
       break;
     case 2:   // カレントツールのpick
       assert(this.m_bActive);
@@ -185,10 +221,13 @@ const g_toolMap = [
 ];
 
 /// ツール登録のためのヘルパ関数。
-function addToolHelper(toolChain, toolName)
+function addToolHelper(toolChain, toolName, toolId, toolDic)
 {
   let iconBounds = toolChain.getIconBounds();
-  let cmd = "toolChain.addTool(new " + toolName + "(iconBounds))";
+  let cmd
+    = "let toolObj = new " + toolName + "(iconBounds);"
+    + "toolChain.addTool(toolObj);"
+    + "toolDic[toolId] = toolObj;";
   eval(cmd);
 }
 
@@ -249,32 +288,33 @@ function ToolPalette(pictCanvas)
     ctx.lineWidth = 1;
     for (let i = 0; i < this.m_toolMap.length; ++i) {
       let rect = this.m_toolMap[i].getIconBounds();
-      // console.dir(rect);
-      if (true) {   // この条件はtrue/falseどちらでも良い。
+      if (false) {   // この条件はtrue/falseどちらでも良い。
         // HTML5の矩形描画機能を使用
         ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width, rect.height);
       } else {
         // 自作のdraw_rect_R()使用
-        draw_rect_R(rect.x, rect.y, rect.width, rect.height, ctx, 1);
+        draw_rect_R(rect, ctx);
       }
     }
 	}
 
   // ツールアイコン区画をツールに割付け
-  addToolHelper(this.m_toolMap[0], 'PencilTool');
+  let toolDic = {};
+  addToolHelper(this.m_toolMap[0], 'PencilTool', 0, toolDic);
+  addToolHelper(this.m_toolMap[25], 'ThicknessTool', 2500, toolDic);
+  // console.dir(toolDic);
+  // console.dir(this.m_toolMap[25]);
 
-  // 最初のツールをアクティブ化
+  // ツール固有の初期化
+  toolDic[2500].show(this.m_setting, this.m_palette);     // 線幅ツール
+
+  // 初期表示
   let tg_idx = 0;
-  let drawArea = this.getBoundingDrawAreaRect();
-  let iconBounds = this.m_toolMap[tg_idx].getIconBounds();
-  let dummy_e = {
-    clientX: drawArea.x + iconBounds.x + iconBounds.width / 2,
-    clientY: drawArea.y + iconBounds.y + iconBounds.height / 2
-  };
-  let mod_e = new PointingEvent(this, dummy_e);
-  this.m_toolMap[tg_idx].OnSelection(mod_e);
+  this.m_toolMap[tg_idx].activate(this);
 
 	// イベントハンドラ登録
+  this.m_bDragging = false;
+  this.m_selectedToolIdx = tg_idx;
 	register_pointer_event_handler(this.m_palette, this);
 }
 
@@ -284,22 +324,59 @@ ToolPalette.prototype.handleEvent = function(e)
 	// console.log("ToolPalette::handleEvent: " + e.type);
 	// console.dir(e);
 
-  // クリックまたはタッチ開始以外のイベントを無視
-  if (!(e.type == 'mousedown' || e.type == 'touchstart' ))
-    return;
+  // ドラッグ状態管理
+  if (!this.m_bDragging) {
+    if (e.type == 'mousedown' || e.type == 'touchstart') {
+      this.m_bDragging = true;
+    }
+  } else {
+    if (e.type == 'mouseup' || e.type == 'touchend') {
+      this.m_bDragging = false;
+      return;   // 終了イベントは無視
+    }
+  }
+
+  // moveであってもドラッグ以外は無視
+  if (e.type == 'mousemove' || e.type == 'touchimove') {
+    if (!this.m_bDragging)
+      return;
+  }
 
   // 描画ツールに引き渡す情報を構成
 	let mod_e = new PointingEvent(this, e);
 	this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー
   // console.dir(this.m_lastEvent);
 
-  // ツールチェーン群に通知
-  for (let i = 0; i < this.m_toolMap.length; ++i) {
-    // console.log("ToolPalette: i=" + i);
-    let bHit = this.m_toolMap[i].OnSelection(mod_e);
-    if (bHit) {
-      console.log("bHit: i=" + i);
-      break;
+  // 選択中ツールチェーンにイベント通知
+  // (選択解除の機会を与える意味もある。)
+  let bHit = false;
+  if (this.m_selectedToolIdx != null) {
+    bHit = this.m_toolMap[this.m_selectedToolIdx].OnSelection(mod_e);
+  }
+
+  // ツールチェーン切替処理
+  if (!bHit) {
+    // 選択解除を記憶
+    this.m_selectedToolIdx = null;
+
+    // 処理先ツールチェーン検索
+    let selIdx = null;
+    for (let i = 0; i < this.m_toolMap.length; ++i) {
+      // console.log("ToolPalette: i=" + i);
+      let bHit = this.m_toolMap[i].isInControl(mod_e);
+      if (bHit) {
+        // console.log("bHit: i=" + i);
+        selIdx = i;
+        break;
+      }
+    }
+
+    // 選択切替
+    if (selIdx != null) {   // (次への選択有り)
+      bHit = this.m_toolMap[selIdx].OnSelection(mod_e);
+      if (bHit) {
+        this.m_selectedToolIdx = selIdx;
+      }
     }
   }
 }
@@ -329,7 +406,7 @@ ToolPalette.prototype.getBoundingDrawAreaRect = function()
 
 /// 共通設定を参照する。
 /// イベント通知を受けたツールから呼ばれる想定。
-ToolPalette.prototype.refCommonSetting = function()
+ToolPalette.prototype.getCommonSetting = function()
 {
   return this.m_setting;
 }
