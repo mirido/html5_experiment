@@ -1,5 +1,8 @@
 # HTML5実験アプリ インターフェース仕様 Ver.2
 
+Copyright (c) 2016, mirido
+All rights reserved.
+
 ## 概要
 
 PaintBBSの機能を、
