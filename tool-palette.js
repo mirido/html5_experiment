@@ -302,13 +302,37 @@ function ToolPalette(pictCanvas)
   let toolDic = {};
   addToolHelper(this.m_toolMap[0], 'PencilTool', 0, toolDic);
   addToolHelper(this.m_toolMap[25], 'ThicknessTool', 2500, toolDic);
-  addToolHelper(this.m_toolMap[7], 'ColorPalette', 700, toolDic);
+  const colorPaletteDef = [
+    [  700, 'rgb(255,255,255)' ],
+    [  800, 'rgb(0,0,0)' ],
+    [  900, 'rgb(136,136,136)' ],
+    [ 1000, 'rgb(180,117,117)' ],
+    [ 1100, 'rgb(192,150,192)' ],
+    [ 1200, 'rgb(250,0,10)' ],
+    [ 1300, 'rgb(128,128,255)' ],
+    [ 1400, 'rgb(255,182,255)' ],
+    [ 1500, 'rgb(231,229,141)' ],
+    [ 1600, 'rgb(37,199,201)' ],
+    [ 1700, 'rgb(153,203,123)' ],
+    [ 1800, 'rgb(231,150,45)' ],
+    [ 1900, 'rgb(249,221,207)' ],
+    [ 2000, 'rgb(252,236,226)' ]
+  ];
+  for (let i = 0; i < colorPaletteDef.length; ++i) {
+    let idx = 7 + i;
+    let id = colorPaletteDef[i][0];
+    addToolHelper(this.m_toolMap[idx], 'ColorPalette', id, toolDic);
+  }
   // console.dir(toolDic);
   // console.dir(this.m_toolMap[25]);
 
   // ツール固有の初期化
   toolDic[2500].show(this.m_setting, this.m_palette);     // 線幅ツール
-  toolDic[700].show('rgb(255,255,255)', false, this.m_palette);  // カラーパレット1
+  for (let i = 0; i < colorPaletteDef.length; ++i) {
+    let id = colorPaletteDef[i][0];
+    let color = colorPaletteDef[i][1];
+    toolDic[id].show(color, false, this.m_palette);   // カラーパレット1
+  }
 
   // 初期表示
   let tg_idx = 0;
