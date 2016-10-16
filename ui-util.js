@@ -4,6 +4,16 @@
 //  General
 //
 
+/// getBoundingClientRect()が返す矩形の環境依存の違いを吸収するwrapper。
+function unify_rect(rect)
+{
+  if (rect.x == null) {
+    return jsRect(rect.left, rect.top, rect.width, rect.height);
+  } else {
+    return rect;
+  }
+}
+
 /// HTMLページのクライアント座標系をウィンドウのクライアント座標系に変換する。
 function conv_page_client_to_wnd_client(point)
 {

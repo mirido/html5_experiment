@@ -116,7 +116,7 @@ PictureCanvas.prototype.handleEvent = function(e)
 PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 {
 	let bounds = this.m_layers[0].getBoundingClientRect();
-	return bounds;
+	return unify_rect(bounds);
 }
 
 /// 描画ツールを追加する。
