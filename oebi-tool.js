@@ -343,7 +343,7 @@ ColorCompoTool.prototype.setValue = function(val, setting)
     }
     break;
   case 3:
-    setting.setColor(this.m_alphaIdx, val);
+    setting.setAlpha(this.m_alphaIdx, val);
     break;
   default:
     assert(false);
