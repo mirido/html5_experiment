@@ -308,7 +308,7 @@ function ToolPalette(pictCanvas)
 
   // 初期化パラメータ
   const n = g_toolMap.length;
-  const nlayers = this.m_pictCanvas.m_layers.length;
+  const nlayers = this.m_pictCanvas.getNumLayers();
 
   // ツールマップ作成
   // sx, sy, ex, eyは領域全体の左上点と右下終端点を示し、
@@ -339,7 +339,7 @@ function ToolPalette(pictCanvas)
   this.m_palette.setAttribute('height', height);
 
   // 共通設定メモリ準備
-  this.m_setting = new CommonSetting(this.m_view_port);
+  this.m_setting = new CommonSetting(nlayers);
 
   // パレット初期描画
   // このステップは暫定処置で、将来的には無くす予定。
@@ -352,11 +352,12 @@ function ToolPalette(pictCanvas)
   // 初期表示
   this.m_toolMap[toolChainGroups[0][0]].activate(this);   // 鉛筆ツール
   this.m_toolMap[toolChainGroups[3][1]].activate(this);   // カラーパレットの黒色
-  this.m_selectedToolIndexOf = [];
-  this.m_selectedToolIndexOf[0] = toolChainGroups[0][0];  // 独立群[0]の選択ツール
-  this.m_selectedToolIndexOf[3] = toolChainGroups[3][1];  // 独立群[1]の選択ツール
+  this.m_selToolChainIdxOf = [];
+  this.m_selToolChainIdxOf[0] = toolChainGroups[0][0];    // 独立群[0]の選択ツール
+  this.m_selToolChainIdxOf[3] = toolChainGroups[3][1];    // 独立群[1]の選択ツール
 
 	// イベントハンドラ登録
+  this.m_curToolChainIdx = null;
   this.m_bDragging = false;
 	register_pointer_event_handler(this.m_palette, this);
 }
@@ -416,33 +417,46 @@ ToolPalette.prototype.initToolChain = function()
   toolDic[2400].show(this.m_setting, 3, 0, this.m_palette);   // A
 }
 
-/// 指定したツールチェーン群にイベントを通知する。
-ToolPalette.prototype.notifyEvent = function(mod_e, groupIdx, selectingIdx)
+/// ドラッグ開始処理。
+ToolPalette.prototype.OnDraggingStart = function(mod_e)
 {
-  let selectedToolIdx = this.m_selectedToolIndexOf[groupIdx];
-
-  // 選択中ツールチェーンにイベント通知
-  // (選択解除の機会を与える意味もある。)
-  let bHit = false;
-  if (selectedToolIdx != null) {
-    bHit = this.m_toolMap[selectedToolIdx].OnSelection(mod_e);
-  }
-
-  // ツールチェーン切替処理
-  if (!bHit) {
-    // 選択解除を記憶
-    this.m_selectedToolIndexOf[groupIdx] = null;
-
-    // 選択切替
-    if (selectingIdx != null) {   // (次への選択有り)
-      bHit = this.m_toolMap[selectingIdx].OnSelection(mod_e);
-      if (bHit) {
-        this.m_selectedToolIndexOf[groupIdx] = selectingIdx;
+  // イベント通知すべきグループを特定
+  let selGroupIdx = null;
+  let selToolChainIdx = null;
+  for (let k = 0; k < toolChainGroups.length; ++k) {
+    let indicesInGroup = toolChainGroups[k]
+    for (let i = 0; i < indicesInGroup.length; ++i) {
+      let idx = indicesInGroup[i];
+      let bPreHit = this.m_toolMap[idx].isInControl(mod_e);
+      if (bPreHit) {
+        selGroupIdx = k;
+        selToolChainIdx = idx;
+        break;
       }
     }
+    if (selGroupIdx != null)
+      break;
   }
 
-  return bHit;
+  // 対象グループ発見時の処理
+  if (selGroupIdx != null) {
+    let curToolChainIdx = this.m_selToolChainIdxOf[selGroupIdx];
+
+    // 同じグループ内の選択中ツールチェーンの処理
+    if (curToolChainIdx != null) {                // (選択中有り)
+      if (curToolChainIdx != selToolChainIdx) {   // (選択が変化)
+        // 選択終了通知
+        this.m_toolMap[this.m_curToolChainIdx].OnSelection(mod_e);
+      }
+    }
+
+    // 対象ツールチェーンに選択開始を通知する。
+    this.m_toolMap[selToolChainIdx].OnSelection(mod_e);
+
+    // 選択中ツールチェーン記憶
+    this.m_selToolChainIdxOf[selGroupIdx] = selToolChainIdx;
+    this.m_curToolChainIdx = selToolChainIdx;
+  }
 }
 
 /// イベントリスナ。
@@ -454,50 +468,35 @@ ToolPalette.prototype.handleEvent = function(e)
   // ドラッグ状態管理
   if (!this.m_bDragging) {
     if (e.type == 'mousedown' || e.type == 'touchstart') {
-      this.m_bDragging = true;
-
       // mouseupやtouchendを確実に補足するための登録
   		g_pointManager.notifyPointStart(this, e);
+
+      // 描画ツールに引き渡す情報を構成
+    	let mod_e = new PointingEvent(this, e);
+    	// this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー  -- NG. IEは非サポート。
+      this.m_lastEvent = new PointingEvent(this, e);
+      // console.dir(this.m_lastEvent);
+
+      // ツールチェーンに通知
+      this.OnDraggingStart(mod_e);
+
+      // 状態遷移
+      this.m_bDragging = true;
     }
   } else {
     if (e.type == 'mouseup' || e.type == 'touchend') {
       this.m_bDragging = false;
-      return;   // 終了イベントは無視
+    } else {
+      // 描画ツールに引き渡す情報を構成
+    	let mod_e = new PointingEvent(this, e);
+    	// this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー  -- NG. IEは非サポート。
+      this.m_lastEvent = new PointingEvent(this, e);
+      // console.dir(this.m_lastEvent);
+
+      // ツールチェーンに通知
+      this.m_toolMap[this.m_curToolChainIdx].OnSelection(mod_e);
     }
   }
-
-  // moveであってもドラッグ以外は無視
-  if (e.type == 'mousemove' || e.type == 'touchimove') {
-    if (!this.m_bDragging)
-      return;
-  }
-
-  // 描画ツールに引き渡す情報を構成
-	let mod_e = new PointingEvent(this, e);
-	// this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー  -- NG. IEは非サポート。
-  this.m_lastEvent = new PointingEvent(this, e);
-  // console.dir(this.m_lastEvent);
-
-  // イベント通知すべきグループを特定
-  let selGroupIdx = null;
-  let selToolIdx = null;
-  for (let k = 0; k < toolChainGroups.length; ++k) {
-    let indicesInGroup = toolChainGroups[k]
-    for (let i = 0; i < indicesInGroup.length; ++i) {
-      let idx = indicesInGroup[i];
-      let bPreHit = this.m_toolMap[idx].isInControl(mod_e);
-      if (bPreHit) {
-        selGroupIdx = k;
-        selToolIdx = idx;
-        break;
-      }
-    }
-    if (selGroupIdx != null)
-      break;
-  }
-
-  // ツールチェーンにイベント通知
-  this.notifyEvent(mod_e, selGroupIdx, selToolIdx);
 }
 
 /// 描画ツールを追加する。

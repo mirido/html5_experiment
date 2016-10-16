@@ -146,6 +146,13 @@ PictureCanvas.prototype.removeDrawer = function(drawer)
 	return remove_from_unique_list(this.m_drawers, drawer);
 }
 
+/// レイヤー数を取得する。
+/// 背景レイヤーも含むので注意。
+PictureCanvas.prototype.getNumLayers = function()
+{
+	return this.m_layers.length;
+}
+
 /// レイヤーを取得する。
 PictureCanvas.prototype.getLayer = function(layerNo)
 {
