@@ -22,7 +22,8 @@ html5_experiment/index.htmlをブラウザで開いて起動する。
 
 ## スクリーンショット
 
-![スクリーンショット](https://github.com/mirido/html5_experiment/blob/PaintBBS_NEO_Next_Generation/_screenshot/app_image.png?raw=true)
+![スクリーンショット](https://github.com/mirido/html5_experiment/blob/master/_screenshot/app_image.png)
+
 
 ## ドキュメント
 0. \_doc/interface_speccification.md -- インターフェース仕様書
