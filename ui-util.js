@@ -42,6 +42,36 @@ function get_components_from_RGBx(color)
   return colors;
 }
 
+/// 要素をリストに追加する。追加順は保たれる。
+/// ただし、既存項目と重複する要素の登録は失敗する。
+function add_to_unique_list(list, elem)
+{
+  // 登録済みでないか確認
+	for (let i = 0; i < list.length; ++i) {
+		if (list[i] == elem)
+			return false;
+	}
+
+	// 登録
+	list.push(elem);
+
+  return true;
+}
+
+/// 要素をリストから削除する。
+function remove_from_unique_list(list, elem)
+{
+  // 検索
+	for (let i = 0; i < list.length; ++i) {
+		if (list[i] == elem) {
+			list.splice(i, 1);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 //
 //  ポインタ状態管理
 //

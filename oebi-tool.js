@@ -164,12 +164,19 @@ ColorPalette.prototype.OnSelected = function(e)
 
   // スポイト操作のための登録
   e.m_sender.addDrawer(this);
+
+  // 設定変更追跡のための登録
+  this.m_setting.addListener(this);
 }
 
 /// 選択解除時呼ばれる。
 ColorPalette.prototype.OnDiselected = function(e)
 {
   // console.log("ColorPalette::OnDiselected() called. ");
+  let setting = e.m_sender.getCommonSetting();
+
+  // 設定変更追跡のための登録を解除
+  setting.removeListener(this);
 
   // 登録解除
   e.m_sender.removeDrawer(this);
@@ -210,6 +217,15 @@ ColorPalette.prototype.OnDrawStart = function(e)
     draw_color_palette(this.m_iconBounds, this.m_color, true, context);
   }
 }
+/// 設定が変化したとき呼ばれる。
+ColorPalette.prototype.OnSettingChanged = function(setting)
+{
+  if (this.m_toolCanvas != null) {
+    this.m_color = setting.getColor();
+    let context = this.m_toolCanvas.getContext('2d');
+    draw_color_palette(this.m_iconBounds, this.m_color, true, context);
+  }
+}
 
 //
 //  色ツール
@@ -221,6 +237,8 @@ function ColorCompoTool(iconBounds)
   this.m_iconBounds = iconBounds;
   this.m_slideBar = null;
   this.m_colorCompoIdx = null;
+  this.m_alphaIdx = null;
+  this.m_toolCanvas = null;
 }
 
 /// 最初の表示を行う。
@@ -229,6 +247,7 @@ ColorCompoTool.prototype.show = function(setting, colorCompoIdx, alphaIdx, toolC
 {
   this.m_colorCompoIdx = colorCompoIdx;
   this.m_alphaIdx = alphaIdx;
+  this.m_toolCanvas = null;
 
   // 現在の色を取得する。
   let color = setting.getColor();
@@ -276,6 +295,10 @@ ColorCompoTool.prototype.show = function(setting, colorCompoIdx, alphaIdx, toolC
   // 最初の表示
   let context = toolCanvas.getContext('2d');
   this.m_slideBar.show(iniVal, context);
+
+  // イベントハンドラ登録
+  this.m_toolCanvas = toolCanvas;
+  setting.addListener(this);
 }
 
 /// 共通設定から必要な値を取得する。
@@ -351,4 +374,14 @@ ColorCompoTool.prototype.OnPicked = function(e)
   let val = this.m_slideBar.OnPicked(e);
   let setting = e.m_sender.getCommonSetting();
   this.setValue(val, setting);
+}
+
+/// 設定が変更されたとき呼ばれる。
+ColorCompoTool.prototype.OnSettingChanged = function(setting)
+{
+  if (this.m_toolCanvas != null) {
+    let val = this.getValue(setting);
+    let context = this.m_toolCanvas.getContext('2d');
+    this.m_slideBar.drawValue(val, context);
+  }
 }

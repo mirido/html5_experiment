@@ -131,17 +131,7 @@ PictureCanvas.prototype.addDrawer = function(drawer)
 		assert(false);
 		return false;
 	}
-
-	// 登録済みでないか確認
-	for (let i = 0; i < this.m_drawers.length; ++i) {
-		if (this.m_drawers[i] == drawer)
-			return false;
-	}
-
-	// 登録
-	this.m_drawers.push(drawer);
-
-	return true;
+	return add_to_unique_list(this.m_drawers, drawer);
 }
 
 /// 指定した描画ツールを削除する。
@@ -152,16 +142,7 @@ PictureCanvas.prototype.removeDrawer = function(drawer)
 		assert(false);
 		return false;
 	}
-
-	// 検索
-	for (let i = 0; i < this.m_drawers.length; ++i) {
-		if (this.m_drawers[i] == drawer) {
-			this.m_drawers.splice(i, 1);
-			return true;
-		}
-	}
-
-	return false;
+	return remove_from_unique_list(this.m_drawers, drawer);
 }
 
 /// レイヤーを取得する。

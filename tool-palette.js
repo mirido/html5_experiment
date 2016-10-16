@@ -24,15 +24,34 @@ function CommonSetting(nlayers)
     this.m_layerVisibility[i] = true;
   }
 
+  // 設定変更リスナのリスト
+  this.m_changeListeners = [];
+
   // Selection boxとの連動(暫定処置)
   // this.m_thicknessSelector = new ThicknessSelector();
 }
 
+/// イベントハンドラを呼び出す。
+CommonSetting.prototype.callListener = function()
+{
+  for (let i = 0; i < this.m_changeListeners.length; ++i) {
+    if (this.m_changeListeners[i].OnSettingChanged) {
+      this.m_changeListeners[i].OnSettingChanged(this);
+    }
+  }
+}
+
 // Getter, Setter
 CommonSetting.prototype.getColor = function() { return this.m_color; }
-CommonSetting.prototype.setColor = function(value) { this.m_color = value; }
+CommonSetting.prototype.setColor = function(value) {
+  this.m_color = value;
+  this.callListener();
+}
 CommonSetting.prototype.getAlpha = function(idx) { return this.m_alpha[idx]; }
-CommonSetting.prototype.setAlpha = function(idx, value) { this.m_alpha[idx] = value; }
+CommonSetting.prototype.setAlpha = function(idx, value) {
+  this.m_alpha[idx] = value;
+  this.callListener();
+}
 CommonSetting.prototype.getThickness = function() {
   // this.m_thickness = this.m_thicknessSelector.getThickness();
   return this.m_thickness;
@@ -40,6 +59,19 @@ CommonSetting.prototype.getThickness = function() {
 CommonSetting.prototype.setThickness = function(value) {
   this.m_thickness = value;
   // this.m_thicknessSelector.setThickness(this.m_thickness);
+  this.callListener();
+}
+
+/// イベントハンドラを追加する。
+CommonSetting.prototype.addListener = function(listener)
+{
+  add_to_unique_list(this.m_changeListeners, listener);
+}
+
+/// イベントハンドラを削除する。
+CommonSetting.prototype.removeListener = function(listener)
+{
+  remove_from_unique_list(this.m_changeListeners, listener);
 }
 
 //
@@ -321,8 +353,8 @@ function ToolPalette(pictCanvas)
   this.m_toolMap[toolChainGroups[0][0]].activate(this);   // 鉛筆ツール
   this.m_toolMap[toolChainGroups[3][1]].activate(this);   // カラーパレットの黒色
   this.m_selectedToolIndexOf = [];
-  this.m_selectedToolIndexOf[0] = 0;   // 独立群[0]の選択状態
-  this.m_selectedToolIndexOf[3] = 1;   // 独立群[1]の選択状態
+  this.m_selectedToolIndexOf[0] = toolChainGroups[0][0];  // 独立群[0]の選択ツール
+  this.m_selectedToolIndexOf[3] = toolChainGroups[3][1];  // 独立群[1]の選択ツール
 
 	// イベントハンドラ登録
   this.m_bDragging = false;
