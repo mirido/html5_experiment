@@ -24,7 +24,7 @@ function CommonSetting(nlayers)
   }
 
   // Selection boxとの連動(暫定処置)
-  this.m_thicknessSelector = new ThicknessSelector();
+  // this.m_thicknessSelector = new ThicknessSelector();
 }
 
 // Getter, Setter
