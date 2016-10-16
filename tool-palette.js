@@ -381,11 +381,20 @@ ToolPalette.prototype.handleEvent = function(e)
   }
 }
 
-/// 描画ツールを設定する。
+/// 描画ツールを追加する。
+/// 異なる描画ツールを複数追加可能。
+/// その場合、描画イベント発生時に描画イベントハンドラが追加順で呼ばれる。
+/// 同一の描画ツールの複数追加はできない。(2回目以降の追加を無視する。)
 /// イベント通知先ツールから呼ばれる想定。
-ToolPalette.prototype.setDrawer = function(drawer)
+ToolPalette.prototype.addDrawer = function(drawer)
 {
-  return this.m_pictCanvas.setDrawer(drawer);
+  return this.m_pictCanvas.addDrawer(drawer);
+}
+
+/// 指定した描画ツールを削除する。
+ToolPalette.prototype.removeDrawer = function(drawer)
+{
+  return this.m_pictCanvas.removeDrawer(drawer);
 }
 
 /// ツールパレットのキャンバス(ツールアイコンの描画先)を取得する。

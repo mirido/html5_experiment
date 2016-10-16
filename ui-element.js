@@ -326,6 +326,14 @@ DrawOp_FreeHand.prototype.getMargin = function() { return 0; }
 /// 新しいインスタンスを取得する。
 function Effect_Pencil(diameter, color)
 {
+  if (diameter == null) { diameter = 1; }
+  if (color == null) { color = 'rgb(0,0,0)'; }
+  this.setParam(diameter, color);
+}
+
+/// パラメータを設定する。(クラス固有)
+Effect_Pencil.prototype.setParam = function(diameter, color)
+{
   const margin = Math.ceil(diameter / 2);
 
   this.m_pre_rendered = null;
@@ -374,6 +382,13 @@ Effect_Pencil.prototype.getMargin = function() { return this.m_ha; }
 
 /// 新しいインスタンスを取得する。
 function Cursor_Circle(diameter)
+{
+  if (diameter == null) { diameter = 1; }
+  this.setParam(diameter);
+}
+
+/// パラメータを設定する。(クラス固有)
+Cursor_Circle.prototype.setParam = function(diameter)
 {
   const margin = Math.ceil(diameter / 2);
   const color = 'rbg(0,0,0)';

@@ -14,9 +14,11 @@ function PencilTool(rect)
   // this.m_drawOp = new NullDrawOp();
   this.m_drawOp = new DrawOp_FreeHand();
   // this.m_effect = new NullEffect();
-  this.m_effect = new Effect_Pencil(19, 'rgb(128,0,0)');
-  this.m_cursor = new Cursor_Circle(19);
+  this.m_effect = new Effect_Pencil();
+  this.m_cursor = new Cursor_Circle();
   this.m_drawerCore = new DrawerBase(this.m_drawOp, this.m_effect, this.m_cursor);
+
+  this.m_setting = null;
 }
 
 /// 選択時呼ばれる。
@@ -27,8 +29,12 @@ PencilTool.prototype.OnSelected = function(e)
   // 選択時アイコン描画
   draw_icon_wrp(this.m_iconBounds, textPencilTool, null, true, e);
 
+  // 共通設定オブジェクト記憶
+  this.m_setting = e.m_sender.getCommonSetting();
+
   // 描画ツール設定
-  e.m_sender.setDrawer(this.m_drawerCore);
+  e.m_sender.addDrawer(this);
+  e.m_sender.addDrawer(this.m_drawerCore);
 }
 
 /// 選択解除時呼ばれる。
@@ -37,7 +43,8 @@ PencilTool.prototype.OnDiselected = function(e)
   console.log("PencilTool::OnDiselected() called. ");
 
   // 描画ツール解除
-  e.m_sender.setDrawer(null);
+  e.m_sender.removeDrawer(this.m_drawerCore);
+  e.m_sender.removeDrawer(this);
 
   // 非選択時アイコン描画
   draw_icon_wrp(this.m_iconBounds, textPencilTool, null, false, e);
@@ -48,6 +55,18 @@ PencilTool.prototype.OnPicked = function(e)
 {
   console.log("PencilTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
   /*NOP*/
+}
+
+/// 描画ストローク開始時に呼ばれる。
+PencilTool.prototype.OnDrawStart = function(e)
+{
+  // console.log("PencilTool.OnDrawStart() called.");
+
+  // 最新の描画設定を反映
+  let thickness = this.m_setting.getThickness();
+  let color = this.m_setting.getColor();
+  this.m_effect.setParam(thickness, color);
+  this.m_cursor.setParam(thickness);
 }
 
 //

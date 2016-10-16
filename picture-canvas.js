@@ -36,7 +36,8 @@ function PictureCanvas()
 	this.m_joint_canvas = document.getElementById("joint_canvas");
 
 	// 描画担当ツール
-	this.m_drawer = null;
+	// イベントのフックを実現可能なように、複数登録を許す。
+	this.m_drawers = [];
 
 	// 描画担当ツールに引き渡す情報
 	this.m_nTargetLayerNo = this.m_layers.length - 1;		// 描画対象レイヤー
@@ -77,23 +78,33 @@ PictureCanvas.prototype.handleEvent = function(e)
 
 		// 描画開始を通知
 		this.m_bDragging = true;
-		if (this.m_drawer) {
-			this.m_drawer.OnDrawStart(mod_e);
+		for (let i = 0; i < this.m_drawers.length; ++i) {
+			if (this.m_drawers[i].OnDrawStart) {
+				this.m_drawers[i].OnDrawStart(mod_e);
+			}
 		}
 		break;
 	case 'mouseup':
 	case 'touchend':
 		// 描画終了を通知
-		if (this.m_bDragging && this.m_drawer) {
-			this.m_drawer.OnDrawEnd(mod_e);
+		if (this.m_bDragging) {
+			for (let i = 0; i < this.m_drawers.length; ++i) {
+				if (this.m_drawers[i].OnDrawEnd) {
+					this.m_drawers[i].OnDrawEnd(mod_e);
+				}
+			}
 		}
 		this.m_bDragging = false;
 		break;
 	case 'mousemove':
 	case 'touchmove':
 		// ポインタの移動を通知
-		if (this.m_bDragging && this.m_drawer) {
-			this.m_drawer.OnDrawing(mod_e);
+		if (this.m_bDragging) {
+			for (let i = 0; i < this.m_drawers.length; ++i) {
+				if (this.m_drawers[i].OnDrawing) {
+					this.m_drawers[i].OnDrawing(mod_e);
+				}
+			}
 		}
 		break;
 	default:
@@ -108,13 +119,49 @@ PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 	return bounds;
 }
 
-/// 描画ツールを設定する。
-PictureCanvas.prototype.setDrawer = function(drawer)
+/// 描画ツールを追加する。
+/// 異なる描画ツールを複数追加可能。
+/// その場合、描画イベント発生時に描画イベントハンドラが追加順で呼ばれる。
+/// 同一の描画ツールの複数追加はできない。(2回目以降の追加を無視する。)
+/// イベント通知先ツールから呼ばれる想定。
+PictureCanvas.prototype.addDrawer = function(drawer)
 {
-	assert(!this.m_bDragging);
-	let prev = this.m_drawer;
-	this.m_drawer = drawer;
-	return prev;
+	assert(drawer != null);
+	if (this.m_bDragging) {
+		assert(false);
+		return false;
+	}
+
+	// 登録済みでないか確認
+	for (let i = 0; i < this.m_drawers.length; ++i) {
+		if (this.m_drawers[i] == drawer)
+			return false;
+	}
+
+	// 登録
+	this.m_drawers.push(drawer);
+
+	return true;
+}
+
+/// 指定した描画ツールを削除する。
+PictureCanvas.prototype.removeDrawer = function(drawer)
+{
+	assert(drawer != null);
+	if (this.m_bDragging) {
+		assert(false);
+		return false;
+	}
+
+	// 検索
+	for (let i = 0; i < this.m_drawers.length; ++i) {
+		if (this.m_drawers[i] == drawer) {
+			this.m_drawers.splice(i, 1);
+			return true;
+		}
+	}
+
+	return false;
 }
 
 /// レイヤーを取得する。
