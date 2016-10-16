@@ -18,6 +18,7 @@
 <script type="text/javascript" src="picture-canvas.js"></script>
 <script type="text/javascript" src="oebi-tool.js"></script>
 <script type="text/javascript" src="tool-palette.js"></script>
+<script type="text/javascript" src="submit.js"></script>
 <script type="text/javascript" src="index.js"></script>
 </head>
 <body id="samplePage">
@@ -34,9 +35,9 @@
 
       <!-- [やり直し] | [元に戻す] | [塗り潰し] -->
       <div align=right>
-        <button id="undo">やり直し</button>
+        <button id="redo">やり直し</button>
         <button id="undo">元に戻す</button>
-        <button id="undo" style="margin: 0px 10px 8px 0px;">塗り潰し</button>
+        <button id="paint" style="margin: 0px 10px 8px 0px;">塗り潰し</button>
       </div>
 
       <!-- キャンバス -->
@@ -47,8 +48,9 @@
       </div>
 
       <!-- [投稿] | 表題 -->
-      <button id="m_submit">投稿</button> (C) PaintBBS NEO Next Generation V0.01 alpha
-
+      <input id="m_submit" type="button" value="投稿"
+             onclick="submit(document.getElementById('target').value);">
+      (C) PaintBBS NEO Next Generation V0.02 alpha
       <!-- 左側サブペイン END　-->
     </div>
     <div class="box">
@@ -75,7 +77,7 @@
       <!-- 線幅 1px～30 px -->
       <!-- 1 px黒/5 px白/10 px白 -->
       <!-- layer1/layer0 -->
-      <canvas id="tool_palette" width=50 height=443></canvas>
+      <canvas id="tool_palette" width=50 height=443 style="padding: 0px 20px 0px 0px;"></canvas>
 
       <!-- 右側サブペイン END -->
     </div>
@@ -113,6 +115,7 @@
   -->
   </p>
   <p>
+    ↓↓↓レイヤー合成結果 <small>（投稿ボタン押下か、スポイトツールで更新）</small><BR>
     <canvas id="joint_canvas"></canvas>
   </p>
   <p>

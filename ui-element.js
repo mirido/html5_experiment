@@ -30,7 +30,11 @@ function ImagePatch(src_ctx, src_width, src_height, points, margin)
 
   // 画像データを記憶
   let r = this.m_abs_dirty;    // Alias
-  this.m_imageData = src_ctx.getImageData(r.x, r.y, r.width, r.height);
+  if (r.width > 0 && r.height > 0) {    // ChromeではこうしないとNG。
+    this.m_imageData = src_ctx.getImageData(r.x, r.y, r.width, r.height);
+  } else {
+    this.m_imageData = null;
+  }
 }
 
 /// 画像を復元する。
@@ -38,6 +42,9 @@ function ImagePatch(src_ctx, src_width, src_height, points, margin)
 /// キャンバスのコンテキストと想定。
 ImagePatch.prototype.restore = function(dst_ctx)
 {
+  if (this.m_imageData == null)
+    return;
+
   let r = this.m_abs_dirty;   // Alias
   dst_ctx.putImageData(this.m_imageData, r.x, r.y);
 }
@@ -46,6 +53,9 @@ ImagePatch.prototype.restore = function(dst_ctx)
 /// dst_ctxと構築時に与えたsrc_ctxの関係は任意。
 ImagePatch.prototype.put = function(cx, cy, dst_ctx, dst_width, dst_height)
 {
+  if (this.m_imageData == null)
+    return;
+
   // Image patchをputすべき(sx, sy)
   let sx = Math.ceil(cx - this.m_bounds.width / 2);
   let sy = Math.ceil(cy - this.m_bounds.height / 2);

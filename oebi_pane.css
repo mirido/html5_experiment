@@ -5,8 +5,9 @@
 .box {
   /*float: right;*/
   float: left;
-  border: thin solid blue;
+  /*border: thin solid blue;*/
   vertical-align: middle;
+  cursor: default
 }
 
 .boxContainer {

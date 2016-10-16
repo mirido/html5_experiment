@@ -6,8 +6,7 @@ const {app, BrowserWindow} = require('electron');
 let win;
 
 function createWindow() {
-//  win = new BrowserWindow({width: 350, height: 500});
-    win = new BrowserWindow({ width: 500, height: 600 });
+    win = new BrowserWindow({ width: 600, height: 700 });
     win.loadURL('file://' + __dirname + '/index.html');
 //  win.webContents.openDevTools();
 
