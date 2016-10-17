@@ -449,7 +449,7 @@ ToolPalette.prototype.OnDraggingStart = function(mod_e)
     if (curToolChainIdx != null) {                // (選択中有り)
       if (curToolChainIdx != selToolChainIdx) {   // (選択が変化)
         // 選択終了通知
-        this.m_toolMap[this.m_curToolChainIdx].OnSelection(mod_e);
+        this.m_toolMap[curToolChainIdx].OnSelection(mod_e);
       }
     }
 
