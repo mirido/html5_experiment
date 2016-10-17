@@ -1,3 +1,6 @@
+/*Copyright (c) 2016, mirido
+All rights reserved.*/
+
 /*
  *  横並びレイアウト
  */
@@ -5,8 +8,9 @@
 .box {
   /*float: right;*/
   float: left;
-  border: thin solid blue;
+  /*border: thin solid blue;*/
   vertical-align: middle;
+  cursor: default
 }
 
 .boxContainer {
@@ -44,6 +48,7 @@
     width: 411px;
     height: 411px;
     background-color: bgra(255, 255, 255, 255); /*白色キャンバス化を意図したが効かない*/
+    overflow: scroll;   /* スクロール表示 */
 }
 
 #viewport canvas {

@@ -1,17 +1,20 @@
+// Copyright (c) 2016, mirido
+// All rights reserved.
+
 'use strict';
 
 console.log("index.js starts.");
 
-let g_view_port;					// 描画領域
-let g_layers;							// レイヤー
-let g_tool_palette;				// ツールパレット
-let g_joint_canvas;				// 合成画像描画先
-
 // ポインタ状態管理
 let g_pointManager;
 
+// キー入力管理
+let g_keyStateManager;
+
 // 描画キャンバス
 let g_pictureCanvas;
+
+// ツールパレット
 let g_toolPalette;
 
 // イベントハンドラ登録
@@ -23,35 +26,32 @@ function init_wnd()
 {
 	console.log("init() called.");
 
-	// DOMオブジェクト取得
-	g_view_port = document.getElementById("viewport");
-	g_layers = [
-		document.getElementById("canvas_0"),
-		document.getElementById("canvas_1"),
-		document.getElementById("canvas_2")
-	];
-	g_tool_palette = document.getElementById("tool_pallete");
-	g_joint_canvas = document.getElementById("joint_canvas");
-
 	// インスタンス生成
 	g_pointManager = new PointManager();
+	g_keyStateManager = new KeyStateManager();
 	g_pictureCanvas = new PictureCanvas();
-	g_toolPalette = new ToolPalette();
+	g_toolPalette = new ToolPalette(g_pictureCanvas);
 
 	// キャンバスを白色でfill
 	g_pictureCanvas.eraseCanvas();
 
 	// 図形描画
-  sample01(g_layers);
+  sample01(g_pictureCanvas.m_layers);
+
+	// utest_ImagePatch();		// UTEST
 
 	// 画像合成
-	g_pictureCanvas.getJointImage(g_joint_canvas);
+	let joint_canvas = document.getElementById("joint_canvas");
+	g_pictureCanvas.getJointImage(joint_canvas);
 }
 
 /// ウィンドウが閉じるとき呼ばれる。
 function dispose_wnd()
 {
+	g_pointManager.dispose();
 	g_pointManager = null;
+	g_keyStateManager.dispose();
+	g_keyStateManager = null;
 	// TBD
 }
 
@@ -88,14 +88,13 @@ function sample01(layers)
   ctx2.fillStyle = "black";
   ctx2.fillRect(0, 0, 140, 140);
   ctx2.putImageData(image, 10, 10);
-}
 
-//
-//	マウスイベントのlistener
-//
-
-function listener_OnMouseDown(e)
-{
-	console.log("hello world!");
-	console.dir(e);
+	// draw_circle()のテスト
+	ctx.fillStyle = 'rgb(0, 0, 0)';
+	ctx.globalAlpha = 1.0;
+	draw_circle(200, 200, 100, ctx, false);
+	draw_circle(200, 200, 30, ctx, false);
+	draw_circle(200, 200, 19, ctx, false);
+	draw_circle(200, 200, 10, ctx, false);
+	ctx.fillRect(150, 150, 50, 50);
 }
