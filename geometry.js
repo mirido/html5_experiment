@@ -46,8 +46,8 @@ function encode_rect(coords)
 	let rect = jsRect(
 		coords[0],
 		coords[1],
-		coords[2] - coords[0],
-		coords[3] - coords[1]
+		coords[2] - coords[0] + 1,
+		coords[3] - coords[1] + 1
 	);
 	return rect;
 }
@@ -57,8 +57,8 @@ function encode_rect_in_place(coords, rect)
 {
 	rect.x = coords[0];
 	rect.y = coords[1];
-	rect.width  = coords[2] - coords[0];
-	rect.height = coords[3] - coords[1];
+	rect.width  = coords[2] - coords[0] + 1;
+	rect.height = coords[3] - coords[1] + 1;
 }
 
 /// 座標列を画像内にクリップする。
