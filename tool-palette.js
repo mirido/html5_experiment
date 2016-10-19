@@ -530,8 +530,8 @@ ToolPalette.prototype.getToolPaletteCanvas = function()
 ToolPalette.prototype.getBoundingDrawAreaRect = function()
 {
   // ツールパレットはpad幅0なので、client boudsが即draw area boundsである。
-  let bounds = this.m_palette.getBoundingClientRect();
-	return unify_rect(bounds);
+  let bounds = getBoundingClientRectWrp(this.m_palette);
+  return bounds;
 }
 
 /// 共通設定を参照する。

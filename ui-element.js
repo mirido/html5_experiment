@@ -243,6 +243,9 @@ NullDrawOp.prototype.guideOnDrawEnd = function(e, points, context) { }
 /// マージンを取得する。
 NullDrawOp.prototype.getMargin = function() { return 0; }
 
+/// パラメータ設定のためのplace holder。引数は派生クラス固有。
+NullDrawOp.prototype.setParam = function() { }
+
 //
 //  エフェクト0: NullEffect
 //
@@ -256,6 +259,9 @@ NullEffect.prototype.apply = function(points, context) { }
 /// マージンを取得する。
 NullEffect.prototype.getMargin = function() { return 0; }
 
+/// パラメータ設定のためのplace holder。引数は派生クラス固有。
+NullEffect.prototype.setParam = function() { }
+
 //
 //  カーソル0: NullCursor
 //
@@ -268,6 +274,9 @@ NullCursor.prototype.put = function(e, cur_pt, context) { }
 
 /// カーソルをクリアする。
 NullCursor.prototype.clear = function(context) { }
+
+/// パラメータ設定のためのplace holder。引数は派生クラス固有。
+NullCursor.prototype.setParam = function() { }
 
 //
 //  描画オペレーター1: 手書き

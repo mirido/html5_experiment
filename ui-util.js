@@ -4,8 +4,28 @@
 'use strict';
 
 //
-//  General
+//  ブラウザ仕様差の吸収
 //
+
+/// ブラウザを判定する。下記から借用。
+/// http://etc9.hatenablog.com/entry/20110927/1317140891
+function getBrowserType()
+{
+  let userAgent = window.navigator.userAgent.toLowerCase();
+  if (userAgent.indexOf('opera') != -1) {
+    return 'opera';
+  } else if (userAgent.indexOf('msie') != -1) {
+    return 'ie';
+  } else if (userAgent.indexOf('chrome') != -1) {
+    return 'chrome';
+  } else if (userAgent.indexOf('safari') != -1) {
+    return 'safari';
+  } else if (userAgent.indexOf('gecko') != -1) {
+    return 'gecko';
+  } else {
+    return null;
+  }
+}
 
 /// getBoundingClientRect()が返す矩形の環境依存の違いを吸収するwrapper。
 function unify_rect(rect)
@@ -17,11 +37,77 @@ function unify_rect(rect)
   }
 }
 
+/// getBoundingClientRect()のブラウザ依存性を吸収するwrapper(関数)を返す関数。
+function get_getBoundingClientRectWrp()
+{
+  let browserType = getBrowserType();
+  console.log("browserType=" + browserType);
+  if (browserType == 'ie') {
+    // IEは2 pxずれた座標を返すので対策する。下記Webページを参照した。
+    // http://terurou.hateblo.jp/entry/20080223/1203705170
+    // 実はmiridoのIEは'gecko'だったのでテストできていない…
+    return function(target) {
+      // eval(dbgv([ 'document.body.scrollLeft', 'document.documentElement.scrollLeft' ]));
+      // eval(dbgv([ 'document.body.scrollTop', 'document.documentElement.scrollTop' ]));
+      let b = target.getBoundingClientRect();
+      let bounds = new JsRect(b.left, b.top, b.width, b.height);
+      if (document.body.scrollLeft != void(0)) {
+        bounds.x -= document.body.scrollLeft;
+      } else if (document.documentElement.scrollLeft != void(0)) {
+        bounds.x -= document.documentElement.scrollLeft;
+      }
+      if (document.body.scrollTop != void(0)) {
+        bounds.y -= document.body.scrollTop;
+      } else if (document.documentElement.scrollTop != void(0)) {
+        bounds.y -= document.documentElement.scrollTop;
+      }
+      return bounds;
+    };
+  } else if (browserType == 'gecko') {
+    // Geckoは座標を実数(小数点以下有り)で返す。
+    // これが原因で、ImagePatchの取得と復元を繰り返す度に画像がずれていく
+    // 問題が発生したので、下記wrapperで整数にする。
+    return function(target) {
+      // eval(dbgv([ 'document.body.scrollLeft', 'document.documentElement.scrollLeft' ]));
+      // eval(dbgv([ 'document.body.scrollTop', 'document.documentElement.scrollTop' ]));
+      let b = target.getBoundingClientRect();
+      let bounds = new JsRect(
+        Math.ceil(b.left),
+        Math.ceil(b.top),
+        Math.ceil(b.width),
+        Math.ceil(b.height)
+      );
+      // 情報をいまいちまとめ切れていないが、
+      // 実験する限り、少なくともIE11では下記補正は不要の模様。
+      // bounds.x -= document.documentElement.scrollLeft;
+      // bounds.y -= document.documentElement.scrollTop;
+      return bounds;
+    };
+  } else {
+    // IE以外のgetBoundingClientRect()では座標は問題無いらしい。
+    // ただしDOMRectのメンバx, yを持たない無いブラウザが存在する。(Chromeとか)
+    // それはunify_rect()で処置しておく。
+    return function(target) {
+      // eval(dbgv([ 'document.body.scrollLeft', 'document.documentElement.scrollLeft' ]));
+      // eval(dbgv([ 'document.body.scrollTop', 'document.documentElement.scrollTop' ]));
+      let bounds = target.getBoundingClientRect();
+      return unify_rect(bounds);
+    };
+  }
+}
+
+/// getBoundingClientRect()のブラウザ依存性を吸収するwrapper。
+const getBoundingClientRectWrp = get_getBoundingClientRectWrp();
+
 /// HTMLページのクライアント座標系をウィンドウのクライアント座標系に変換する。
 function conv_page_client_to_wnd_client(point)
 {
   return jsPoint(point.x - window.pageXOffset, point.y - window.pageYOffset);
 }
+
+//
+//  General
+//
 
 /// コンポーネント値からRGB色表現を取得する。
 function get_color_as_RGB(colors)

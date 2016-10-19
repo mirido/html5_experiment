@@ -119,8 +119,8 @@ PictureCanvas.prototype.handleEvent = function(e)
 /// 要素の絶対座標を返す。
 PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 {
-	let bounds = this.m_layers[0].getBoundingClientRect();
-	return unify_rect(bounds);
+	let bounds = getBoundingClientRectWrp(this.m_layers[0]);
+	return bounds;
 }
 
 /// 描画ツールを追加する。
