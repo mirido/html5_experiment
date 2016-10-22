@@ -388,3 +388,92 @@ ColorCompoTool.prototype.OnSettingChanged = function(setting)
     this.m_slideBar.drawValue(val, context);
   }
 }
+
+//
+//  描画合成ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function DrawCompoTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_drawCompoIdx = null;
+  this.m_faceText = null;
+  this.m_tgColor = null;
+}
+
+/// アイコングラフィックを表示する。
+DrawCompoTool.prototype.drawIcon = function(color, context)
+{
+  let iconGraphicFunc = function(iconBounds, context) {
+    context.fillStyle = color;
+    let b = iconBounds;   // Alias
+    context.fillRect(b.x + 3, b.y + 2, b.width - 7, Math.floor((b.height - 4) / 2));
+  };
+  draw_icon_ex(this.m_iconBounds, this.m_faceText, iconGraphicFunc, false, context);
+}
+
+/// 最初の表示を行う。
+/// ここで与える引数により、描画合成方法が決まる。
+DrawCompoTool.prototype.show = function(setting, drawCompoIdx, toolCanvas)
+{
+  this.m_drawCompoIdx = drawCompoIdx;
+  this.m_tgColor = setting.getMaskColor();
+
+  switch (this.m_drawCompoIdx) {
+  case 0:
+    this.m_faceText = '通常';
+    break;
+  case 1:
+    this.m_faceText = 'マスク';
+    break;
+  case 2:
+    this.m_faceText = '逆マスク';
+    break;
+  default:
+    assert(false);
+    break;
+  }
+
+  // アイコン描画
+  // 当ツールの表示上のアイコン状態は常にfalse。
+  let context = toolCanvas.getContext('2d');
+  this.drawIcon(this.m_tgColor, context);
+}
+
+/// 選択時呼ばれる。
+DrawCompoTool.prototype.OnSelected = function(e)
+{
+  // console.log("DrawCompoTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + "), txt=" + this.m_faceText);
+  let toolPalette = e.m_sender;
+  let context = toolPalette.getToolPaletteCanvas().getContext('2d');
+
+  this.drawIcon(this.m_tgColor, context);
+  this.OnPicked(e);
+}
+
+/// 選択解除時呼ばれる。
+DrawCompoTool.prototype.OnDiselected = function(e)
+{
+  // console.log("DrawCompoTool::OnDiselected() called. ");
+  this.m_bActive = false;
+}
+
+/// 再ポイントされたとき呼ばれる。
+DrawCompoTool.prototype.OnPicked = function(e)
+{
+  // console.log("DrawCompoTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  let toolPalette = e.m_sender;
+  let setting = toolPalette.getCommonSetting();
+  let context = toolPalette.getToolPaletteCanvas().getContext('2d');
+
+  // CTRLキーが押されていたら対象色を変更する。
+  if ((e.m_spKey & SpKey.KY_CTRL) != 0) {
+    this.m_tgColor = setting.getColor();
+    setting.setMaskColor(this.m_color);
+    this.drawIcon(this.m_tgColor, context);
+  }
+
+  // TODO: ツール別処理。
+  // 例えば、マスクツールならマスクを作成する。
+}
