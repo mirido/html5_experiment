@@ -40,6 +40,8 @@ function init_wnd()
 
 	// utest_ImagePatch();		// UTEST
 	// utesst_ColorConversion();		// UTEST
+	// utest_canvas_2d_context(g_pictureCanvas.m_layers[2]);	// UTEST
+	// utest_get_mask_image();		// UTEST
 
 	// 画像合成
 	let joint_canvas = document.getElementById("joint_canvas");

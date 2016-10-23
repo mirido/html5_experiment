@@ -50,6 +50,10 @@ CommonSetting.prototype.getColor = function() { return this.m_color; }
 CommonSetting.prototype.setColor = function(value) {
   this.m_color = value;
   this.callListener();
+
+  // 作業中レイヤー固定要求発行
+  // グローバル変数g_pictureCanvasの使用はad-hoc。
+  g_pictureCanvas.raiseLayerFixRequest();
 }
 CommonSetting.prototype.getAlpha = function(idx) { return this.m_alpha[idx]; }
 CommonSetting.prototype.setAlpha = function(idx, value) {
@@ -539,6 +543,55 @@ ToolPalette.prototype.addDrawer = function(drawer)
 ToolPalette.prototype.removeDrawer = function(drawer)
 {
   return this.m_pictCanvas.removeDrawer(drawer);
+}
+
+/// レイヤー数を取得する。
+/// 背景レイヤーも含むので注意。
+ToolPalette.prototype.getNumLayers = function()
+{
+	return this.m_pictCanvas.getNumLayers();
+}
+
+/// レイヤーを取得する。
+ToolPalette.prototype.getLayer = function(layerNo)
+{
+  return this.m_pictCanvas.getLayer(layerNo);
+}
+
+/// カレントレイヤーを取得する。
+ToolPalette.prototype.getCurLayer = function()
+{
+  return this.m_pictCanvas.getCurLayer();
+}
+
+/// サーフェスを取得する。
+ToolPalette.prototype.getSurface = function()
+{
+  return this.m_pictCanvas.getSurface();
+}
+
+/// キャンバスを全クリアする。
+ToolPalette.prototype.eraseCanvas = function()
+{
+  this.m_pictCanvas.eraseCanvas();
+}
+
+/// 全レイヤーを合成する。
+ToolPalette.prototype.getJointImage = function(dstCanvas)
+{
+  this.m_pictCanvas.getJointImage(dstCanvas);
+}
+
+/// レイヤー固定要求リスナを追加する。
+ToolPalette.prototype.addLayerFixListener = function(listener)
+{
+  return this.m_pictCanvas.addLayerFixListener(listener);
+}
+
+/// レイヤー固定要求リスナを削除する。
+ToolPalette.prototype.removeLayerFixListener = function(listener)
+{
+  return this.m_pictCanvas.removeLayerFixListener(listener);
 }
 
 /// ツールパレットのキャンバス(ツールアイコンの描画先)を取得する。

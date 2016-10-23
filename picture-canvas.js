@@ -36,6 +36,7 @@ function PictureCanvas()
 		document.getElementById("canvas_1"),
 		document.getElementById("canvas_2")
 	];
+	this.m_surface = document.getElementById("surface");
 	this.m_joint_canvas = document.getElementById("joint_canvas");
 
 	// 描画担当ツール
@@ -59,6 +60,9 @@ function PictureCanvas()
 	// fitCanvas()呼出し後である必要がある。
 	this.m_layer_left = parseInt(this.m_layers[0].style.left);
 	this.m_layer_top = parseInt(this.m_layers[0].style.top);
+
+	// レイヤ固定要求リスナ
+	this.m_layerFixListeners = [];
 }
 
 /// イベントリスナ。
@@ -167,6 +171,7 @@ PictureCanvas.prototype.getLayer = function(layerNo)
 PictureCanvas.prototype.changeLayer = function(layerNo)
 {
 	assert(1 <= layerNo && layerNo < this.m_layers.length);
+	this.raiseLayerFixRequest(this.m_layers[layerNo]);
 	this.m_nTargetLayerNo = layerNo;
 }
 
@@ -176,15 +181,24 @@ PictureCanvas.prototype.getCurLayer = function()
 	return this.m_layers[this.m_nTargetLayerNo];
 }
 
+/// サーフェスを取得する。
+PictureCanvas.prototype.getSurface = function()
+{
+	return this.m_surface;
+}
+
 /// キャンバスを全クリアする。
 PictureCanvas.prototype.eraseCanvas = function()
 {
+	this.raiseLayerFixRequest();
 	erase_canvas(this.m_layers);
+	// erase_single_layer(this.m_surface);	// サーフェスの消去はツールの仕事とする。
 }
 
 /// 全レイヤーを合成する。
 PictureCanvas.prototype.getJointImage = function(dstCanvas)
 {
+	this.raiseLayerFixRequest();
 	get_joint_image(this.m_layers, dstCanvas);
 }
 
@@ -262,4 +276,36 @@ PictureCanvas.prototype.fitCanvas = function()
 	// View portのサイズ設定
 	this.m_view_port.style.width = vport_outer_width_min + "px";
 	this.m_view_port.style.height = vport_outer_height_min + "px";
+}
+
+/// レイヤー固定要求リスナを追加する。
+PictureCanvas.prototype.addLayerFixListener = function(listener)
+{
+	console.log("PictureCanvas::addLayerFixListener() called.")
+	assert(listener != null);
+	return add_to_unique_list(this.m_layerFixListeners, listener);
+}
+
+/// レイヤー固定要求リスナを削除する。
+PictureCanvas.prototype.removeLayerFixListener = function(listener)
+{
+	console.log("PictureCanvas::removeLayerFixListener() called.")
+	assert(listener != null);
+	return remove_from_unique_list(this.m_layerFixListeners, listener);
+}
+
+/// レイヤー固定要求を発生させる。
+PictureCanvas.prototype.raiseLayerFixRequest = function(nextLayer)
+{
+	// console.log("PictureCanvas::raiseLayerFixRequest() called. n=" + this.m_layerFixListeners.length);
+	if (nextLayer == null) {
+		nextLayer = this.m_layers[this.m_nTargetLayerNo];
+	}
+	for (let i = 0; i < this.m_layerFixListeners.length; ++i) {
+		console.log("PictureCanvas::raiseLayerFixRequest(): Checking listener...");
+		if (this.m_layerFixListeners[i].OnLayerToBeFixed) {
+			console.log("PictureCanvas::raiseLayerFixRequest(): Calling listener...");
+			this.m_layerFixListeners[i].OnLayerToBeFixed(this, nextLayer);
+		}
+	}
 }

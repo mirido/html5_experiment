@@ -136,7 +136,8 @@ DrawerBase.prototype.OnDrawStart = function(e)
   }
 
   // カーソル描画
-  this.m_cursor.put(e, cur_pt, context);
+  let ctx_surface = e.m_sender.getSurface().getContext('2d');
+  this.m_cursor.put(e, cur_pt, ctx_surface);
 }
 
 /// 描画ストローク中に随時呼ばれる。
@@ -155,7 +156,8 @@ DrawerBase.prototype.OnDrawing = function(e)
   }
 
   // カーソルクリア
-  this.m_cursor.clear(context);
+  let ctx_surface = e.m_sender.getSurface().getContext('2d');
+  this.m_cursor.clear(ctx_surface);
 
   // 領域復元
   if (this.m_imagePatch != null) {
@@ -177,7 +179,7 @@ DrawerBase.prototype.OnDrawing = function(e)
   }
 
   // カーソル描画
-  this.m_cursor.put(e, cur_pt, context);
+  this.m_cursor.put(e, cur_pt, ctx_surface);
 }
 
 /// 描画ストローク終了時に呼ばれる。
@@ -197,7 +199,8 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   }
 
   // カーソルクリア
-  this.m_cursor.clear(context);
+  let ctx_surface = e.m_sender.getSurface().getContext('2d');
+  this.m_cursor.clear(ctx_surface);
 
   // 領域復元
   if (this.m_imagePatch != null) {
@@ -424,14 +427,14 @@ Effect_Pencil.prototype.getMargin = function() { return this.m_ha; }
 function Cursor_Circle(diameter)
 {
   if (diameter == null) { diameter = 1; }
-  this.setParam(diameter);
+  this.setParam(diameter, 'rgb(0,0,0)');
 }
 
 /// パラメータを設定する。(クラス固有)
-Cursor_Circle.prototype.setParam = function(diameter)
+Cursor_Circle.prototype.setParam = function(diameter, color)
 {
   const margin = Math.ceil(diameter / 2);
-  const color = 'rbg(0,0,0)';
+
 
   this.m_pre_rendered = null;
   this.m_ha = 0;
