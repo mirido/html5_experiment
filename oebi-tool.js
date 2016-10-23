@@ -511,7 +511,7 @@ DrawCompoTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
         }
 
         // レイヤー合成結果画像からthis.m_maskCanvasの不透明画素に対応する画素を除外
-        toolPalette.getJointImage(this.m_joint_canvas);
+        toolPalette.getJointImage_wo_event(this.m_joint_canvas);
         fix_image_w_mask(this.m_joint_canvas, this.m_maskCanvas, true, surface);
       }
     }

@@ -576,6 +576,12 @@ ToolPalette.prototype.eraseCanvas = function()
   this.m_pictCanvas.eraseCanvas();
 }
 
+/// 全レイヤーを合成する。(イベント発生無し)
+ToolPalette.prototype.getJointImage_wo_event = function(dstCanvas)
+{
+  this.m_pictCanvas.getJointImage_wo_event(dstCanvas);
+}
+
 /// 全レイヤーを合成する。
 ToolPalette.prototype.getJointImage = function(dstCanvas)
 {

@@ -195,6 +195,12 @@ PictureCanvas.prototype.eraseCanvas = function()
 	// erase_single_layer(this.m_surface);	// サーフェスの消去はツールの仕事とする。
 }
 
+/// 全レイヤーを合成する。(イベント発生無し)
+PictureCanvas.prototype.getJointImage_wo_event = function(dstCanvas)
+{
+	get_joint_image(this.m_layers, dstCanvas);
+}
+
 /// 全レイヤーを合成する。
 PictureCanvas.prototype.getJointImage = function(dstCanvas)
 {
