@@ -47,7 +47,7 @@ All rights reserved.*/
     /*border: thick solid magenta;*/
     width: 411px;
     height: 411px;
-    background-color: bgra(255, 255, 255, 255); /*白色キャンバス化を意図したが効かない*/
+    background-color: rgba(255, 255, 255, 255); /*白色キャンバス化を意図したが効かない*/
     overflow: scroll;   /* スクロール表示 */
 }
 

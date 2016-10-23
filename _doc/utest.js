@@ -76,4 +76,82 @@ function utesst_ColorConversion()
 	console.dir(colors2);
 	let colors3 = get_components_from_RGBx("rgba(4,5,6,7)");
 	console.dir(colors3);
+  let colors4 = get_components_from_RGBx("#a55abb");
+	console.dir(colors4);
+  let colors5 = get_components_from_RGBx("#CCDDEEFF");
+	console.dir(colors5);
+}
+
+/// UTEST: Canvas 2D Contextの実験
+function utest_canvas_2d_context(canvas)
+{
+  {
+    let ctx1 = canvas.getContext('2d');
+    ctx1.fillStyle = 'rgb(255,0,0)';
+    ctx1.fillRect(0, 0, 100, 100);    // 赤色の矩形を描画
+    let imgd1 = ctx1.getImageData(0, 0, canvas.width, canvas.height);
+    ctx1.putImageData(imgd1, 1, 1);
+  }
+  erase_single_layer(canvas);
+  {
+    // 同一イベント処理内でのコンテキストの取得し直し実験
+    let ctx2 = canvas.getContext('2d');
+    ctx2.fillStyle = 'rgb(0,255,0)';
+    ctx2.fillRect(100, 100, 100, 100);  // 緑色の矩形を描画
+  }
+}
+
+/// UTEST: マスク機能のための基礎関数のテスト。
+function utest_get_mask_image()
+{
+  console.log("utestmask_image() called.");
+  let view_port = document.getElementById("viewport");
+	let layers = [
+		document.getElementById("canvas_0"),
+		document.getElementById("canvas_1"),
+		document.getElementById("canvas_2")
+	];
+	let surface = document.getElementById("surface");
+	let joint_canvas = document.getElementById("joint_canvas");
+
+  let tg_layer = layers[2];
+
+  {
+    // tg_layerに描画 -- 黒色円弧の右下が青色矩形で一部欠ける。
+    let ctx_tg = tg_layer.getContext('2d');
+    ctx_tg.fillStyle = 'rgb(0,0,255)';
+    ctx_tg.fillRect(250, 250, 100, 100);
+  }
+
+  // マスク取得 -- 黒色円弧の右下が欠けたものがマスクになる。
+  get_mask_image(tg_layer, 'rgb(0,0,0)', surface);
+
+  // tg_layerにさらに描画(黒色以外)
+  // このとき、surfaceにマスク描画されているので、黒色線は一切欠けない。
+  {
+    let ctx_tg = tg_layer.getContext('2d');
+    ctx_tg.fillStyle = 'rgb(0,255,255)';
+    ctx_tg.fillRect(100, 100, 200, 200);
+  }
+
+  // マスク定着
+  if (true) {
+    fix_mask_image(surface, tg_layer);
+  } else {
+    let ctx_mask = surface.getContext('2d');
+    let imgd = ctx_mask.getImageData(0, 0, surface.width, surface.height);
+    let ctx_tg = tg_layer.getContext('2d');
+    ctx_tg.putImageData(imgd, 0, 0);
+  }
+
+  // surface消去 -- これを行ってももはや画像は変わらない。
+  erase_single_layer(surface);
+
+  if (false) {
+    let ctx_tg = tg_layer.getContext('2d');
+    ctx_tg.fillStyle = 'rgb(255,0,0)';
+    ctx_tg.fillRect(10, 10, 300, 350);
+    let imgd = ctx_tg.getImageData(0, 0, 200, 200);
+    ctx_tg.putImageData(imgd, 100, 100);
+  }
 }

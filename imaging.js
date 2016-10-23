@@ -7,7 +7,7 @@
 //  単一キャンバス操作
 //
 
-/// キャンバスを不透明にする。
+/// レイヤーを不透明にする。
 function make_opaque(canvas)
 {
   const width = canvas.width;
@@ -36,6 +36,13 @@ function make_opaque(canvas)
   ctx.putImageData(imgd, 0, 0);
 }
 
+/// レイヤー1枚を透明にする。
+function erase_single_layer(canvas)
+{
+  let ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
 //
 //  マルチレイヤー操作
 //
@@ -48,14 +55,169 @@ function erase_canvas(
 {
   for (let i = 0; i < layers.length; ++i) {
     let ctx = layers[i].getContext('2d');
-    ctx.fillStyle
-      = (i == 0)
-      ? "rgba(255, 255, 255, 255)"
-      : "rgba(0, 0, 0, 0)";
-    assert(layers[i].width == layers[0].width);
-    assert(layers[i].height == layers[0].height);
-    ctx.fillRect(0, 0, layers[i].width, layers[i].height);
+    if (i == 0) {
+      ctx.fillStyle = 'rgb(255,255,255)';
+      ctx.fillRect(0, 0, layers[i].width, layers[i].height);
+    } else {
+      ctx.clearRect(0, 0, layers[i].width, layers[i].height);
+    }
   }
+}
+
+/// レイヤーをコピーする。
+function copy_layer(src_canvas, dst_canvas)
+{
+  const width = src_canvas.width;
+  const height = src_canvas.height;
+
+  // 元画像(対象イメージ)データ取得
+  let ctx1 = src_canvas.getContext('2d');
+  let imgd1 = ctx1.getImageData(0, 0, width, height);
+  assert(imgd1.width == width && imgd1.height == height);
+
+  // バッファ(描画先イメージ)取得
+  let ctx2 = dst_canvas.getContext('2d');
+
+  // 出力先に描画
+  ctx2.putImageData(imgd1, 0, 0);
+}
+
+/// src_canvasの不透明画素に対応する
+/// dst_canvasの画素を透明化する。
+/// (context.globalCompositeOperation = 'destination_out'と同じ。)
+function get_destinaton_out_image(src_canvas, dst_canvas)
+{
+  const width = src_canvas.width;
+  const height = src_canvas.height;
+
+  // 元画像(対象イメージ)データ取得
+  let ctx1 = src_canvas.getContext('2d');
+  let imgd1 = ctx1.getImageData(0, 0, width, height);
+  assert(imgd1.width == width && imgd1.height == height);
+
+  // バッファ(描画先イメージ)取得
+  let ctx2 = dst_canvas.getContext('2d');
+  let imgd2 = ctx2.getImageData(0, 0, width, height);
+  assert(imgd2.width == width && imgd2.height == height);
+
+  // 描画
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base = head + px * 4;
+      let A1 = imgd1.data[base + 3];
+      if (A1 != 0) {
+        imgd2.data[base + 0] = 0;
+        imgd2.data[base + 1] = 0;
+        imgd2.data[base + 2] = 0;
+        imgd2.data[base + 3] = 0;
+      }
+    }
+  }
+
+  // 出力先に描画
+  ctx2.putImageData(imgd2, 0, 0);
+}
+
+/// 指定色のみの画像(または指定色以外の画像)を作る。
+/// src_canvasとdst_canvasは同一サイズが前提。
+function get_mask_image(src_canvas, color, dst_canvas)
+{
+  const width = src_canvas.width;
+  const height = src_canvas.height;
+  // 下記を行うとdst_canvasの画像が消えてしまう。
+  // dst_canvas.setAttribute('width', width);
+  // dst_canvas.setAttribute('height', height);
+  // assert(dst_canvas.width == width && dst_canvas.height == height);
+
+  // 元画像データ取得
+  let ctx1 = src_canvas.getContext('2d');
+  let imgd1 = ctx1.getImageData(0, 0, width, height);
+  assert(imgd1.width == width && imgd1.height == height);
+
+  // バッファ取得
+  let ctx2 = dst_canvas.getContext('2d');
+  let imgd2 = ctx2.getImageData(0, 0, width, height);
+  assert(imgd2.width == width && imgd2.height == height);
+
+  // マスク画像作成
+  let colors = get_components_from_RGBx(color);
+  // console.dir(colors);
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base = head + px * 4;
+      let R1 = imgd1.data[base + 0];
+      let G1 = imgd1.data[base + 1];
+      let B1 = imgd1.data[base + 2];
+      let A1 = imgd1.data[base + 3];
+      let bMatched = (A1 != 0 && (R1 == colors[0] && G1 == colors[1] && B1 == colors[2]));
+      if (bMatched) {
+        imgd2.data[base + 0] = R1;
+        imgd2.data[base + 1] = G1;
+        imgd2.data[base + 2] = B1;
+        imgd2.data[base + 3] = A1;
+      } else {
+        imgd2.data[base + 0] = 0;
+        imgd2.data[base + 1] = 0;
+        imgd2.data[base + 2] = 0;
+        imgd2.data[base + 3] = 0;
+      }
+    }
+  }
+
+  // 出力先に描画
+  ctx2.putImageData(imgd2, 0, 0);
+}
+
+/// src_canvasの内容を、
+/// マスク画像(または逆マスク画像)に従い
+/// dst_canvasに定着させる。
+/// src_canvas、マスク画像、dst_canvasは同一サイズが前提。
+function fix_image_w_mask(src_canvas, mask_canvas, bInv, dst_canvas)
+{
+  const width = src_canvas.width;
+  const height = src_canvas.height;
+
+  // 元画像データ取得
+  let ctx1 = src_canvas.getContext('2d');
+  let imgd1 = ctx1.getImageData(0, 0, width, height);
+  assert(imgd1.width == width && imgd1.height == height);
+
+  // マスク画像データ取得
+  let ctx_mask = mask_canvas.getContext('2d');
+  let imgd_mask = ctx_mask.getImageData(0, 0, width, height);
+
+  // 出力先バッファ取得
+  let ctx2 = dst_canvas.getContext('2d');
+  let imgd2 = ctx2.getImageData(0, 0, width, height);
+  assert(imgd2.width == width && imgd2.height == height);
+
+  // 定着
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base = head + px * 4;
+      let A_mask = imgd_mask.data[base + 3];
+      let bMatched = (A_mask != 0);   // (マスク画素)
+      if (bInv) {
+        bMatched = !bMatched;
+      }
+      if (bMatched) {
+        let R1 = imgd1.data[base + 0];
+        let G1 = imgd1.data[base + 1];
+        let B1 = imgd1.data[base + 2];
+        let A1 = imgd1.data[base + 3];
+        imgd2.data[base + 0] = R1;
+        imgd2.data[base + 1] = G1;
+        imgd2.data[base + 2] = B1;
+        imgd2.data[base + 3] = A1;
+      }
+    }
+  }
+
+  // 出力先に描画
+  ctx2.putImageData(imgd2, 0, 0);
 }
 
 /// レイヤーの合成画像を取得する。

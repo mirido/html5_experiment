@@ -136,7 +136,8 @@ DrawerBase.prototype.OnDrawStart = function(e)
   }
 
   // カーソル描画
-  this.m_cursor.put(e, cur_pt, context);
+  let ctx_surface = e.m_sender.getSurface().getContext('2d');
+  this.m_cursor.put(e, cur_pt, ctx_surface);
 }
 
 /// 描画ストローク中に随時呼ばれる。
@@ -155,7 +156,8 @@ DrawerBase.prototype.OnDrawing = function(e)
   }
 
   // カーソルクリア
-  this.m_cursor.clear(context);
+  let ctx_surface = e.m_sender.getSurface().getContext('2d');
+  this.m_cursor.clear(ctx_surface);
 
   // 領域復元
   if (this.m_imagePatch != null) {
@@ -177,7 +179,7 @@ DrawerBase.prototype.OnDrawing = function(e)
   }
 
   // カーソル描画
-  this.m_cursor.put(e, cur_pt, context);
+  this.m_cursor.put(e, cur_pt, ctx_surface);
 }
 
 /// 描画ストローク終了時に呼ばれる。
@@ -197,7 +199,8 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   }
 
   // カーソルクリア
-  this.m_cursor.clear(context);
+  let ctx_surface = e.m_sender.getSurface().getContext('2d');
+  this.m_cursor.clear(ctx_surface);
 
   // 領域復元
   if (this.m_imagePatch != null) {
@@ -243,6 +246,9 @@ NullDrawOp.prototype.guideOnDrawEnd = function(e, points, context) { }
 /// マージンを取得する。
 NullDrawOp.prototype.getMargin = function() { return 0; }
 
+/// パラメータ設定のためのplace holder。引数は派生クラス固有。
+NullDrawOp.prototype.setParam = function() { }
+
 //
 //  エフェクト0: NullEffect
 //
@@ -256,6 +262,9 @@ NullEffect.prototype.apply = function(points, context) { }
 /// マージンを取得する。
 NullEffect.prototype.getMargin = function() { return 0; }
 
+/// パラメータ設定のためのplace holder。引数は派生クラス固有。
+NullEffect.prototype.setParam = function() { }
+
 //
 //  カーソル0: NullCursor
 //
@@ -268,6 +277,9 @@ NullCursor.prototype.put = function(e, cur_pt, context) { }
 
 /// カーソルをクリアする。
 NullCursor.prototype.clear = function(context) { }
+
+/// パラメータ設定のためのplace holder。引数は派生クラス固有。
+NullCursor.prototype.setParam = function() { }
 
 //
 //  描画オペレーター1: 手書き
@@ -415,14 +427,18 @@ Effect_Pencil.prototype.getMargin = function() { return this.m_ha; }
 function Cursor_Circle(diameter)
 {
   if (diameter == null) { diameter = 1; }
-  this.setParam(diameter);
+  this.setParam(diameter, 'rgb(0,0,0)');
 }
 
 /// パラメータを設定する。(クラス固有)
-Cursor_Circle.prototype.setParam = function(diameter)
+Cursor_Circle.prototype.setParam = function(diameter, color)
 {
   const margin = Math.ceil(diameter / 2);
-  const color = 'rbg(0,0,0)';
+  let colors = get_components_from_RGBx(color);
+  colors[0] ^= 0xff;
+  colors[1] ^= 0xff;
+  colors[2] ^= 0xff;
+  color = get_color_as_RGB(colors);
 
   this.m_pre_rendered = null;
   this.m_ha = 0;
