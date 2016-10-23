@@ -434,7 +434,11 @@ function Cursor_Circle(diameter)
 Cursor_Circle.prototype.setParam = function(diameter, color)
 {
   const margin = Math.ceil(diameter / 2);
-
+  let colors = get_components_from_RGBx(color);
+  colors[0] ^= 0xff;
+  colors[1] ^= 0xff;
+  colors[2] ^= 0xff;
+  color = get_color_as_RGB(colors);
 
   this.m_pre_rendered = null;
   this.m_ha = 0;
