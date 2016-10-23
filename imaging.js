@@ -48,13 +48,12 @@ function erase_canvas(
 {
   for (let i = 0; i < layers.length; ++i) {
     let ctx = layers[i].getContext('2d');
-    ctx.fillStyle
-      = (i == 0)
-      ? "rgba(255, 255, 255, 255)"
-      : "rgba(0, 0, 0, 0)";
-    assert(layers[i].width == layers[0].width);
-    assert(layers[i].height == layers[0].height);
-    ctx.fillRect(0, 0, layers[i].width, layers[i].height);
+    if (i == 0) {
+      ctx.fillStyle = 'rgb(255,255,255)';
+      ctx.fillRect(0, 0, layers[i].width, layers[i].height);
+    } else {
+      ctx.clearRect(0, 0, layers[i].width, layers[i].height);
+    }
   }
 }
 
