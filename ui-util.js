@@ -128,7 +128,7 @@ function get_components_from_RGBx(color)
 {
   let colors = [];
   if (color.match(/^#/)) {
-    let hexColors = color.match(/\d\d/g);
+    let hexColors = color.match(/[\da-f][\da-f]/gi);
     for (let i = 0; i < hexColors.length; ++i) {
       colors[i] = parseInt(hexColors[i], 16);
     }

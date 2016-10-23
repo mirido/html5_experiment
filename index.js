@@ -39,6 +39,7 @@ function init_wnd()
   sample01(g_pictureCanvas.m_layers);
 
 	// utest_ImagePatch();		// UTEST
+	// utesst_ColorConversion();		// UTEST
 
 	// 画像合成
 	let joint_canvas = document.getElementById("joint_canvas");

@@ -76,4 +76,8 @@ function utesst_ColorConversion()
 	console.dir(colors2);
 	let colors3 = get_components_from_RGBx("rgba(4,5,6,7)");
 	console.dir(colors3);
+  let colors4 = get_components_from_RGBx("#a55abb");
+	console.dir(colors4);
+  let colors5 = get_components_from_RGBx("#CCDDEEFF");
+	console.dir(colors5);
 }
