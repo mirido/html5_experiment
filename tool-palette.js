@@ -176,7 +176,11 @@ ToolChain.prototype.OnSelection = function(e)
       if (nxt_idx == cur_idx) {
         action = 2;       // カレントツールのpick
       } else {
-        action = 3;       // 当ツールチェーン内の次のツールに変更
+        if (e.m_type == 'mousedown' || e.m_type == 'touchstart') {
+          action = 3;     // 当ツールチェーン内の次のツールに変更
+        } else {
+          action = 2;     // カレントツールのpick
+        }
       }
     } else {
       action = 4;         // 当ツールチェーンの選択解除
