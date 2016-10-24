@@ -413,9 +413,9 @@ ToolPalette.prototype.initToolChain = function()
   // ツールアイコン区画をツールに割付け
   let toolDic = {};
   addToolHelper(this.m_toolMap[0], 'PencilTool', 0, toolDic);
-  addToolHelper(this.m_toolMap[6], 'DrawCompoTool', 600, toolDic);
-  addToolHelper(this.m_toolMap[6], 'DrawCompoTool', 601, toolDic);
-  addToolHelper(this.m_toolMap[6], 'DrawCompoTool', 602, toolDic);
+  addToolHelper(this.m_toolMap[6], 'MaskTool', 600, toolDic);
+  addToolHelper(this.m_toolMap[6], 'MaskTool', 601, toolDic);
+  addToolHelper(this.m_toolMap[6], 'MaskTool', 602, toolDic);
   addToolHelper(this.m_toolMap[25], 'ThicknessTool', 2500, toolDic);
   for (let i = 0; i < colorPaletteDef.length; ++i) {
     let idx = colorPaletteDef[i][0];

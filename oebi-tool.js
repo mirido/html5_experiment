@@ -390,11 +390,11 @@ ColorCompoTool.prototype.OnSettingChanged = function(setting)
 }
 
 //
-//  描画合成ツール
+//  マスクツール
 //
 
 /// 新しいインスタンスを初期化する。
-function DrawCompoTool(iconBounds)
+function MaskTool(iconBounds)
 {
   this.m_iconBounds = iconBounds;
   this.m_drawCompoIdx = null;
@@ -412,7 +412,7 @@ function DrawCompoTool(iconBounds)
 }
 
 /// アイコングラフィックを表示する。
-DrawCompoTool.prototype.drawIcon = function(color, context)
+MaskTool.prototype.drawIcon = function(color, context)
 {
   let iconGraphicFunc = function(iconBounds, context) {
     context.fillStyle = color;
@@ -424,7 +424,7 @@ DrawCompoTool.prototype.drawIcon = function(color, context)
 
 /// 最初の表示を行う。
 /// ここで与える引数により、描画合成方法が決まる。
-DrawCompoTool.prototype.show = function(setting, drawCompoIdx, toolCanvas)
+MaskTool.prototype.show = function(setting, drawCompoIdx, toolCanvas)
 {
   this.m_drawCompoIdx = drawCompoIdx;
   this.m_tgColor = setting.getMaskColor();
@@ -454,7 +454,7 @@ DrawCompoTool.prototype.show = function(setting, drawCompoIdx, toolCanvas)
 }
 
 /// マスク画像を生成する。
-DrawCompoTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
+MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
 {
   switch (this.m_drawCompoIdx) {
   case 0:
@@ -527,7 +527,7 @@ DrawCompoTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
 }
 
 /// マスク画像を定着させる。
-DrawCompoTool.prototype.fixMaskImage = function(surface, layer)
+MaskTool.prototype.fixMaskImage = function(surface, layer)
 {
   if (!this.m_bSurfaceActive)
     return;
@@ -551,9 +551,9 @@ DrawCompoTool.prototype.fixMaskImage = function(surface, layer)
 }
 
 /// 選択時呼ばれる。
-DrawCompoTool.prototype.OnSelected = function(e)
+MaskTool.prototype.OnSelected = function(e)
 {
-  // console.log("DrawCompoTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + "), txt=" + this.m_faceText);
+  // console.log("MaskTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + "), txt=" + this.m_faceText);
   let toolPalette = e.m_sender;
 
   // マスク対象色取得
@@ -578,7 +578,7 @@ DrawCompoTool.prototype.OnSelected = function(e)
 }
 
 /// 選択解除時呼ばれる。
-DrawCompoTool.prototype.OnDiselected = function(e)
+MaskTool.prototype.OnDiselected = function(e)
 {
   let toolPalette = e.m_sender;
 
@@ -592,9 +592,9 @@ DrawCompoTool.prototype.OnDiselected = function(e)
 }
 
 /// 再ポイントされたとき呼ばれる。
-DrawCompoTool.prototype.OnPicked = function(e)
+MaskTool.prototype.OnPicked = function(e)
 {
-  // console.log("DrawCompoTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  // console.log("MaskTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
   let toolPalette = e.m_sender;
   let setting = toolPalette.getCommonSetting();
   let context = toolPalette.getToolPaletteCanvas().getContext('2d');
@@ -617,9 +617,9 @@ DrawCompoTool.prototype.OnPicked = function(e)
 }
 
 /// 作業中レイヤーを固定すべきとき呼ばれる。
-DrawCompoTool.prototype.OnLayerToBeFixed = function(pictCanvas, nextLayer)
+MaskTool.prototype.OnLayerToBeFixed = function(pictCanvas, nextLayer)
 {
-  console.log("DrawCompoTool::OnLayeOnLayerToBeFixed() called.");
+  console.log("MaskTool::OnLayeOnLayerToBeFixed() called.");
 
   // 再入防止
   // 非同期の再入は無いはずなのでatomic性とか気にしない。
