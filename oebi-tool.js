@@ -407,6 +407,7 @@ function DrawCompoTool(iconBounds)
   this.m_workCanvas = null;
   this.m_bSurfaceActive = false;
 
+  this.m_bDealing = false;
   this.m_lastToolPalette = null;
 }
 
@@ -511,7 +512,7 @@ DrawCompoTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
         }
 
         // レイヤー合成結果画像からthis.m_maskCanvasの不透明画素に対応する画素を除外
-        toolPalette.getJointImage_wo_event(this.m_joint_canvas);
+        toolPalette.getJointImage(this.m_joint_canvas);
         fix_image_w_mask(this.m_joint_canvas, this.m_maskCanvas, true, surface);
       }
     }
@@ -619,6 +620,13 @@ DrawCompoTool.prototype.OnPicked = function(e)
 DrawCompoTool.prototype.OnLayerToBeFixed = function(pictCanvas, nextLayer)
 {
   console.log("DrawCompoTool::OnLayeOnLayerToBeFixed() called.");
+
+  // 再入防止
+  // 非同期の再入は無いはずなのでatomic性とか気にしない。
+  if (this.m_bDealing)
+    return;
+  this.m_bDealing = true;
+
   // 例えばマスク色赤色でマスクツール使用中あっても、
   // ユーザーは赤色で描画はできる。
   // これをどこかのタイミングでマスクに含めねばならない。
@@ -627,4 +635,6 @@ DrawCompoTool.prototype.OnLayerToBeFixed = function(pictCanvas, nextLayer)
   let surface = pictCanvas.getSurface();
   this.fixMaskImage(surface, layer);        // カレントレイヤーのマスキング結果を一旦固定
   this.setupMaskImage(this.m_lastToolPalette, nextLayer, surface);  // 次のレイヤーのマスキングを行う。
+
+  this.m_bDealing = false;
 }
