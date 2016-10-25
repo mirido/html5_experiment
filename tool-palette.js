@@ -454,6 +454,8 @@ ToolPalette.prototype.initToolChain = function()
 /// ドラッグ開始処理。
 ToolPalette.prototype.OnDraggingStart = function(mod_e)
 {
+  let bHit = false;
+
   // イベント通知すべきグループを特定
   let selGroupIdx = null;
   let selToolChainIdx = null;
@@ -480,17 +482,20 @@ ToolPalette.prototype.OnDraggingStart = function(mod_e)
     if (curToolChainIdx != null) {                // (選択中有り)
       if (curToolChainIdx != selToolChainIdx) {   // (選択が変化)
         // 選択終了通知
-        this.m_toolMap[curToolChainIdx].OnSelection(mod_e);
+        let bRet = this.m_toolMap[curToolChainIdx].OnSelection(mod_e);
+        assert(!bRet);  // ツールチェーンのiconBoundsが重複でもしていない限りfalseが返されるはず。
       }
     }
 
     // 対象ツールチェーンに選択開始を通知する。
-    this.m_toolMap[selToolChainIdx].OnSelection(mod_e);
+    bHit = this.m_toolMap[selToolChainIdx].OnSelection(mod_e);
 
     // 選択中ツールチェーン記憶
     this.m_selToolChainIdxOf[selGroupIdx] = selToolChainIdx;
     this.m_curToolChainIdx = selToolChainIdx;
   }
+
+  return bHit;
 }
 
 /// イベントリスナ。
@@ -512,10 +517,10 @@ ToolPalette.prototype.handleEvent = function(e)
       // console.dir(this.m_lastEvent);
 
       // ツールチェーンに通知
-      this.OnDraggingStart(mod_e);
+      let bHit = this.OnDraggingStart(mod_e);
 
       // 状態遷移
-      this.m_bDragging = true;
+      this.m_bDragging = bHit;
     }
   } else {
     if (e.type == 'mouseup' || e.type == 'touchend') {
