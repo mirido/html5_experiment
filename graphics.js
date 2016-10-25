@@ -215,3 +215,143 @@ function draw_circle(cx, cy, radius, context, bFilled)
 /// どちらも直径が奇数の円を描けないので没にした。
 /// ■ 参考
 /// http://dencha.ojaru.jp/programs_07/pg_graphic_09a1.html
+
+//
+//	塗り潰し
+//
+
+/// 新しいインスタンスを初期化する。
+function FloodFillState(canvas, px, py, color)
+{
+	this.m_canvas = canvas;
+	this.m_context = canvas.getContext('2d');
+	this.m_context.fillStyle = color;		// α=255と仮定
+
+	// 塗り替え後の色(配置色)の要素を取得
+	this.m_nxtColors = get_components_from_RGBx(color);
+	assert(this.m_nxtColors.length == 3 || this.m_nxtColors.length == 4);
+	this.m_nxtColors[3] = 255;
+
+	// 座標が画像外なら何もしない。
+	if (px < 0 || px >= canvas.width || py < 0 || py >= canvas.height) {
+		this.m_curColors = null;	// 画像外なので取得不能
+		this.m_stack = [];				// 塗り替え開始ポイント無し(NOP)
+		return;
+	}
+
+	// 塗り替え領域の色(領域色)取得
+	let imgd_sta = this.m_context.getImageData(px, py, 1, 1);
+	assert(imgd_sta.data.length == 4);
+	this.m_curColors = imgd_sta.data;
+	assert(this.m_curColors.length == 4);
+	// console.dir(this.m_curColors);
+	// console.dir(this.m_nxtColors);
+
+	// 塗り替え開始ポイント設定
+	this.m_stack = [];
+	this.m_stack.push(jsPoint(px, py));
+	for (let i = 0; i < 4; ++i) {
+		if (this.m_curColors[i] != this.m_nxtColors[i]) {
+			return;		// 領域色と配置色が相違するならGO
+		}
+	}
+	console.log("No area to paint.");
+	this.m_stack = [];	// 領域色と配置色が同一ならNOGO (NOP)
+}
+
+/// 境界に達したか否か判定する。
+FloodFillState.prototype.isBorder = function(px, imgd)
+{
+	if (imgd == null)
+		return true;
+	let base = 4 * px;
+	for (let i = 0; i < 4; ++i) {
+		let cc = imgd.data[base + i];
+		assert(cc != null);
+		if (cc != this.m_curColors[i]) {
+			// 画素の1要素でも領域色と相違したら境界とみなす。
+			// ここに来たということは、配置色≠領域色なので、
+			// 配置色で塗り潰し済みの画素も境界とみなされる。
+			// 領域がドーナツ型であってもこれでOK。
+			return true;
+		}
+	}
+	return false;
+}
+
+/// 1ライン塗り潰す。
+FloodFillState.prototype.fillLine = function(px, py)
+{
+	// 画像上端/下端に達していないか確認
+	if (py < 0 || py >= this.m_canvas.height)
+		return;
+
+	// 対象ラインの画素データ取得
+	let imgd_tg = this.m_context.getImageData(0, py, this.m_canvas.width, 1);
+
+	// 塗り潰し済みでないか確認
+	if (this.isBorder(px, imgd_tg))
+		return;
+
+	// 左端に移動
+	while (px >= 0 && !this.isBorder(px, imgd_tg)) {
+		--px;
+	}
+
+	// 直上の画素データ取得
+	let imgd_up = (py > 0)
+	 	? this.m_context.getImageData(0, py - 1, this.m_canvas.width, 1)
+		: null;
+
+	// 直下の画素データ取得
+	let imgd_lo = (py < this.m_canvas.height - 1)
+		? this.m_context.getImageData(0, py + 1, this.m_canvas.width, 1)
+		: null;
+
+	// 塗り潰し範囲決定 & 次の塗り潰し開始位置をスタックにpush
+	let prev_up = true;
+	let prev_lo = true;
+	let px_bgn = ++px;
+	while (px < this.m_canvas.width && !this.isBorder(px, imgd_tg)) {
+		// 直上の画素を確認
+		let cur_up = this.isBorder(px, imgd_up);
+		if (cur_up != prev_up) {
+			if (!cur_up) {
+				this.m_stack.push(jsPoint(px, py - 1));
+			}
+			prev_up = cur_up;
+		}
+
+		// 直下の画素を確認
+		let cur_lo = this.isBorder(px, imgd_lo);
+		if (cur_lo != prev_lo) {
+			if (!cur_lo) {
+				this.m_stack.push(jsPoint(px, py + 1));
+			}
+			prev_lo = cur_lo;
+		}
+
+		let base = 4 * px;
+		imgd_tg.data[base + 0] = this.m_nxtColors[0];
+		imgd_tg.data[base + 1] = this.m_nxtColors[1];
+		imgd_tg.data[base + 2] = this.m_nxtColors[2];
+		imgd_tg.data[base + 3] = this.m_nxtColors[3];
+
+		++px;
+	}
+
+	// 現ライン塗り潰し
+	assert(px - px_bgn > 0);
+	this.m_context.putImageData(imgd_tg, 0, py);
+}
+
+/// 1ライン塗り潰す。
+FloodFillState.prototype.fill = function()
+{
+	console.log("stack_size=" + this.m_stack.length);
+	while (this.m_stack.length > 0) {
+		let point = this.m_stack.pop();
+		// console.log("point=(" + point.x + "," + point.y + ")");
+		this.fillLine(point.x, point.y);
+	}
+}

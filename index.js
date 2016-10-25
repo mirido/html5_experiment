@@ -17,6 +17,9 @@ let g_pictureCanvas;
 // ツールパレット
 let g_toolPalette;
 
+// 塗り潰しツール
+let g_paintTool;
+
 // イベントハンドラ登録
 window.onload = init_wnd;
 window.onclose = dispose_wnd;
@@ -31,6 +34,7 @@ function init_wnd()
 	g_keyStateManager = new KeyStateManager();
 	g_pictureCanvas = new PictureCanvas();
 	g_toolPalette = new ToolPalette(g_pictureCanvas);
+	g_paintTool = new PaintTool(g_toolPalette);
 
 	// キャンバスを白色でfill
 	g_pictureCanvas.eraseCanvas();

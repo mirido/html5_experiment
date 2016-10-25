@@ -311,6 +311,12 @@ const toolChainGroups = [
     [ 27 ]  // レイヤー選択
 ];
 
+// 外部ツールと背反なツールチェーンのグループ番号
+const exclusiveToolChainGroupIndices = [
+  0,  // エフェクト
+  6   // 描画プリセット
+];
+
 /// ツール登録のためのヘルパ関数。
 function addToolHelper(toolChain, toolName, toolId, toolDic)
 {
@@ -382,6 +388,9 @@ function ToolPalette(pictCanvas)
   this.m_selToolChainIdxOf[0] = toolChainGroups[0][0];    // 独立群[0]の選択ツール
   this.m_selToolChainIdxOf[2] = toolChainGroups[2][0];    // 独立群[3]の選択ツール
   this.m_selToolChainIdxOf[3] = toolChainGroups[3][1];    // 独立群[3]の選択ツール
+
+  // 外部ツール
+  this.m_extTool = null;
 
 	// イベントハンドラ登録
   this.m_curToolChainIdx = null;
@@ -536,7 +545,58 @@ ToolPalette.prototype.handleEvent = function(e)
       this.m_toolMap[this.m_curToolChainIdx].OnSelection(mod_e);
     }
   }
+
+  // 外部ツールを非選択化
+  // 描画ツールが有効化されたら外部ツールを非選択にする。
+  // 現状、外部ツール無効化時は、描画ツールのOnSelected()イベントが
+  // 外部ツールのOnDiselected()イベントに先行することになる。
+  // これが問題になるようなら次の選択/非選択動作を記憶だけしておいて、
+  // 全部出揃ったところでまとめて処理することを考える。
+  if (this.m_extTool != null) {
+    for (let i = 0; i < exclusiveToolChainGroupIndices.length; ++i) {
+      let gp_idx = exclusiveToolChainGroupIndices[i];
+      if (this.m_selToolChainIdxOf[gp_idx] != null) {
+        let mod_e = new PointingEvent(this, e);
+        this.m_extTool.OnDiselected(mod_e);
+        this.m_extTool = null;
+        break;
+      }
+    }
+  }
 }
+
+/// 描画ツールを非選択状態にする。
+ToolPalette.prototype.inactivateExcluciveTool = function()
+{
+  for (let i = 0; i < exclusiveToolChainGroupIndices.length; ++i) {
+    let gp_idx = exclusiveToolChainGroupIndices[i];
+    let selToolChainIdx = this.m_selToolChainIdxOf[gp_idx];
+    if (selToolChainIdx != null) {
+      this.m_toolMap[selToolChainIdx].inactivate(this);
+      this.m_selToolChainIdxOf[gp_idx] = null;
+    }
+  }
+  this.m_curToolChainIdx = null;
+}
+
+/// ツール選択操作を外部ツールにredirectする。
+ToolPalette.prototype.redirectTo = function(extTool)
+{
+  if (extTool == null || this.extTool != null) {
+    return;
+  }
+  this.m_extTool = extTool;
+
+  this.inactivateExcluciveTool();
+
+  let dummy_e = {
+    type: 'mousedown',
+    clientX: -1,
+    clientY: -1
+  };
+  let mod_e = new PointingEvent(this, dummy_e);
+  this.m_extTool.OnSelected(mod_e);
+};
 
 /// 描画ツールを追加する。
 /// 異なる描画ツールを複数追加可能。

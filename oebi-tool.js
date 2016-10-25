@@ -638,3 +638,52 @@ MaskTool.prototype.OnLayerToBeFixed = function(pictCanvas, nextLayer)
 
   this.m_bDealing = false;
 }
+
+//
+//  塗り潰しツール
+//
+
+/// 新しいインスタンスを初期化する。
+function PaintTool(toolPalette)
+{
+  this.m_toolPalette = toolPalette;
+  this.m_PaintButton = document.getElementById('paint');
+  let paintTool = this;   // 束縛変数
+  this.m_PaintButton.onclick = function() {
+     paintTool.OnClicked();
+   };
+}
+
+/// 塗り潰しボタンがクリックされたとき呼ばれる。
+PaintTool.prototype.OnClicked = function()
+{
+  this.m_toolPalette.redirectTo(this);
+}
+
+/// ツール選択時呼ばれる。
+PaintTool.prototype.OnSelected = function(e)
+{
+  console.log("PaintTool::OnSelected() called.");
+  e.m_sender.addDrawer(this);
+}
+
+/// ツール選択解除時呼ばれる。
+PaintTool.prototype.OnDiselected = function(e)
+{
+  console.log("PaintTool::OnDiselected() called.");
+  e.m_sender.removeDrawer(this);
+}
+
+/// 描画ストローク開始時呼ばれる。
+/// ここでは'mousedown'等、ポインティング開始操作の捕捉のために使っている。
+PaintTool.prototype.OnDrawStart = function(e)
+{
+  console.log("PaintTool::OnDrawStart() called.");
+  let toolPalette = this.m_toolPalette;
+  let layer = toolPalette.getCurLayer();
+  let setting = toolPalette.getCommonSetting();
+
+  let color = setting.getColor();
+  let ffst = new FloodFillState(layer, e.m_point.x, e.m_point.y, color);
+  ffst.fill();
+}
