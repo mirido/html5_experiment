@@ -683,7 +683,9 @@ PaintTool.prototype.OnDrawStart = function(e)
   let layer = toolPalette.getCurLayer();
   let setting = toolPalette.getCommonSetting();
 
-  let color = setting.getColor();
-  let ffst = new FloodFillState(layer, e.m_point.x, e.m_point.y, color);
-  ffst.fill();
+  if (e.m_spKey == 0x0) {
+    let color = setting.getColor();
+    let ffst = new FloodFillState(layer, e.m_point.x, e.m_point.y, color);
+    ffst.fill();
+  }
 }
