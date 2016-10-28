@@ -22,8 +22,8 @@ function utest_pre_rendering()
 /// UTEST: ImagePatchのテスト。
 function utest_ImagePatch()
 {
-  let layer1 = g_pictureCanvas.getLayer(1);
-  let layer2 = g_pictureCanvas.getLayer(2);
+  let layer1 = g_pictureCanvas.getLayer(0);
+  let layer2 = g_pictureCanvas.getLayer(1);
 
   {
     let ctx1 = layer1.getContext('2d');

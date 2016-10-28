@@ -499,7 +499,7 @@ MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
         copy_layer(this.m_maskCanvas, this.m_workCanvas);
         let nlayers = toolPalette.getNumLayers();
         let found_idx = -1;
-        for (let i = 1; i < nlayers; ++i) {
+        for (let i = 0; i < nlayers; ++i) {
           let layer_i = toolPalette.getLayer(i);
           if (found_idx < 0) {        // (layer未発見(layer_iはlayerより上ではない))
             if (layer_i == layer) {   // (layer発見)
