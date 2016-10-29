@@ -23,6 +23,15 @@ function PointingEvent(sender, e)
 	this.m_type = e.type;
 }
 
+/// クローンを返す。
+function PointingEventClone(e)
+{
+	this.m_sender = e.m_sender;
+	this.m_point = jsPoint(e.m_point.x, e.m_point.y);
+	this.m_spKey = e.m_spKey;
+	this.m_type = e.m_type;
+};
+
 //
 //	PictureCanvas
 //

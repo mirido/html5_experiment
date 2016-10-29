@@ -526,7 +526,9 @@ ToolPalette.prototype.OnDraggingStart = function(mod_e)
     if (curToolChainIdx != null) {                // (選択中有り)
       if (curToolChainIdx != selToolChainIdx) {   // (選択が変化)
         // 選択終了通知
-        let bRet = this.m_toolMap[curToolChainIdx].OnSelection(mod_e);
+        let mod_e2 = new PointingEventClone(mod_e);
+        mod_e2.m_spKey = 0x0;
+        let bRet = this.m_toolMap[curToolChainIdx].OnSelection(mod_e2);
         assert(!bRet);  // ツールチェーンのiconBoundsが重複でもしていない限りfalseが返されるはず。
       }
     }
