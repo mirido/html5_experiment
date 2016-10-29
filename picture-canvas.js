@@ -21,6 +21,7 @@ function PointingEvent(sender, e)
 	);
 	this.m_spKey = g_keyStateManager.getSpKeyState();
 	this.m_type = e.type;
+	this.m_button = e.button;
 }
 
 /// クローンを返す。
@@ -30,6 +31,7 @@ function PointingEventClone(e)
 	this.m_point = jsPoint(e.m_point.x, e.m_point.y);
 	this.m_spKey = e.m_spKey;
 	this.m_type = e.m_type;
+	this.m_button = e.m_button;
 };
 
 //
@@ -60,6 +62,11 @@ function PictureCanvas()
 		this.m_allLayers[2]
 	];
 	this.m_surface = this.m_allLayers[3];
+
+	// 代替レイヤー
+	// .hidden = trueとしたレイヤーに対しては正常に描画できないため、
+	// 代替レイヤーを設ける。
+	this.m_altLayers = [];
 
 	// 描画担当ツール
 	// イベントのフックを実現可能なように、複数登録を許す。
@@ -185,6 +192,8 @@ PictureCanvas.prototype.getNumLayers = function()
 PictureCanvas.prototype.getLayer = function(layerNo)
 {
 	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
+	if (this.m_altLayers[layerNo] != null)
+		return this.m_altLayers[layerNo];
 	return this.m_workingLayers[layerNo];
 }
 
@@ -204,26 +213,56 @@ PictureCanvas.prototype.changeLayer = function(layerNo)
 /// カレントレイヤーを取得する。
 PictureCanvas.prototype.getCurLayer = function()
 {
+	if (this.m_altLayers[this.m_nTargetLayerNo] != null) {
+		// console.log("this.m_altLayers[this.m_nTargetLayerNo]: w=" + this.m_altLayers[this.m_nTargetLayerNo].width + ", h=" + this.m_altLayers[this.m_nTargetLayerNo].height);
+		return this.m_altLayers[this.m_nTargetLayerNo];
+	}
+	// console.log("this.m_workingLayers[this.m_nTargetLayerNo]: w=" + this.m_workingLayers[this.m_nTargetLayerNo].width + ", h=" + this.m_workingLayers[this.m_nTargetLayerNo].height);
 	return this.m_workingLayers[this.m_nTargetLayerNo];
 }
 
 /// サーフェスを取得する。
 PictureCanvas.prototype.getSurface = function()
 {
+	console.log("this.m_surface: w=" + this.m_surface.width + ", h=" + this.m_surface.height);
 	return this.m_surface;
 }
 
 /// レイヤーの可視属性を取得する。
 PictureCanvas.prototype.getLayerVisibility = function(layerNo)
 {
-	// TBD
-	return true;
+	return !this.m_workingLayers[layerNo].hidden;
 }
 
 /// レイヤーの可視属性を設定する。
-PictureCanvas.prototype.setLayerVisibility = function(layerNo)
+PictureCanvas.prototype.setLayerVisibility = function(layerNo, bVisible)
 {
-	// TBD
+	if (this.m_altLayers[layerNo] == null) {
+		if (!bVisible) {
+			// 不可視化処理
+			let layer = this.m_workingLayers[layerNo];		// Alias
+			let ctx = layer.getContext('2d');
+			let imgd = ctx.getImageData(0, 0, layer.width, layer.height);
+			this.m_altLayers[layerNo] = document.createElement('canvas');
+			this.m_altLayers[layerNo].setAttribute('width', layer.width);
+			this.m_altLayers[layerNo].setAttribute('height', layer.height);
+			let ctx2 = this.m_altLayers[layerNo].getContext('2d');
+			ctx2.putImageData(imgd, 0, 0);
+			layer.hidden = true;
+		}
+	} else {
+		assert(this.m_altLayers[layerNo] != null);
+		if (bVisible) {
+			// 可視化処理
+			let layer = this.m_workingLayers[layerNo];		// Alias
+			layer.hidden = false;
+			let ctx2 = this.m_altLayers[layerNo].getContext('2d');
+			let imgd = ctx2.getImageData(0, 0, layer.width, layer.height);
+			let ctx = layer.getContext('2d');
+			ctx.putImageData(imgd, 0, 0);
+			this.m_altLayers[layerNo] = null;
+		}
+	}
 }
 
 /// キャンバスを全クリアする。

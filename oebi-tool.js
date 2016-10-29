@@ -727,7 +727,7 @@ LayerTool.prototype.show = function(setting, toolCanvas)
 }
 
 /// レイヤー選択に従い設定を更新する。
-LayerTool.prototype.updateSetting = function(setting)
+LayerTool.prototype.updateSetting = function(setting, e)
 {
   // クリックされたレイヤー番号を特定
   let selIdx = this.m_listBox.getSelectionIndex();
@@ -735,7 +735,22 @@ LayerTool.prototype.updateSetting = function(setting)
   let layerNo = (nitems - 1) - selIdx;
 
   // 設定変更
-  setting.setCurLayerNo(layerNo);
+  console.log("e.m_button=" + e.m_button);
+  switch (e.m_button) {
+  case 0:
+    setting.setCurLayerNo(layerNo);
+    break;
+  case 2:
+    {
+      let bLayerVisible = setting.getLayerVisibility(layerNo);
+      console.log("bLayerVisible=" + bLayerVisible);
+      setting.setLayerVisibility(layerNo, !bLayerVisible);
+      break;
+    }
+  default:
+    /*NOP*/
+    break;
+  }
 }
 
 /// 設定に従いレイヤー選択を更新する。
@@ -771,7 +786,7 @@ LayerTool.prototype.OnSelected = function(e)
   this.m_listBox.OnSelected(e);
 
   let setting = e.m_sender.getCommonSetting();
-  this.updateSetting(setting);
+  this.updateSetting(setting, e);
   this.updateView(setting);
 }
 
@@ -787,6 +802,6 @@ LayerTool.prototype.OnPicked = function(e)
   this.m_listBox.OnSelected(e);
 
   let setting = e.m_sender.getCommonSetting();
-  this.updateSetting(setting);
+  this.updateSetting(setting, e);
   this.updateView(setting);
 }

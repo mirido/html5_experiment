@@ -429,6 +429,12 @@ function ToolPalette(pictCanvas)
   this.m_curToolChainIdx = null;
   this.m_bDragging = false;
 	register_pointer_event_handler(this.m_palette, this);
+
+  // コンテキストメニュー無効化
+  // http://tmlife.net/programming/javascript/javascript-right-click.html
+  this.m_palette.addEventListener("contextmenu", function(e) {
+    e.preventDefault();
+  }, false);
 }
 
 /// ツールチェーンの枠線を描く。

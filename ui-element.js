@@ -109,8 +109,8 @@ function DrawerBase(drawOp, effect, cursor)
 DrawerBase.prototype.OnDrawStart = function(e)
 {
   let curLayer = e.m_sender.getCurLayer();
-  let w = curLayer.clientWidth;
-  let h = curLayer.clientHeight;
+  let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+  let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
@@ -144,8 +144,8 @@ DrawerBase.prototype.OnDrawStart = function(e)
 DrawerBase.prototype.OnDrawing = function(e)
 {
   let curLayer = e.m_sender.getCurLayer();
-  let w = curLayer.clientWidth;
-  let h = curLayer.clientHeight;
+  let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+  let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
@@ -186,8 +186,8 @@ DrawerBase.prototype.OnDrawing = function(e)
 DrawerBase.prototype.OnDrawEnd = function(e)
 {
   let curLayer = e.m_sender.getCurLayer();
-  let w = curLayer.clientWidth;
-  let h = curLayer.clientHeight;
+  let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+  let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
@@ -456,8 +456,9 @@ Cursor_Circle.prototype.setParam = function(diameter, color)
 Cursor_Circle.prototype.put = function(e, cur_pt, context)
 {
   let layer = e.m_sender.getCurLayer();
-  let w = layer.clientWidth;
-  let h = layer.clientHeight;
+  let w = layer.width;    // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+  let h = layer.height;   // (同上)
+  // console.log("layer: w=" + layer.width + ", h=" + layer.height);
 
   context.globalCompositeOperation = 'xor';
   this.m_imagePatch = new ImagePatch(context, w, h, [ cur_pt ], this.m_ha);
