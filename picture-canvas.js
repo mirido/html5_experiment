@@ -183,8 +183,13 @@ PictureCanvas.prototype.getLayer = function(layerNo)
 PictureCanvas.prototype.changeLayer = function(layerNo)
 {
 	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
-	this.raiseLayerFixRequest(this.m_workingLayers[layerNo]);
+	// this.raiseLayerFixRequest(this.m_workingLayers[layerNo]);	// イベント最適化
 	this.m_nTargetLayerNo = layerNo;
+	/*=	<イベント最適化>
+	 *	当メソッドを呼び出すのは、現状専らCommonSettingクラスであり、
+	 *	そのときすでにthis.raiseLayerFixRequest()を呼び出しているため、
+	 *	ここでの呼び出しを省略する。
+	 */
 }
 
 /// カレントレイヤーを取得する。

@@ -612,16 +612,20 @@ MaskTool.prototype.OnPicked = function(e)
     setting.setMaskColor(this.m_tgColor);
     this.drawIcon(this.m_tgColor, context);
 
-    // マスク画像定着(もしあれば)
-    if (this.m_surfaceUser != null) {
-      let toolPalette = e.m_sender;
-      let layer = this.m_surfaceUser;
-      let surface = toolPalette.getSurface();
-      this.fixMaskImage(surface, layer);
-    }
-
-    // マスク画像作成
-    this.setupMaskImage(toolPalette, layer, surface);
+    // イベント最適化
+    // マスクツールがCTRLキーとともにクリックされたということは、
+    // それに先立つ描画色の変更でマスク画像定着はすでに実施済みのため、
+    // ここでの定着は省略する。
+    // // マスク画像定着(もしあれば)
+    // if (this.m_surfaceUser != null) {
+    //   let toolPalette = e.m_sender;
+    //   let layer = this.m_surfaceUser;
+    //   let surface = toolPalette.getSurface();
+    //   this.fixMaskImage(surface, layer);
+    // }
+    //
+    // // マスク画像作成
+    // this.setupMaskImage(toolPalette, layer, surface);
   }
 }
 
