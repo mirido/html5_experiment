@@ -45,6 +45,11 @@ function PictureCanvas()
 		this.m_allLayers[1],
 		this.m_allLayers[2]
 	];
+	this.m_jointTargetLayers = [
+		this.m_allLayers[0],
+		this.m_allLayers[1],
+		this.m_allLayers[2]
+	];
 	this.m_surface = this.m_allLayers[3];
 
 	// 描画担当ツール
@@ -194,6 +199,19 @@ PictureCanvas.prototype.getSurface = function()
 	return this.m_surface;
 }
 
+/// レイヤーの可視属性を取得する。
+PictureCanvas.prototype.getLayerVisibility = function(layerNo)
+{
+	// TBD
+	return true;
+}
+
+/// レイヤーの可視属性を設定する。
+PictureCanvas.prototype.setLayerVisibility = function(layerNo)
+{
+	// TBD
+}
+
 /// キャンバスを全クリアする。
 /// サーフェス等も含め、全レイヤーをクリアする。
 /// (ただし背景レイヤーのみは白色にする。)
@@ -202,11 +220,11 @@ PictureCanvas.prototype.eraseCanvas = function()
 	erase_canvas(this.m_allLayers);
 }
 
-/// 全レイヤーを合成する。
-/// サーフェス等も含め、全レイヤーを合成する。
+/// 描画レイヤーおよび背景を合成する。
+/// サーフェス等、効果のためのレイヤーは含まない。
 PictureCanvas.prototype.getJointImage = function(dstCanvas)
 {
-	get_joint_image(this.m_allLayers, dstCanvas);
+	get_joint_image(this.m_jointTargetLayers, dstCanvas);
 }
 
 /// View portをキャンバスにfitさせる。

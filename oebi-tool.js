@@ -402,10 +402,10 @@ function MaskTool(iconBounds)
   this.m_tgColor = null;
 
   this.m_joint_canvas = document.getElementById("joint_canvas");
+  this.m_dbg_canvas = document.getElementById("dbg_canvas");
   this.m_maskCanvas = null;
   this.m_saveCanvas = null;
-  this.m_workCanvas = null;
-  this.m_bSurfaceActive = false;
+  this.m_surfaceUser = null;
 
   this.m_bDealing = false;
   this.m_lastToolPalette = null;
@@ -435,12 +435,13 @@ MaskTool.prototype.show = function(setting, drawCompoIdx, toolCanvas)
     break;
   case 1:
     this.m_faceText = 'マスク';
+    this.m_maskCanvas = document.createElement('canvas');
+    this.m_saveCanvas = document.createElement('canvas');
     break;
   case 2:
     this.m_faceText = '逆マスク';
     this.m_maskCanvas = document.createElement('canvas');
     this.m_saveCanvas = document.createElement('canvas');
-    this.m_workCanvas = document.createElement('canvas');
     break;
   default:
     assert(false);
@@ -453,6 +454,45 @@ MaskTool.prototype.show = function(setting, drawCompoIdx, toolCanvas)
   this.drawIcon(this.m_tgColor, context);
 }
 
+/// 表示マスク画像を生成する。
+MaskTool.prototype.setupSurface = function(toolPalette, layer, mask, bInv, surface)
+{
+  let workCanvas = document.createElement('canvas');
+  workCanvas.setAttribute('width', layer.width);
+  workCanvas.setAttribute('height', layer.height);
+
+  // ■ 表示マスク画像
+  // 対象画素以外を操作者の見かけ上変更させないためのマスク。
+  // これは、操作者が見る画像(=レイヤー合成結果画像)から、
+  // 下記を両方満たす画素のみを除外(透明化)してできる画素の集まりに等しい。
+  //   (1) 指定レイヤー(layer)において書き換え可能である。(マスクされない。)
+  //   (2) 指定レイヤーより上のレイヤーに覆われない。(操作者から直接見える。)
+
+  // マスク画像(mask)から、対象レイヤー(layer)より
+  // 上のレイヤーで覆われる画素を除外する。
+  // 当処理により、workCanvasに下記画像がセットされる。
+  // マスクツール(bInv==false)の場合: 表示上書き換え禁止の画素の集合
+  // 逆マスクツール(bInv==false)の場合: 表示上書き換え可能な画素の集合
+  copy_layer(mask, workCanvas);
+  let nlayers = toolPalette.getNumLayers();
+  let found_idx = -1;
+  for (let i = 0; i < nlayers; ++i) {
+    let layer_i = toolPalette.getLayer(i);
+    if (found_idx < 0) {        // (layer未発見(layer_iはlayerより上ではない))
+      if (layer_i == layer) {   // (layer発見)
+        found_idx = i;          // インデックスを記憶
+      }
+    } else {    // (layer発見済み(layer_iはlayerより上))
+      // this.m_maskCanvasからlayer_iの不透明画素に対応する画素を除外
+      get_destinaton_out_image(layer_i, workCanvas);
+    }
+  }
+
+  // レイヤー合成結果画像からthis.m_maskCanvasの不透明画素に対応する画素を除外
+  toolPalette.getJointImage(this.m_joint_canvas);
+  fix_image_w_mask(this.m_joint_canvas, workCanvas, bInv, surface);
+}
+
 /// マスク画像を生成する。
 MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
 {
@@ -461,13 +501,8 @@ MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
     // erase_single_layer(surface);   // 最初からクリアされている想定で省略。
     break;
   case 1:
-    // マスク画像生成
-    // マスクツールでは、マスク画像は1種類。
-    get_mask_image(layer, this.m_tgColor, surface);
-    break;
   case 2:
-    // 逆マスク生成
-    // 逆マスクツールでは、マスク画像、元画像バックアップデータの3種類が必要。
+    // マスク/逆マスク画像生成
     {
       // マスク画像生成
       // 指定レイヤー(layer)上の、色がthis.m_tgColorである画素の集まり。
@@ -480,64 +515,32 @@ MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
       this.m_saveCanvas.setAttribute('height', layer.height);
       copy_layer(layer, this.m_saveCanvas);
 
-      // 表示マスク画像
-      // 対象画素以外を操作者の見かけ上変更させないためのマスク。これは、
-      // 操作者が見る画像(=レイヤー合成結果画像)から、下記を満たす画素のみを
-      // 除外(透明化)してできる画素の集まりに等しい。
-      //   (1) 指定レイヤー(layer)の、色がthis.m_tgColorである画素。
-      //   (2) 操作者から見える画素。(上のレイヤーに覆われない。)
-      // 下記ケースに注意!
-      //   - 色がthis.m_tgColorだが、指定レイヤー以外のレイヤーの画素
-      //       -- (1)を満たさないので変更禁止(表示マスクに含める)
-      //   - 合成画像上で色がthis.m_tgColorだが、指定レイヤーではなく、
-      //     それより上のレイヤーに由来する画素
-      //       -- (2)を満たさないので変更禁止(表示マスクに含める)
-      {
-        // 上記(1)と(2)を満たす画素のみの画像作成 --> this.m_saveCanvas
-        this.m_workCanvas.setAttribute('width', layer.width);
-        this.m_workCanvas.setAttribute('height', layer.height);
-        copy_layer(this.m_maskCanvas, this.m_workCanvas);
-        let nlayers = toolPalette.getNumLayers();
-        let found_idx = -1;
-        for (let i = 0; i < nlayers; ++i) {
-          let layer_i = toolPalette.getLayer(i);
-          if (found_idx < 0) {        // (layer未発見(layer_iはlayerより上ではない))
-            if (layer_i == layer) {   // (layer発見)
-              found_idx = i;          // インデックスを記憶
-            }
-          } else {    // (layer発見済み(layer_iはlayerより上))
-            // this.m_maskCanvasからlayer_iの不透明画素に対応する画素を除外
-            get_destinaton_out_image(layer_i, this.m_workCanvas);
-          }
-        }
-
-        // レイヤー合成結果画像からthis.m_maskCanvasの不透明画素に対応する画素を除外
-        toolPalette.getJointImage(this.m_joint_canvas);
-        fix_image_w_mask(this.m_joint_canvas, this.m_maskCanvas, true, surface);
-      }
+      // 表示マスク生成
+      let bInv = (this.m_drawCompoIdx == 2);    // 逆マスク時true
+      this.setupSurface(toolPalette, layer, this.m_maskCanvas, bInv, surface);
     }
     break;
   default:
     assert(false);
     break;
   }
+  if (this.m_dbg_canvas != null) {
+    copy_layer(surface, this.m_dbg_canvas);   // DEBUG
+  }
 
   // サーフェス有効化を記憶
-  this.m_bSurfaceActive = true;
+  this.m_surfaceUser = layer;
 }
 
 /// マスク画像を定着させる。
 MaskTool.prototype.fixMaskImage = function(surface, layer)
 {
-  if (!this.m_bSurfaceActive)
-    return;
-
   switch (this.m_drawCompoIdx) {
   case 0:
     /*NOP*/
     break;
   case 1:
-    fix_image_w_mask(surface, surface, false, layer);
+    fix_image_w_mask(this.m_saveCanvas, this.m_maskCanvas, false, layer);
     erase_single_layer(surface);
     break;
   case 2:
@@ -548,6 +551,8 @@ MaskTool.prototype.fixMaskImage = function(surface, layer)
     assert(false);
     break;
   }
+
+  this.m_surfaceUser = null;
 }
 
 /// 選択時呼ばれる。
@@ -586,9 +591,11 @@ MaskTool.prototype.OnDiselected = function(e)
   toolPalette.removeLayerFixListener(this);
 
   // マスク画像定着
-  let layer = toolPalette.getCurLayer();
-  let surface = toolPalette.getSurface();
-  this.fixMaskImage(surface, layer);
+  if (this.m_surfaceUser != null) {
+    let layer = this.m_surfaceUser;
+    let surface = toolPalette.getSurface();
+    this.fixMaskImage(surface, layer);
+  }
 }
 
 /// 再ポイントされたとき呼ばれる。
@@ -606,10 +613,12 @@ MaskTool.prototype.OnPicked = function(e)
     this.drawIcon(this.m_tgColor, context);
 
     // マスク画像定着(もしあれば)
-    let toolPalette = e.m_sender;
-    let layer = toolPalette.getCurLayer();
-    let surface = toolPalette.getSurface();
-    this.fixMaskImage(surface, layer);
+    if (this.m_surfaceUser != null) {
+      let toolPalette = e.m_sender;
+      let layer = this.m_surfaceUser;
+      let surface = toolPalette.getSurface();
+      this.fixMaskImage(surface, layer);
+    }
 
     // マスク画像作成
     this.setupMaskImage(toolPalette, layer, surface);
@@ -619,7 +628,7 @@ MaskTool.prototype.OnPicked = function(e)
 /// 作業中レイヤーを固定すべきとき呼ばれる。
 MaskTool.prototype.OnLayerToBeFixed = function(pictCanvas, nextLayer)
 {
-  console.log("MaskTool::OnLayeOnLayerToBeFixed() called.");
+  console.log("MaskTool::OnLayerToBeFixed() called.");
 
   // 再入防止
   // 非同期の再入は無いはずなのでatomic性とか気にしない。
@@ -631,9 +640,11 @@ MaskTool.prototype.OnLayerToBeFixed = function(pictCanvas, nextLayer)
   // ユーザーは赤色で描画はできる。
   // これをどこかのタイミングでマスクに含めねばならない。
   // --> ここで行う。
-  let layer = pictCanvas.getCurLayer();
-  let surface = pictCanvas.getSurface();
-  this.fixMaskImage(surface, layer);        // カレントレイヤーのマスキング結果を一旦固定
+  if (this.m_surfaceUser != null) {
+    let layer = this.m_surfaceUser;
+    let surface = pictCanvas.getSurface();
+    this.fixMaskImage(surface, layer);    // サーフェス使用中レイヤーのマスキング結果を一旦固定
+  }
   this.setupMaskImage(this.m_lastToolPalette, nextLayer, surface);  // 次のレイヤーのマスキングを行う。
 
   this.m_bDealing = false;
@@ -688,4 +699,90 @@ PaintTool.prototype.OnDrawStart = function(e)
     let ffst = new FloodFillState(layer, e.m_point.x, e.m_point.y, color);
     ffst.fill();
   }
+}
+
+//
+//  レイヤー選択ツール
+//
+
+/// 新しいインスタンスを追加する。
+function LayerTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_listBox = null;
+}
+
+/// 最初の表示を行う。
+LayerTool.prototype.show = function(setting, toolCanvas)
+{
+  let nlayers = setting.getNumLayers();
+  let curLayerNo = setting.getCurLayerNo();
+  this.m_listBox = new ListBox(this.m_iconBounds, nlayers);
+  this.m_toolCanvas = toolCanvas;
+  this.updateView(setting);
+}
+
+/// レイヤー選択に従い設定を更新する。
+LayerTool.prototype.updateSetting = function(setting)
+{
+  // クリックされたレイヤー番号を特定
+  let selIdx = this.m_listBox.getSelectionIndex();
+  let nitems = this.m_listBox.getNumItems();
+  let layerNo = (nitems - 1) - selIdx;
+
+  // 設定変更
+  setting.setCurLayerNo(layerNo);
+}
+
+/// 設定に従いレイヤー選択を更新する。
+LayerTool.prototype.updateView = function(setting)
+{
+  // データ更新
+  let curLayerNo = setting.getCurLayerNo();
+  this.m_listBox.setSelectionIndex(curLayerNo);
+
+  // 基礎部分描画
+  this.m_listBox.show(curLayerNo, this.m_toolCanvas);
+
+  // レイヤー状態を表示に反映
+  let ctx = this.m_listBox.getContext2d();
+  let nitems = this.m_listBox.getNumItems();
+  for (let i = 0; i < nitems; ++i) {
+    let b = this.m_listBox.getBounds(i);
+    let layerNo = (nitems - 1) - i;
+    if (layerNo == curLayerNo) {
+      ctx.fillStyle = textColor;
+      ctx.fillText("Layer" + layerNo, b.x + 1, b.y + b.height - 1, b.width - 1);
+    }
+    if (!setting.getLayerVisibility(layerNo)) {
+      ctx.fillStyle = 'rgb(255,0,0)';
+      draw_line_1px(b.x, b.y, b.x + b.width - 1, b.y + b.height - 1, ctx);
+    }
+  }
+}
+
+/// ツール選択時呼ばれる。
+LayerTool.prototype.OnSelected = function(e)
+{
+  this.m_listBox.OnSelected(e);
+
+  let setting = e.m_sender.getCommonSetting();
+  this.updateSetting(setting);
+  this.updateView(setting);
+}
+
+/// ツール選択解除時呼ばれる。
+LayerTool.prototype.OnDiselected = function(e)
+{
+  /*NOP*/
+}
+
+/// 再ポイントされたとき呼ばれる。
+LayerTool.prototype.OnPicked = function(e)
+{
+  this.m_listBox.OnSelected(e);
+
+  let setting = e.m_sender.getCommonSetting();
+  this.updateSetting(setting);
+  this.updateView(setting);
 }

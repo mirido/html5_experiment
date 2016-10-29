@@ -21,7 +21,7 @@ function CommonSetting(nlayers)
   this.m_color = 'rgb(0, 0, 0)';        // 描画色
   this.m_alpha = [ 255, 217 ];          // α値
   this.m_thickness = 1;                 // 線幅
-  this.m_curLayerNo = nlayers - 1;      // カレントレイヤー
+  this.m_curLayerNo = 0;                // カレントレイヤー
   this.m_layerVisibility = [];          // レイヤーの可視属性
   for (let i = 0; i < nlayers; ++i) {
     this.m_layerVisibility[i] = true;
@@ -46,14 +46,15 @@ CommonSetting.prototype.callListener = function()
 }
 
 // Getter, Setter
+// 下記において、設定変更通知のために
+// グローバル変数g_pictureCanvasを使っている。(Ad-hoc)
 CommonSetting.prototype.getColor = function() { return this.m_color; }
 CommonSetting.prototype.setColor = function(value) {
+  if (this.m_color == value)
+    return;
   this.m_color = value;
   this.callListener();
-
-  // 作業中レイヤー固定要求発行
-  // グローバル変数g_pictureCanvasの使用はad-hoc。
-  g_pictureCanvas.raiseLayerFixRequest();
+  g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
 }
 CommonSetting.prototype.getAlpha = function(idx) { return this.m_alpha[idx]; }
 CommonSetting.prototype.setAlpha = function(idx, value) {
@@ -73,6 +74,37 @@ CommonSetting.prototype.getMaskColor = function() { return this.m_maskColor; }
 CommonSetting.prototype.setMaskColor = function(value) {
   this.m_maskColor = value;
   // this.callListener();   // 需要が無いのでイベント通知省略。
+}
+CommonSetting.prototype.getNumLayers = function() { return this.m_layerVisibility.length; }
+CommonSetting.prototype.getLayerVisibility = function(layerNo) {
+  return this.m_layerVisibility[layerNo];
+}
+CommonSetting.prototype.setLayerVisibility = function(layerNo, bVisible) {
+  if (this.m_layerVisibility[layerNo] == bVisible)
+    return;
+  this.m_layerVisibility[layerNo] = bVisible;
+  g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
+  g_pictureCanvas.setLayerVisibility(layerNo, bVisible);  // レイヤー可視属性変更
+}
+CommonSetting.prototype.getCurLayerNo = function() { return this.m_curLayerNo; }
+CommonSetting.prototype.setCurLayerNo = function(layerNo) {
+  if (this.m_curLayerNo == layerNo)
+    return;
+  this.m_curLayerNo = layerNo;
+  let nextLayer = g_pictureCanvas.getLayer(layerNo);
+  g_pictureCanvas.raiseLayerFixRequest(nextLayer);  // 作業中レイヤー固定要求(兼レイヤー変更予告)
+  g_pictureCanvas.changeLayer(layerNo);     // カレントレイヤー変更
+}
+
+/// 設定をシステム全体に周知する。
+CommonSetting.prototype.source = function()
+{
+  this.callListener();
+
+  let layerNo = this.m_curLayerNo;
+  let nextLayer = g_pictureCanvas.getLayer(layerNo);
+  g_pictureCanvas.raiseLayerFixRequest(nextLayer);  // 作業中レイヤー固定要求(兼レイヤー変更予告)
+  g_pictureCanvas.changeLayer(layerNo);     // カレントレイヤー変更
 }
 
 /// イベントハンドラを追加する。
@@ -371,6 +403,7 @@ function ToolPalette(pictCanvas)
 
   // 共通設定メモリ準備
   this.m_setting = new CommonSetting(nlayers);
+  this.m_setting.source();
 
   // パレット初期描画
   // このステップは暫定処置で、将来的には無くす予定。
@@ -439,6 +472,7 @@ ToolPalette.prototype.initToolChain = function()
   addToolHelper(this.m_toolMap[22], 'ColorCompoTool', 2200, toolDic);
   addToolHelper(this.m_toolMap[23], 'ColorCompoTool', 2300, toolDic);
   addToolHelper(this.m_toolMap[24], 'ColorCompoTool', 2400, toolDic);
+  addToolHelper(this.m_toolMap[27], 'LayerTool', 2700, toolDic);
   // console.dir(toolDic);
   // console.dir(this.m_toolMap[25]);
 
@@ -458,6 +492,7 @@ ToolPalette.prototype.initToolChain = function()
   toolDic[2200].show(this.m_setting, 1, 0, this.m_palette);   // G
   toolDic[2300].show(this.m_setting, 2, 0, this.m_palette);   // B
   toolDic[2400].show(this.m_setting, 3, 0, this.m_palette);   // A
+  toolDic[2700].show(this.m_setting, this.m_palette);
 }
 
 /// ドラッグ開始処理。

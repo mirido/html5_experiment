@@ -724,3 +724,130 @@ MicroSlideBar.prototype.OnPicked = function(e)
 
   return this.m_value;
 }
+
+//
+//  ListBox
+//
+
+// 当クラスはポインティングイベントの場所解釈と、
+// 描画領域の提供までを行う。
+// 描画内容(テキストとか、斜線とか)は利用元が描く。
+
+/// 新しいインスタンスを初期化する。
+function ListBox(iconBounds, depth)
+{
+  this.m_iconBounds = iconBounds;
+
+  // ListBoxは内部に1個以上のローカルな区画を持つアイコンである。
+  // それらのローカルな区画の座標をthis.m_localBounds[]として記憶する。
+  let b = iconBounds;
+  let inr = jsRect(b.x + 1, b.y + 1, b.width - 2, b.height - 2);
+  let ey = inr.y + inr.height;
+  let local_height = Math.floor((inr.height + 1) / depth);
+  this.m_localBounds = [];
+  for (let i = 0; i < depth; ++i) {
+    let py = inr.y + (local_height + 1) * i;
+    this.m_localBounds[i] = jsRect(
+      inr.x,
+      py,
+      inr.width,
+      (i < depth - 1) ? local_height : ey - py
+    );
+  }
+  assert(this.m_localBounds.length == depth);
+
+  // 選択中の区画のindex
+  this.m_selectionIndex = 0;
+}
+
+/// 最初の表示を行う。
+ListBox.prototype.show = function(selIdx, toolCanvas)
+{
+  this.m_toolCanvas = toolCanvas;
+  let context = toolCanvas.getContext('2d');
+
+  // 枠線
+  context.fillStyle = borderColor;
+  let b = this.m_iconBounds;    // Alias
+  draw_rect_R(b, context);
+
+  // 内側
+  context.fillStyle = inactiveIconColors[1];  // ボタン面の色
+  context.fillRect(b.x + 1, b.y + 1, b.width - 2, b.height - 2);
+
+  // 区画の区切り線を描画する。
+  context.fillStyle = 'rgb(0,0,0)';
+  for (let i = 1; i < this.m_localBounds.length; ++i) {
+    let lbnd = this.m_localBounds[i - 1];
+    // console.dir(lbnd);
+    let py = lbnd.y + lbnd.height;
+    draw_line_1px(lbnd.x + 2, py, lbnd.x + lbnd.width - 4, py, context);
+  }
+}
+
+/// 座標から区画番号を取得する。
+ListBox.prototype.getLocalBoundsIdx = function(point)
+{
+  for (let i = 0; i < this.m_localBounds.length; ++i) {
+    if (rect_includes(this.m_localBounds[i], point)) {
+      return i;
+    }
+  }
+  return null;
+}
+
+/// 選択時呼ばれる。
+ListBox.prototype.OnSelected = function(e)
+{
+  // console.log("ListBox::OnSelected() called.");
+  return this.OnPicked(e);
+}
+
+/// 選択解除時呼ばれる。
+ListBox.prototype.OnDiselected = function(e)
+{
+  // console.log("ListBox::OnDiselected() called.");
+  /*NOP*/
+}
+
+/// 再ポイントされたとき呼ばれる。
+ListBox.prototype.OnPicked = function(e)
+{
+  // console.log("ListBox::OnPicked() called.");
+  let idx = this.getLocalBoundsIdx(e.m_point);
+  if (idx != null) {
+    this.m_selectionIndex = idx;
+  }
+}
+
+/// Itemの数を取得する。
+ListBox.prototype.getNumItems = function()
+{
+  return this.m_localBounds.length;
+}
+
+/// itemを選択する。
+ListBox.prototype.setSelectionIndex = function(index)
+{
+  assert(0 <= index && index < this.m_localBounds.length);
+  this.m_selectionIndex = index;
+}
+
+/// 選択中itemのindexを取得する。
+ListBox.prototype.getSelectionIndex = function()
+{
+  return this.m_selectionIndex;
+}
+
+/// 指定itemの描画領域を取得する。
+ListBox.prototype.getBounds = function(index)
+{
+  assert(0 <= index && index < this.m_localBounds.length);
+  return this.m_localBounds[index];
+}
+
+/// 描画用コンテキストを取得する。
+ListBox.prototype.getContext2d = function()
+{
+  return this.m_toolCanvas.getContext('2d');
+}
