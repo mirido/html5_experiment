@@ -714,8 +714,10 @@ CursorBase01.prototype.setParam = function(diameter, color, pixel_pre_renderer)
   colors[0] ^= 0xff;
   colors[1] ^= 0xff;
   colors[2] ^= 0xff;
-  if (colors[0] == 255 && colors[1] == 255 && colors[2] == 255) {
-    // 白色(デフォルト背景色と同じ)は避ける。
+  if ( (colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
+  	|| (colors[0] == 0 && colors[1] == 0 && colors[2] == 0) )
+  {
+    // 白色(デフォルト背景色と同じ)や黒色は避ける。
     colors[0] = colors[1] = colors[2] = 128;
   }
   color = get_color_as_RGB(colors);
