@@ -4,33 +4,39 @@
 'use strict';
 
 //
-//  PencilTool
+//  DrawToolBase
 //
 
-const textPencilTool = '鉛筆';
-
 /// 新しいインスタンスを初期化する。
-function PencilTool(rect)
+function DrawToolBase(iconBounds, text, drawOp, effect, cursor)
 {
-  this.m_iconBounds = rect;
+  this.m_iconBounds = iconBounds;
+  this.m_text = text;
 
-  // this.m_drawOp = new NullDrawOp();
-  this.m_drawOp = new DrawOp_FreeHand();
-  // this.m_effect = new NullEffect();
-  this.m_effect = new Effect_Pencil();
-  this.m_cursor = new Cursor_Circle();
+  this.m_drawOp = drawOp;
+  this.m_effect = effect;
+  this.m_cursor = cursor;
   this.m_drawerCore = new DrawerBase(this.m_drawOp, this.m_effect, this.m_cursor);
 
   this.m_setting = null;
 }
 
-/// 選択時呼ばれる。
-PencilTool.prototype.OnSelected = function(e)
+/// 最初の表示を行う。
+DrawToolBase.prototype.show = function(setting, toolCanvas)
 {
-  // console.log("PencilTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  let context = toolCanvas.getContext('2d');
+
+  // 非選択時アイコン描画
+  draw_icon_ex(this.m_iconBounds, this.m_text, null, false, context);
+}
+
+/// 選択時呼ばれる。
+DrawToolBase.prototype.OnSelected = function(e)
+{
+  // console.log("DrawerBase::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
 
   // 選択時アイコン描画
-  draw_icon_wrp(this.m_iconBounds, textPencilTool, null, true, e);
+  draw_icon_wrp(this.m_iconBounds, this.m_text, null, true, e);
 
   // 共通設定オブジェクト記憶
   this.m_setting = e.m_sender.getCommonSetting();
@@ -41,35 +47,127 @@ PencilTool.prototype.OnSelected = function(e)
 }
 
 /// 選択解除時呼ばれる。
-PencilTool.prototype.OnDiselected = function(e)
+DrawToolBase.prototype.OnDiselected = function(e)
 {
-  // console.log("PencilTool::OnDiselected() called. ");
+  // console.log("DrawerBase::OnDiselected() called. ");
 
   // 描画ツール解除
   e.m_sender.removeDrawer(this.m_drawerCore);
   e.m_sender.removeDrawer(this);
 
   // 非選択時アイコン描画
-  draw_icon_wrp(this.m_iconBounds, textPencilTool, null, false, e);
+  draw_icon_wrp(this.m_iconBounds, this.m_text, null, false, e);
 }
 
 /// 再ポイントされたとき呼ばれる。
-PencilTool.prototype.OnPicked = function(e)
+DrawToolBase.prototype.OnPicked = function(e)
 {
-  // console.log("PencilTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  // console.log("DrawerBase::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
   /*NOP*/
 }
 
 /// 描画ストローク開始時に呼ばれる。
-PencilTool.prototype.OnDrawStart = function(e)
+DrawToolBase.prototype.OnDrawStart = function(e)
 {
-  // console.log("PencilTool.OnDrawStart() called.");
+  // console.log("DrawerBase.OnDrawStart() called.");
 
   // 最新の描画設定を反映
   let thickness = this.m_setting.getThickness();
   let color = this.m_setting.getColor();
   this.m_effect.setParam(thickness, color);
   this.m_cursor.setParam(thickness, color);
+}
+
+//
+//  鉛筆ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function PencilTool(iconBounds)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    iconBounds,
+    '鉛筆',
+    new DrawOp_FreeHand(),
+    new Effect_Pencil(),
+    new Cursor_Circle()
+  );
+}
+
+/// 最初の表示を行う。
+PencilTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+PencilTool.prototype.OnSelected = function(e)
+{
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+PencilTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+PencilTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+/// 描画ストローク開始時に呼ばれる。
+PencilTool.prototype.OnDrawStart = function(e)
+{
+  this.m_drawToolBase.OnDrawStart(e);
+}
+
+//
+//  消しペンツール
+//
+
+/// 新しいインスタンスを初期化する。
+function EraseTool(iconBounds)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    iconBounds,
+    '消しペン',
+    new DrawOp_FreeHand(),
+    new Effect_Eraser(),
+    new Cursor_Square()
+  );
+}
+
+/// 最初の表示を行う。
+EraseTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+EraseTool.prototype.OnSelected = function(e)
+{
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+EraseTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+EraseTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+/// 描画ストローク開始時に呼ばれる。
+EraseTool.prototype.OnDrawStart = function(e)
+{
+  this.m_drawToolBase.OnDrawStart(e);
 }
 
 //

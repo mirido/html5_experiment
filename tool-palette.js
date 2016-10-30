@@ -465,6 +465,7 @@ ToolPalette.prototype.initToolChain = function()
   // ツールアイコン区画をツールに割付け
   let toolDic = {};
   addToolHelper(this.m_toolMap[0], 'PencilTool', 0, toolDic);
+  addToolHelper(this.m_toolMap[4], 'EraseTool', 400, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 600, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 601, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 602, toolDic);
@@ -483,7 +484,8 @@ ToolPalette.prototype.initToolChain = function()
   // console.dir(this.m_toolMap[25]);
 
   // ツール固有の初期化
-  // toolDic[0].show(...);    // 鉛筆ツール(TBD)
+  toolDic[0].show(this.m_setting, this.m_palette);        // 鉛筆ツール
+  toolDic[400].show(this.m_setting, this.m_palette);      // 消しペンツール
   toolDic[600].show(this.m_setting, 0, this.m_palette);   // 通常ツール
   toolDic[601].show(this.m_setting, 1, this.m_palette);   // マスクツール
   toolDic[602].show(this.m_setting, 2, this.m_palette);   // 逆マスクツール

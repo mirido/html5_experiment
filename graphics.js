@@ -30,6 +30,36 @@ function pre_render_pixel(ha, diameter, color, bFilled)
 	return mini_canvas;
 }
 
+/// 大きさを持った正方形をプリレンダリングする。
+/// diameterが画素の大きさ(矩形の幅)にあたる。
+/// 通常はha = Math.ceil(diameter / 2 + マージン)とする。
+function pre_render_square(ha, diameter, color, bFilled)
+{
+	// pre-rendering用キャンバス生成
+	let mini_canvas = document.createElement('canvas');
+	mini_canvas.width = 2 * ha + 1;
+	mini_canvas.height = 2 * ha + 1;
+
+	// アンチエリアシング対策
+	let radius = diameter / 2;
+	let px = ha;
+
+	// 描画
+	let context = mini_canvas.getContext('2d');
+	context.fillStyle = color;
+	context.strokeStyle = color;
+	let sx = Math.floor(px - radius);
+	let lx = Math.ceil(px + radius);
+	if (bFilled) {
+		let d = lx - sx + 1;
+		context.fillRect(sx, sx, d, d);
+	} else {
+		draw_rect(sx, sx, lx, lx, context);
+	}
+
+	return mini_canvas;
+}
+
 //
 //	図形描画
 //
@@ -46,7 +76,7 @@ function put_point_1px(px, py, context)
 	context.fillRect(px, py, 1, 1);
 }
 
-/// プレゼンハムのアルゴリズムで指定幅の直線を描画する。
+/// プレゼンハムのアルゴリズムで直線を描画する。(Pre-rendering前提)
 function draw_line(x0, y0, x1, y1, ha, pre_rendered, context)
 {
 	var tmp;
@@ -83,6 +113,52 @@ function draw_line(x0, y0, x1, y1, ha, pre_rendered, context)
 		} else {
 			// plot(x, y);
 			context.drawImage(pre_rendered, x - ha, y - ha);
+		}
+		error -= deltay;
+		if (error < 0) {
+			y += ystep;
+			error += deltax;
+		}
+	}
+}
+
+/// プレゼンハムのアルゴリズムで直線を描画する。(実行時render指定)
+function draw_line_w_runtime_renderer(x0, y0, x1, y1, run_time_renderer, context)
+{
+	var tmp;
+
+	var bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
+	if (bSteep) {
+		// swap(x0, y0);
+		tmp = x0, x0 = y0, y0 = tmp;
+
+		// swap(x1, y1)
+		tmp = x1, x1 = y1, y1 = tmp;
+	}
+	if (x0 > x1) {
+		// swap(x0, x1)
+		tmp = x0, x0 = x1, x1 = tmp;
+
+		// swap(y0, y1)
+		tmp = y0, y0 = y1, y1 = tmp;
+	}
+	var deltax = x1 - x0
+	var deltay = Math.abs(y1 - y0)
+	var error = Math.floor(deltax / 2.0);
+	var ystep
+	var y = y0
+	if (y0 < y1) {
+		ystep = 1;
+	} else {
+		ystep = -1;
+	}
+	for (var x = x0; x <= x1; ++x) {
+		if (bSteep) {
+			// plot(y, x);
+			run_time_renderer(y, x, context);
+		} else {
+			// plot(x, y);
+			run_time_renderer(x, y, context);
 		}
 		error -= deltay;
 		if (error < 0) {
