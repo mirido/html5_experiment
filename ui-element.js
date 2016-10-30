@@ -336,7 +336,7 @@ DrawOp_FreeHand.prototype.testOnDrawEnd = function(e, points, context)
 /// 描画ストローク開始時ガイド表示処理。
 DrawOp_FreeHand.prototype.guideOnDrawStart = function(e, points, context)
 {
-  return this.testOnDrawing(e, points, context);
+  this.guideOnDrawing(e, points, context);
 }
 
 /// 描画ストローク中ガイド表示処理。
@@ -361,6 +361,74 @@ DrawOp_FreeHand.prototype.guideOnDrawing = function(e, points, context)
 
 /// マージンを取得する。
 DrawOp_FreeHand.prototype.getMargin = function() { return 0; }
+
+//
+//  描画オペレータ2: 矩形領域指定(直線, 線四角, 四角 etc.)
+//
+
+/// 新しいインスタンスを初期化する。
+function DrawOp_Rectangle(setting, bFilled)
+{
+  this.m_bFilled = bFilled;
+  this.m_setting = setting;
+}
+
+/// 描画ストローク開始時の画素固定判断を行う。
+DrawOp_Rectangle.prototype.testOnDrawStart = function(e, points, context)
+{
+  return false;
+}
+
+/// 描画ストローク中の画素固定判断を行う。
+DrawOp_Rectangle.prototype.testOnDrawing = function(e, points, context)
+{
+  if (points.length > 2) {
+    points.splice(1, points.length - 2);  // 先頭と末尾以外を削除
+    return false;
+  }
+}
+
+/// 描画ストローク終了時の画素固定判断を行う。
+DrawOp_Rectangle.prototype.testOnDrawEnd = function(e, points, context)
+{
+  return true;
+}
+
+/// 描画ストローク開始時ガイド表示処理。
+DrawOp_Rectangle.prototype.guideOnDrawStart = function(e, points, context)
+{
+  this.guideOnDrawing(e, points, context);
+}
+
+/// 描画ストローク中ガイド表示処理。
+DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
+{
+  if (points.length >= 2) {
+    // 最新描画色取得
+    let setting = this.m_setting;
+    let color = setting.getColor();
+
+    // ガイド矩形描画
+    let pt1 = points[0];
+    let pt2 = points[points.length - 1];
+    context.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
+    context.fillStyle = color;
+    if (this.m_bFilled) {
+      let w = pt2.x - pt1.x + 1;
+      let h = pt2.y - pt1.y + 1;
+      context.fillRect(pt1.x, pt1.y, w, h);
+    } else {
+      draw_rect(pt1.x, pt1.y, pt2.x, pt2.y, context);
+    }
+    context.globalCompositeOperation = 'source-over';
+  }
+}
+
+/// 描画ストローク終了時ガイド表示処理。
+// DrawOp_Rectangle.prototype.guideOnDrawEnd = function(e, points, context)
+
+/// マージンを取得する。
+DrawOp_Rectangle.prototype.getMargin = function() { return 0; }
 
 //
 //  EffectBase01: 描画効果全般の基底クラス
@@ -562,6 +630,68 @@ Effect_Eraser.prototype.apply = function(points, context)
 
 /// マージンを取得する。
 Effect_Eraser.prototype.getMargin = function() { return this.m_margin; }
+
+//
+//  エフェクト3: 鉛筆による線四角 or 四角
+//
+
+/// 新しいインスタンスを取得する。
+function Effect_PencilRect(bFilled)
+{
+  this.m_effectBase = new EffectBase01();
+  this.m_bFilled = bFilled;
+}
+
+// Pre-render関数は無し。
+
+/// 実行時render関数(1点用)。
+Effect_PencilRect.runtime_renderer1_ex = function(px, py, color, context)
+{
+  assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+}
+
+/// 実行時render関数(2点用)。
+Effect_PencilRect.runtime_renderer2_ex = function(px1, py1, px2, py2, color, bFilled, context)
+{
+  context.fillStyle = color;
+  if (bFilled) {
+    let w = px2 - px1 + 1;
+    let h = py2 - py1 + 1;
+    context.fillRect(px1, py1, w, h);
+  } else {
+    draw_rect(px1, py1, px2, py2, context);
+  }
+}
+
+/// パラメータを設定する。(クラス固有)
+Effect_PencilRect.prototype.setParam = function(color)
+{
+    // 引数仕様合わせのためのクロージャ生成
+    let runtime_renderer1 = function(px, py, context) {
+      Effect_PencilRect.runtime_renderer1_ex(px, py, color, context);
+    };
+    let bFilled = this.m_bFilled;
+    let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+      Effect_PencilRect.runtime_renderer2_ex(px1, py1, px2, py2, color, bFilled, context);
+    };
+
+    // 描画条件決定
+    this.m_effectBase.setParamEx(
+      0,
+      null,
+      runtime_renderer1,
+      runtime_renderer2
+    );
+}
+
+/// エフェクトを適用する。
+Effect_PencilRect.prototype.apply = function(points, context)
+{
+  this.m_effectBase.apply(points, context);
+}
+
+/// マージンを取得する。
+Effect_PencilRect.prototype.getMargin = function() { return 0; }
 
 //
 //  CursorBase01: 円形や方形等のカーソルの基底クラス

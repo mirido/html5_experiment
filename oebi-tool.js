@@ -125,6 +125,104 @@ PencilTool.prototype.OnDrawStart = function(e)
 }
 
 //
+//  四角ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function FillRectTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+FillRectTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    '四角',
+    new DrawOp_Rectangle(setting, true),
+    new Effect_PencilRect(true),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+FillRectTool.prototype.OnSelected = function(e)
+{
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+FillRectTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+FillRectTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+/// 描画ストローク開始時に呼ばれる。
+FillRectTool.prototype.OnDrawStart = function(e)
+{
+  this.m_drawToolBase.OnDrawStart(e);
+}
+
+//
+//  線四角ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function LineRectTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+LineRectTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    '線四角',
+    new DrawOp_Rectangle(setting, false),
+    new Effect_PencilRect(false),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+LineRectTool.prototype.OnSelected = function(e)
+{
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+LineRectTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+LineRectTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+/// 描画ストローク開始時に呼ばれる。
+LineRectTool.prototype.OnDrawStart = function(e)
+{
+  this.m_drawToolBase.OnDrawStart(e);
+}
+
+//
 //  消しペンツール
 //
 
