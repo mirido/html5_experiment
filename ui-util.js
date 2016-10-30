@@ -375,9 +375,16 @@ function KeyStateManager()
   this.m_bAltDown = false;
   this.m_bMetaDown = false;
 
+  // 右ボタン押下中か否か
+  this.m_bRightButtonDown = false;
+
   // イベントハンドラ登録
   document.addEventListener('keydown', this);
   document.addEventListener('keyup', this);
+  document.addEventListener('mousedown', this);
+  document.addEventListener('touchstart', this);
+  document.addEventListener('mouseup', this);
+  document.addEventListener('touchend', this);
 }
 
 /// インスタンスが保持する資源を解放する。
@@ -385,12 +392,40 @@ KeyStateManager.prototype.dispose = function()
 {
   document.removeEventListener('keydown', this);
   document.removeEventListener('keyup', this);
+  document.removeEventListener('mousedown', this);
+  document.removeEventListener('touchstart', this);
+  document.removeEventListener('mouseup', this);
+  document.removeEventListener('touchend', this);
 }
 
 /// イベントリスナ。
 KeyStateManager.prototype.handleEvent = function(e)
 {
+  switch (e.type) {
+    case 'mousedown':
+    case 'touchstart':
+      if (e.button != 0) {
+        this.m_bRightButtonDown = true;
+      }
+      return;
+    case 'mouseup':
+    case 'touchend':
+      // 161030-1「SHIFT+CTRL+右クリックでスポイトツールを働かせた後、単にクリックしただけでもスポイトツールとして働き続ける。」
+      // の暫定対策。左ボタン以外のボタンのupで特殊キーが全て離されたとみなす。
+      if (this.m_bRightButtonDown) {
+        this.m_bShiftDown = false;
+        this.m_bCtrlDown = false;
+        this.m_bAltDown = false;
+        this.m_bMetaDown = false;
+        this.m_bRightButtonDown = false;
+      }
+      return;
+    default:
+      /*NOP*/
+      break;
+  }
   let key_event = (e || window.event);
+  console.log("key_event=(" + key_event.shiftKey + ", " + key_event.ctrlKey + ")");
   this.m_bShiftDown = (key_event.shiftKey);
 	this.m_bCtrlDown = (key_event.ctrlKey);
 	this.m_bAltDown = (key_event.altKey);

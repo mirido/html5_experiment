@@ -82,6 +82,14 @@ function PictureCanvas()
 	// イベントハンドラ登録
 	register_pointer_event_handler(this.m_view_port, this);
 
+	// コンテキストメニュー無効化
+	// http://tmlife.net/programming/javascript/javascript-right-click.html
+	let avoid_context_menu = function(e) { e.preventDefault(); e.stopPropagation(); }
+	for (let i = 0; i < this.m_allLayers.length; ++i) {
+	  this.m_allLayers[i].addEventListener("contextmenu", avoid_context_menu, false);
+	}
+	this.m_view_port.addEventListener("contextmenu", avoid_context_menu, false);
+
 	// レイヤーのサイズ調整
 	this.fitCanvas();
 
