@@ -472,7 +472,7 @@ ToolPalette.prototype.initToolChain = function()
   addToolHelper(this.m_toolMap[25], 'ThicknessTool', 2500, toolDic);
   for (let i = 0; i < colorPaletteDef.length; ++i) {
     let idx = colorPaletteDef[i][0];
-    let id = idx * 10;
+    let id = idx * 100;
     addToolHelper(this.m_toolMap[idx], 'ColorPalette', id, toolDic);
   }
   addToolHelper(this.m_toolMap[21], 'ColorCompoTool', 2100, toolDic);
@@ -492,7 +492,7 @@ ToolPalette.prototype.initToolChain = function()
   toolDic[2500].show(this.m_setting, this.m_palette);     // 線幅ツール
   for (let i = 0; i < colorPaletteDef.length; ++i) {
     let idx = colorPaletteDef[i][0];
-    let id = idx * 10;
+    let id = idx * 100;
     let color = colorPaletteDef[i][1];
     toolDic[id].show(color, false, this.m_palette);   // カラーパレット1
   }
