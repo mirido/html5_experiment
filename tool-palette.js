@@ -559,7 +559,7 @@ ToolPalette.prototype.handleEvent = function(e)
   // ドラッグ状態管理
   if (!this.m_bDragging) {
     if (e.type == 'mousedown' || e.type == 'touchstart') {
-      // mouseupやtouchendを確実に補足するための登録
+      // mouseupやtouchendを確実に捕捉するための登録
   		g_pointManager.notifyPointStart(this, e);
 
       // 描画ツールに引き渡す情報を構成

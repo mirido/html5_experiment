@@ -110,7 +110,7 @@ PictureCanvas.prototype.handleEvent = function(e)
 	switch (e.type) {
 	case 'mousedown':
 	case 'touchstart':
-		// mouseupやtouchendを確実に補足するための登録
+		// mouseupやtouchendを確実に捕捉するための登録
 		g_pointManager.notifyPointStart(this, e);
 
 		// 描画開始を通知
@@ -224,7 +224,7 @@ PictureCanvas.prototype.getCurLayer = function()
 /// サーフェスを取得する。
 PictureCanvas.prototype.getSurface = function()
 {
-	console.log("this.m_surface: w=" + this.m_surface.width + ", h=" + this.m_surface.height);
+	// console.log("this.m_surface: w=" + this.m_surface.width + ", h=" + this.m_surface.height);
 	return this.m_surface;
 }
 
@@ -359,7 +359,7 @@ PictureCanvas.prototype.fitCanvas = function()
 /// レイヤー固定要求リスナを追加する。
 PictureCanvas.prototype.addLayerFixListener = function(listener)
 {
-	console.log("PictureCanvas::addLayerFixListener() called.")
+	// console.log("PictureCanvas::addLayerFixListener() called.")
 	assert(listener != null);
 	return add_to_unique_list(this.m_layerFixListeners, listener);
 }
@@ -367,7 +367,7 @@ PictureCanvas.prototype.addLayerFixListener = function(listener)
 /// レイヤー固定要求リスナを削除する。
 PictureCanvas.prototype.removeLayerFixListener = function(listener)
 {
-	console.log("PictureCanvas::removeLayerFixListener() called.")
+	// console.log("PictureCanvas::removeLayerFixListener() called.")
 	assert(listener != null);
 	return remove_from_unique_list(this.m_layerFixListeners, listener);
 }
@@ -380,7 +380,7 @@ PictureCanvas.prototype.raiseLayerFixRequest = function(nextLayer)
 		nextLayer = this.m_workingLayers[this.m_nTargetLayerNo];
 	}
 	for (let i = 0; i < this.m_layerFixListeners.length; ++i) {
-		console.log("PictureCanvas::raiseLayerFixRequest(): Checking listener...");
+		// console.log("PictureCanvas::raiseLayerFixRequest(): Checking listener...");
 		if (this.m_layerFixListeners[i].OnLayerToBeFixed) {
 			console.log("PictureCanvas::raiseLayerFixRequest(): Calling listener...");
 			this.m_layerFixListeners[i].OnLayerToBeFixed(this, nextLayer);
