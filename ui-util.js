@@ -425,7 +425,7 @@ KeyStateManager.prototype.handleEvent = function(e)
       break;
   }
   let key_event = (e || window.event);
-  console.log("key_event=(" + key_event.shiftKey + ", " + key_event.ctrlKey + ")");
+  // console.log("key_event=(" + key_event.shiftKey + ", " + key_event.ctrlKey + ")");
   this.m_bShiftDown = (key_event.shiftKey);
 	this.m_bCtrlDown = (key_event.ctrlKey);
 	this.m_bAltDown = (key_event.altKey);
