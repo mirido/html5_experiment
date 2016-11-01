@@ -10,7 +10,13 @@ All rights reserved.*/
   float: left;
   /*border: thin solid blue;*/
   vertical-align: middle;
-  cursor: default
+  cursor: default;
+  /* 選択禁止 (反転表示回避) */
+  /* https://www.softel.co.jp/blogs/tech/archives/2909 */
+  user-select: none; /* CSS3 */
+  -moz-user-select: none; /* Firefox */
+  -webkit-user-select: none; /* Safari、Chromeなど */
+  -ms-user-select: none; /* IE10かららしい */
 }
 
 .boxContainer {
@@ -47,7 +53,7 @@ All rights reserved.*/
     /*border: thick solid magenta;*/
     width: 411px;
     height: 411px;
-    background-color: rgba(255, 255, 255, 255); /*白色キャンバス化を意図したが効かない*/
+    background-color: rgba(255,255,255,255);
     overflow: scroll;   /* スクロール表示 */
 }
 

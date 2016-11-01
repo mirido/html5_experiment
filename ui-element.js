@@ -109,8 +109,8 @@ function DrawerBase(drawOp, effect, cursor)
 DrawerBase.prototype.OnDrawStart = function(e)
 {
   let curLayer = e.m_sender.getCurLayer();
-  let w = curLayer.clientWidth;
-  let h = curLayer.clientHeight;
+  let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+  let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
@@ -144,8 +144,8 @@ DrawerBase.prototype.OnDrawStart = function(e)
 DrawerBase.prototype.OnDrawing = function(e)
 {
   let curLayer = e.m_sender.getCurLayer();
-  let w = curLayer.clientWidth;
-  let h = curLayer.clientHeight;
+  let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+  let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
@@ -186,8 +186,8 @@ DrawerBase.prototype.OnDrawing = function(e)
 DrawerBase.prototype.OnDrawEnd = function(e)
 {
   let curLayer = e.m_sender.getCurLayer();
-  let w = curLayer.clientWidth;
-  let h = curLayer.clientHeight;
+  let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+  let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
@@ -336,7 +336,7 @@ DrawOp_FreeHand.prototype.testOnDrawEnd = function(e, points, context)
 /// 描画ストローク開始時ガイド表示処理。
 DrawOp_FreeHand.prototype.guideOnDrawStart = function(e, points, context)
 {
-  return this.testOnDrawing(e, points, context);
+  this.guideOnDrawing(e, points, context);
 }
 
 /// 描画ストローク中ガイド表示処理。
@@ -363,53 +363,123 @@ DrawOp_FreeHand.prototype.guideOnDrawing = function(e, points, context)
 DrawOp_FreeHand.prototype.getMargin = function() { return 0; }
 
 //
-//  エフェクト1: 鉛筆
+//  描画オペレータ2: 矩形領域指定(直線, 線四角, 四角 etc.)
 //
 
-/// 新しいインスタンスを取得する。
-function Effect_Pencil(diameter, color)
+/// 新しいインスタンスを初期化する。
+function DrawOp_Rectangle(setting, bFilled)
 {
-  if (diameter == null) { diameter = 1; }
-  if (color == null) { color = 'rgb(0,0,0)'; }
-  this.setParam(diameter, color);
+  this.m_bFilled = bFilled;
+  this.m_setting = setting;
 }
 
-/// パラメータを設定する。(クラス固有)
-Effect_Pencil.prototype.setParam = function(diameter, color)
+/// 描画ストローク開始時の画素固定判断を行う。
+DrawOp_Rectangle.prototype.testOnDrawStart = function(e, points, context)
 {
-  const margin = Math.ceil(diameter / 2);
+  return false;
+}
 
-  this.m_pre_rendered = null;
-  this.m_color = color;
-  this.m_ha = 0;
-
-  if (diameter > 1) {
-    this.m_ha = Math.ceil(diameter / 2 + margin);
-    this.m_pre_rendered = pre_render_pixel(this.m_ha, diameter, color, true);
+/// 描画ストローク中の画素固定判断を行う。
+DrawOp_Rectangle.prototype.testOnDrawing = function(e, points, context)
+{
+  if (points.length > 2) {
+    points.splice(1, points.length - 2);  // 先頭と末尾以外を削除
+    return false;
   }
 }
 
+/// 描画ストローク終了時の画素固定判断を行う。
+DrawOp_Rectangle.prototype.testOnDrawEnd = function(e, points, context)
+{
+  return true;
+}
+
+/// 描画ストローク開始時ガイド表示処理。
+DrawOp_Rectangle.prototype.guideOnDrawStart = function(e, points, context)
+{
+  this.guideOnDrawing(e, points, context);
+}
+
+/// 描画ストローク中ガイド表示処理。
+DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
+{
+  if (points.length >= 2) {
+    // 最新描画色取得
+    let setting = this.m_setting;
+    let color = setting.getColor();
+
+    // ガイド矩形描画
+    let pt1 = points[0];
+    let pt2 = points[points.length - 1];
+    context.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
+    context.fillStyle = color;
+    if (this.m_bFilled) {
+      let w = pt2.x - pt1.x + 1;
+      let h = pt2.y - pt1.y + 1;
+      context.fillRect(pt1.x, pt1.y, w, h);
+    } else {
+      draw_rect(pt1.x, pt1.y, pt2.x, pt2.y, context);
+    }
+    context.globalCompositeOperation = 'source-over';
+  }
+}
+
+/// 描画ストローク終了時ガイド表示処理。
+// DrawOp_Rectangle.prototype.guideOnDrawEnd = function(e, points, context)
+
+/// マージンを取得する。
+DrawOp_Rectangle.prototype.getMargin = function() { return 0; }
+
+//
+//  EffectBase01: 描画効果全般の基底クラス
+//
+
+// キャンバスに画素を直接置くタイプの効果(鉛筆や消しペン)の他、
+// 将来水彩等にも使えるようにしている(つもり)。
+
+/// 新しいインスタンスを取得する。
+function EffectBase01()
+{
+  this.setParamEx(null, null, null, null);
+}
+
+/// パラメータを設定する。(クラス固有)
+EffectBase01.prototype.setParamEx = function(
+  ha,                   // [in] Pre-rendering配置オフセット
+  pre_rendered,         // [in] Pre-rendering結果
+  runtime_renderer1,    // [in] 実行時render関数(1点用)
+  runtime_renderer2     // [in] 実行時render関数(2点用)
+)
+{
+  this.m_ha = ha;
+  this.m_pre_rendered = pre_rendered;
+  this.m_runtime_renderer1 = runtime_renderer1;
+  this.m_runtime_renderer2 = runtime_renderer2;
+}
+
 /// エフェクトを適用する。
-Effect_Pencil.prototype.apply = function(points, context)
+EffectBase01.prototype.apply = function(points, context)
 {
   if (points.length == 1) {
     let pt = points[0];
-    if (this.m_pre_rendered) {
+    if (this.m_pre_rendered) {    // (Pre-rendering結果存在)
       put_point(pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
     } else {
-      context.fillStyle = this.m_color;
-      put_point_1px(pt.x, pt.y, context);
+      // 実行時render関数(1点用)呼び出し
+      // runtime_render1の引数仕様がここに適用される。
+      this.m_runtime_renderer1(pt.x, pt.y, context);
     }
   } else {
     assert(points.length > 0);
     let prev = points[0];
     for (let i = 1; i < points.length; ++i) {
       let pt = points[i];
-      if (this.m_pre_rendered) {
+      if (this.m_pre_rendered) {  // (Pre-rendering結果存在)
         draw_line(prev.x, prev.y, pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
       } else {
-        context.fillStyle = this.m_color;
-        draw_line_1px(prev.x, prev.y, pt.x, pt.y, context);
+        // 実行時render関数(2点用)呼び出し
+        // runtime_render2の引数仕様がここに適用される。
+        this.m_runtime_renderer2(prev.x, prev.y, pt.x, pt.y, context);
       }
       prev = pt;
     }
@@ -417,27 +487,239 @@ Effect_Pencil.prototype.apply = function(points, context)
 }
 
 /// マージンを取得する。
-Effect_Pencil.prototype.getMargin = function() { return this.m_ha; }
+/// これは派生クラスで定義する。
+// EffectBase01.prototype.getMargin = function() { return 0; }
 
 //
-//  カーソル1: 円形カーソル
+//  エフェクト1: 鉛筆
 //
 
 /// 新しいインスタンスを取得する。
-function Cursor_Circle(diameter)
+function Effect_Pencil()
 {
-  if (diameter == null) { diameter = 1; }
-  this.setParam(diameter, 'rgb(0,0,0)');
+  this.m_effectBase = new EffectBase01();
+  this.m_margin = null;
+}
+
+/// Pre-render関数。
+Effect_Pencil.pre_renderer = function(ha, diameter, color)
+{
+  console.log("color=" + color);
+  if (diameter > 1) {
+    return pre_render_pixel(ha, diameter, color, true);
+  } else {
+    return null;    // 1 px描画時はpre-renderingしない。(好みの問題)
+  }
+}
+
+/// 実行時render関数(1点用)。
+Effect_Pencil.runtime_renderer1_ex = function(px, py, diameter, color, context)
+{
+  // console.log("Effect_Pencil.runtime_renderer1() called.");
+  assert(diameter == 1);    // 1 px描画時のみ呼ばれるはず。
+  context.fillStyle = color;
+  put_point_1px(px, py, context);
+}
+
+/// 実行時render関数(2点用)。
+Effect_Pencil.runtime_renderer2_ex = function(px1, py1, px2, py2, diameter, color, context)
+{
+  // console.log("Effect_Pencil.runtime_renderer2() called.");
+  assert(diameter == 1);    // 1 px描画時のみ呼ばれるはず。
+  context.fillStyle = color;
+  draw_line_1px(px1, py1, px2, py2, context);
 }
 
 /// パラメータを設定する。(クラス固有)
-Cursor_Circle.prototype.setParam = function(diameter, color)
+Effect_Pencil.prototype.setParam = function(diameter, color)
+{
+  // マージン決定
+  this.m_margin = (diameter > 1) ? Math.ceil(diameter / 2) + 10 : 0;
+
+  // 引数仕様合わせのためのクロージャ生成
+  let runtime_renderer1 = function(px, py, context) {
+    Effect_Pencil.runtime_renderer1_ex(px, py, diameter, color, context);
+  };
+  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+    draw_line_1px(px1, py1, px2, py2, context);
+    Effect_Pencil.runtime_renderer2_ex(px1, py1, px2, py2, diameter, color, context);
+  };
+
+  // 描画条件決定
+  let ha = this.m_margin;
+  this.m_effectBase.setParamEx(
+    ha,
+    Effect_Pencil.pre_renderer(ha, diameter, color),
+    runtime_renderer1,
+    runtime_renderer2
+  );
+}
+
+/// エフェクトを適用する。
+Effect_Pencil.prototype.apply = function(points, context)
+{
+  this.m_effectBase.apply(points, context);
+}
+
+/// マージンを取得する。
+Effect_Pencil.prototype.getMargin = function() { return this.m_margin; }
+
+//
+//  エフェクト2: 消しペン
+//
+
+/// 新しいインスタンスを取得する。
+function Effect_Eraser(diameter, color)
+{
+  this.m_effectBase = new EffectBase01();
+  this.m_margin = null;
+}
+
+// Pre-render関数は無し。
+
+/// 実行時render関数(1点用)。
+Effect_Eraser.runtime_renderer1_ex = function(px, py, diameter, context)
+{
+  let radius = diameter / 2;
+	let sx = Math.ceil(px - radius);
+  let sy = Math.ceil(py - radius);
+	let lx = Math.floor(px + radius);
+	let d = lx - sx + 1;
+	context.clearRect(sx, sy, d, d);
+}
+
+/// 実行時render関数(2点用)。
+Effect_Eraser.runtime_renderer2_ex = function(px1, py1, px2, py2, runtime_renderer1, context)
+{
+  // console.log("runtime_renderer2() called.");
+  // console.dir(runtime_renderer1);
+  draw_line_w_runtime_renderer(px1, py1, px2, py2, runtime_renderer1, context);
+}
+
+/// パラメータを設定する。(クラス固有)
+Effect_Eraser.prototype.setParam = function(diameter, color)
+{
+  // マージン決定
+  this.m_margin = (diameter > 1) ? Math.ceil((1.5 * diameter) / 2) : 0;
+
+  // 引数仕様合わせのためのクロージャ生成
+  let runtime_renderer1 = function(px, py, context) {
+    Effect_Eraser.runtime_renderer1_ex(px, py, diameter, context);
+  };
+  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+    Effect_Eraser.runtime_renderer2_ex(px1, py1, px2, py2, runtime_renderer1, context);
+  };
+  // console.dir(runtime_renderer1);
+  // console.dir(runtime_renderer2);
+
+  // 描画条件決定
+  let ha = this.m_margin;
+  this.m_effectBase.setParamEx(
+    ha,
+    null,
+    runtime_renderer1,
+    runtime_renderer2
+  );
+}
+
+/// エフェクトを適用する。
+Effect_Eraser.prototype.apply = function(points, context)
+{
+  this.m_effectBase.apply(points, context);
+}
+
+/// マージンを取得する。
+Effect_Eraser.prototype.getMargin = function() { return this.m_margin; }
+
+//
+//  エフェクト3: 鉛筆による線四角 or 四角
+//
+
+/// 新しいインスタンスを取得する。
+function Effect_PencilRect(bFilled)
+{
+  this.m_effectBase = new EffectBase01();
+  this.m_bFilled = bFilled;
+}
+
+// Pre-render関数は無し。
+
+/// 実行時render関数(1点用)。
+Effect_PencilRect.runtime_renderer1_ex = function(px, py, color, context)
+{
+  assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+}
+
+/// 実行時render関数(2点用)。
+Effect_PencilRect.runtime_renderer2_ex = function(px1, py1, px2, py2, color, bFilled, context)
+{
+  context.fillStyle = color;
+  if (bFilled) {
+    let w = px2 - px1 + 1;
+    let h = py2 - py1 + 1;
+    context.fillRect(px1, py1, w, h);
+  } else {
+    draw_rect(px1, py1, px2, py2, context);
+  }
+}
+
+/// パラメータを設定する。(クラス固有)
+Effect_PencilRect.prototype.setParam = function(color)
+{
+    // 引数仕様合わせのためのクロージャ生成
+    let runtime_renderer1 = function(px, py, context) {
+      Effect_PencilRect.runtime_renderer1_ex(px, py, color, context);
+    };
+    let bFilled = this.m_bFilled;
+    let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+      Effect_PencilRect.runtime_renderer2_ex(px1, py1, px2, py2, color, bFilled, context);
+    };
+
+    // 描画条件決定
+    this.m_effectBase.setParamEx(
+      0,
+      null,
+      runtime_renderer1,
+      runtime_renderer2
+    );
+}
+
+/// エフェクトを適用する。
+Effect_PencilRect.prototype.apply = function(points, context)
+{
+  this.m_effectBase.apply(points, context);
+}
+
+/// マージンを取得する。
+Effect_PencilRect.prototype.getMargin = function() { return 0; }
+
+//
+//  CursorBase01: 円形や方形等のカーソルの基底クラス
+//
+
+/// 新しいインスタンスを取得する。
+function CursorBase01(diameter, pixel_pre_renderer)
+{
+  this.m_pre_renderer = pixel_pre_renderer;
+
+  if (diameter == null) { diameter = 1; }
+  this.setParam(diameter, 'rgb(0,0,0)', pixel_pre_renderer);
+}
+
+/// パラメータを設定する。(クラス固有)
+CursorBase01.prototype.setParam = function(diameter, color, pixel_pre_renderer)
 {
   const margin = Math.ceil(diameter / 2);
   let colors = get_components_from_RGBx(color);
   colors[0] ^= 0xff;
   colors[1] ^= 0xff;
   colors[2] ^= 0xff;
+  if ( (colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
+  	|| (colors[0] == 0 && colors[1] == 0 && colors[2] == 0) )
+  {
+    // 白色(デフォルト背景色と同じ)や黒色は避ける。
+    colors[0] = colors[1] = colors[2] = 128;
+  }
   color = get_color_as_RGB(colors);
 
   this.m_pre_rendered = null;
@@ -446,18 +728,19 @@ Cursor_Circle.prototype.setParam = function(diameter, color)
 
   if (diameter > 1) {
     this.m_ha = Math.ceil(diameter / 2 + margin);
-    this.m_pre_rendered = pre_render_pixel(this.m_ha, diameter, color, false);
+    this.m_pre_rendered = pixel_pre_renderer(this.m_ha, diameter, color, false);
   }
 
   this.m_imagePatch = null;
 }
 
 /// カーソルを描画する。
-Cursor_Circle.prototype.put = function(e, cur_pt, context)
+CursorBase01.prototype.put = function(e, cur_pt, context)
 {
   let layer = e.m_sender.getCurLayer();
-  let w = layer.clientWidth;
-  let h = layer.clientHeight;
+  let w = layer.width;    // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+  let h = layer.height;   // (同上)
+  // console.log("layer: w=" + layer.width + ", h=" + layer.height);
 
   context.globalCompositeOperation = 'xor';
   this.m_imagePatch = new ImagePatch(context, w, h, [ cur_pt ], this.m_ha);
@@ -471,10 +754,66 @@ Cursor_Circle.prototype.put = function(e, cur_pt, context)
 }
 
 /// カーソルをクリアする。
-Cursor_Circle.prototype.clear = function(context)
+CursorBase01.prototype.clear = function(context)
 {
   if (this.m_imagePatch) {
     this.m_imagePatch.restore(context);
   }
   this.m_imagePatch = null;
+}
+
+//
+//  カーソル1: 円形カーソル
+//
+
+/// 新しいインスタンスを取得する。
+function Cursor_Circle(diameter)
+{
+  this.m_cursorBase = new CursorBase01(diameter, pre_render_pixel);
+}
+
+/// パラメータを設定する。(クラス固有)
+Cursor_Circle.prototype.setParam = function(diameter, color)
+{
+  this.m_cursorBase.setParam(diameter, color, pre_render_pixel);
+}
+
+/// カーソルを描画する。
+Cursor_Circle.prototype.put = function(e, cur_pt, context)
+{
+  this.m_cursorBase.put(e, cur_pt, context);
+}
+
+/// カーソルをクリアする。
+Cursor_Circle.prototype.clear = function(context)
+{
+  this.m_cursorBase.clear(context);
+}
+
+//
+//  カーソル2: 方形カーソル
+//
+
+/// 新しいインスタンスを取得する。
+function Cursor_Square(diameter)
+{
+  this.m_cursorBase = new CursorBase01(diameter, pre_render_square);
+}
+
+/// パラメータを設定する。(クラス固有)
+Cursor_Square.prototype.setParam = function(diameter, color)
+{
+  this.m_cursorBase.setParam(diameter, color, pre_render_square);
+}
+
+/// カーソルを描画する。
+Cursor_Square.prototype.put = function(e, cur_pt, context)
+{
+  this.m_cursorBase.put(e, cur_pt, context);
+}
+
+/// カーソルをクリアする。
+Cursor_Square.prototype.clear = function(context)
+{
+  this.m_cursorBase.clear(context);
 }

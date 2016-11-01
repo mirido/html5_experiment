@@ -17,6 +17,9 @@ let g_pictureCanvas;
 // ツールパレット
 let g_toolPalette;
 
+// 塗り潰しツール
+let g_paintTool;
+
 // イベントハンドラ登録
 window.onload = init_wnd;
 window.onclose = dispose_wnd;
@@ -31,16 +34,20 @@ function init_wnd()
 	g_keyStateManager = new KeyStateManager();
 	g_pictureCanvas = new PictureCanvas();
 	g_toolPalette = new ToolPalette(g_pictureCanvas);
+	g_paintTool = new PaintTool(g_toolPalette);
 
 	// キャンバスを白色でfill
 	g_pictureCanvas.eraseCanvas();
 
 	// 図形描画
-  sample01(g_pictureCanvas.m_layers);
+  sample01(
+		g_pictureCanvas.getLayer(1),
+		g_pictureCanvas.getLayer(0)
+	);
 
 	// utest_ImagePatch();		// UTEST
 	// utesst_ColorConversion();		// UTEST
-	// utest_canvas_2d_context(g_pictureCanvas.m_layers[2]);	// UTEST
+	// utest_canvas_2d_context(g_pictureCanvas.getLayer(0));	// UTEST
 	// utest_get_mask_image();		// UTEST
 
 	// 画像合成
@@ -62,10 +69,9 @@ function dispose_wnd()
 //  マルチレイヤーサンプル
 //
 
-function sample01(layers)
+function sample01(layer1, layer2)
 {
-//  if ( ! layers || ! canvas.getContext ) { return false; }
-  var ctx = layers[2].getContext('2d');
+  var ctx = layer1.getContext('2d');
   /* 半透明度を指定 */
   ctx.globalAlpha = 0.5;
   /* 円 #1 */
@@ -86,8 +92,8 @@ function sample01(layers)
   /* canvasに描いた図形から中心部分のイメージを抜き出す */
   var image = ctx.getImageData(45, 45, 50, 50);
 
-  /* 2つ目のcanvas左上に抜き出したイメージを貼り付ける */
-  var ctx2 = layers[1].getContext('2d');
+  /* 別のlayerの左上に抜き出したイメージを貼り付ける */
+  var ctx2 = layer2.getContext('2d');
   ctx2.fillStyle = "black";
   ctx2.fillRect(0, 0, 140, 140);
   ctx2.putImageData(image, 10, 10);

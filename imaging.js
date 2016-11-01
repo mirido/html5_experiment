@@ -228,6 +228,22 @@ function get_joint_image(
 {
   const n = layers.length;
 
+  // 可視属性考慮
+  let emptyCanvas = null;
+  let mod_layers = [];
+  for (let i = 0; i < layers.length; ++i) {
+    if (layers[i].hidden) {
+      if (emptyCanvas == null) {
+        emptyCanvas = document.createElement('canvas');
+        emptyCanvas.setAttribute('width', layers[0].width);
+        emptyCanvas.setAttribute('height', layers[0].height);
+      }
+      mod_layers.push(emptyCanvas);
+    } else {
+      mod_layers.push(layers[i]);
+    }
+  }
+
   // 描画先準備
   const width = layers[0].width;
   const height = layers[0].height;
@@ -238,7 +254,7 @@ function get_joint_image(
   // 合成対象データ取得
   let imageDataList = [];
   for (let i = 0; i < n; ++i) {
-    let ctx = layers[i].getContext('2d');
+    let ctx = mod_layers[i].getContext('2d');
     let imgd = ctx.getImageData(0, 0, width, height);
     assert(imgd.width == width && imgd.height == height);
     imageDataList[i] = imgd;
