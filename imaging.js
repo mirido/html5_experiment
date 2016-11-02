@@ -48,19 +48,13 @@ function erase_single_layer(canvas)
 //
 
 /// キャンバスを全消去する。
-/// 最下層キャンバスのみ白色、それ以外は透明になる。
 function erase_canvas(
   layers      // : canvas[]; [ref] レイヤー ([0]が最も奥と想定)
 )
 {
   for (let i = 0; i < layers.length; ++i) {
     let ctx = layers[i].getContext('2d');
-    if (i == 0) {
-      ctx.fillStyle = 'rgb(255,255,255)';
-      ctx.fillRect(0, 0, layers[i].width, layers[i].height);
-    } else {
-      ctx.clearRect(0, 0, layers[i].width, layers[i].height);
-    }
+    ctx.clearRect(0, 0, layers[i].width, layers[i].height);
   }
 }
 
@@ -228,22 +222,6 @@ function get_joint_image(
 {
   const n = layers.length;
 
-  // 可視属性考慮
-  let emptyCanvas = null;
-  let mod_layers = [];
-  for (let i = 0; i < layers.length; ++i) {
-    if (layers[i].hidden) {
-      if (emptyCanvas == null) {
-        emptyCanvas = document.createElement('canvas');
-        emptyCanvas.setAttribute('width', layers[0].width);
-        emptyCanvas.setAttribute('height', layers[0].height);
-      }
-      mod_layers.push(emptyCanvas);
-    } else {
-      mod_layers.push(layers[i]);
-    }
-  }
-
   // 描画先準備
   const width = layers[0].width;
   const height = layers[0].height;
@@ -253,21 +231,34 @@ function get_joint_image(
 
   // 合成対象データ取得
   let imageDataList = [];
+  let k = 0;
   for (let i = 0; i < n; ++i) {
-    let ctx = mod_layers[i].getContext('2d');
+    if (layers[i].hidden)
+      continue;   // 不可視レイヤーをスキップ
+    let ctx = layers[i].getContext('2d');
     let imgd = ctx.getImageData(0, 0, width, height);
     assert(imgd.width == width && imgd.height == height);
-    imageDataList[i] = imgd;
-    console.log("imageDataList[" + i + "].data.length=" + imageDataList[i].data.length);
+    imageDataList[k] = imgd;
+    // console.log("imageDataList[" + k + "].data.length=" + imageDataList[i].data.length);
+    ++k;
   }
 
   // 合成
-  let dst_imgDat = imageDataList[0];	// Alias (参照コピーだが問題無い。)
+  let dst_imgDat = layers[0].getContext('2d').createImageData(width, height);
   for (let py = 0; py < height; ++py) {
     let head = py * 4 * width;
     for (let px = 0; px < width; ++px) {
       let base = head + px * 4;
-      for (let i = 1; i < n; ++i) {		// 奥のレイヤーからα合成していく。
+
+      // 最も奥のレイヤーに背景色を設定
+      // ここでは完全不透明な白色とする。
+      dst_imgDat.data[base + 0] = 255;
+      dst_imgDat.data[base + 1] = 255;
+      dst_imgDat.data[base + 2] = 255;
+      dst_imgDat.data[base + 3] = 255;
+
+      // 奥のレイヤーからα合成していく。
+      for (let i = 0; i < k; ++i) {
         // レイヤー[0..i-1]の合成結果(確定済)
         let R1 = dst_imgDat.data[base + 0];
         let G1 = dst_imgDat.data[base + 1];
