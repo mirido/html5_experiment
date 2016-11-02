@@ -46,8 +46,8 @@ function PictureCanvas()
 	this.m_allLayers = [
 		document.getElementById("canvas_0"),
 		document.getElementById("canvas_1"),
-		document.getElementById("canvas_2"),
-		document.getElementById("surface")
+		document.getElementById("surface"),
+		document.getElementById("overlay"),
 	];
 	this.m_joint_canvas = document.getElementById("joint_canvas");
 
@@ -56,7 +56,8 @@ function PictureCanvas()
 		this.m_allLayers[0],
 		this.m_allLayers[1]
 	];
-	this.m_surface = this.m_allLayers[3];
+	this.m_surface = this.m_allLayers[2];
+	this.m_overlay = this.m_allLayers[3];
 
 	// 描画担当ツール
 	// イベントのフックを実現可能なように、複数登録を許す。
@@ -217,6 +218,12 @@ PictureCanvas.prototype.getSurface = function()
 {
 	// console.log("this.m_surface: w=" + this.m_surface.width + ", h=" + this.m_surface.height);
 	return this.m_surface;
+}
+
+/// オーバレイを取得する。
+PictureCanvas.prototype.getOverlay = function()
+{
+	return this.m_overlay;
 }
 
 /// レイヤーの可視属性を取得する。

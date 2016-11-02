@@ -692,6 +692,12 @@ ToolPalette.prototype.getSurface = function()
   return this.m_pictCanvas.getSurface();
 }
 
+/// オーバレイを取得する。
+ToolPalette.prototype.getOverlay = function()
+{
+	return this.m_pictCanvas.getOverlay();
+}
+
 /// キャンバスを全クリアする。
 ToolPalette.prototype.eraseCanvas = function()
 {

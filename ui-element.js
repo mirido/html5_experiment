@@ -136,8 +136,8 @@ DrawerBase.prototype.OnDrawStart = function(e)
   }
 
   // カーソル描画
-  let ctx_surface = e.m_sender.getSurface().getContext('2d');
-  this.m_cursor.put(e, cur_pt, ctx_surface);
+  let ctx_cursor = e.m_sender.getOverlay().getContext('2d');
+  this.m_cursor.put(e, cur_pt, ctx_cursor);
 }
 
 /// 描画ストローク中に随時呼ばれる。
@@ -156,8 +156,8 @@ DrawerBase.prototype.OnDrawing = function(e)
   }
 
   // カーソルクリア
-  let ctx_surface = e.m_sender.getSurface().getContext('2d');
-  this.m_cursor.clear(ctx_surface);
+  let ctx_cursor = e.m_sender.getOverlay().getContext('2d');
+  this.m_cursor.clear(ctx_cursor);
 
   // 領域復元
   if (this.m_imagePatch != null) {
@@ -179,7 +179,7 @@ DrawerBase.prototype.OnDrawing = function(e)
   }
 
   // カーソル描画
-  this.m_cursor.put(e, cur_pt, ctx_surface);
+  this.m_cursor.put(e, cur_pt, ctx_cursor);
 }
 
 /// 描画ストローク終了時に呼ばれる。
@@ -199,8 +199,8 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   }
 
   // カーソルクリア
-  let ctx_surface = e.m_sender.getSurface().getContext('2d');
-  this.m_cursor.clear(ctx_surface);
+  let ctx_cursor = e.m_sender.getOverlay().getContext('2d');
+  this.m_cursor.clear(ctx_cursor);
 
   // 領域復元
   if (this.m_imagePatch != null) {
@@ -739,7 +739,7 @@ CursorBase01.prototype.setParam = function(diameter, color, pixel_pre_renderer)
 /// カーソルを描画する。
 CursorBase01.prototype.put = function(e, cur_pt, context)
 {
-  let layer = e.m_sender.getCurLayer();
+  let layer = e.m_sender.getOverlay();
   let w = layer.width;    // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = layer.height;   // (同上)
   // console.log("layer: w=" + layer.width + ", h=" + layer.height);
