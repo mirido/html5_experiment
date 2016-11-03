@@ -151,7 +151,7 @@ PictureCanvas.prototype.handleEvent = function(e)
 /// 要素の絶対座標を返す。
 PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 {
-	let bounds = getBoundingClientRectWrp(this.m_allLayers[0]);
+	let bounds = getBoundingClientRectWrp(this.m_surface);	// hiddenでは有り得ないレイヤーを指定する。
 	return bounds;
 }
 
