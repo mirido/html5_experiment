@@ -408,17 +408,18 @@ DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
     let setting = this.m_setting;
     let color = setting.getColor();
 
-    // ガイド矩形描画
+    // ガイド矩形決定
     let pt1 = points[0];
     let pt2 = points[points.length - 1];
+    let r = encode_to_rect(pt1.x, pt1.y, pt2.x, pt2.y);
+
+    // ガイド矩形描画
     context.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
     context.fillStyle = color;
     if (this.m_bFilled) {
-      let w = pt2.x - pt1.x + 1;
-      let h = pt2.y - pt1.y + 1;
-      context.fillRect(pt1.x, pt1.y, w, h);
+      context.fillRect(r.x, r.y, r.width, r.height);
     } else {
-      draw_rect(pt1.x, pt1.y, pt2.x, pt2.y, context);
+      draw_rect_R(r, context);
     }
     context.globalCompositeOperation = 'source-over';
   }
@@ -653,13 +654,13 @@ Effect_PencilRect.runtime_renderer1_ex = function(px, py, color, context)
 /// 実行時render関数(2点用)。
 Effect_PencilRect.runtime_renderer2_ex = function(px1, py1, px2, py2, color, bFilled, context)
 {
+  let r = encode_to_rect(px1, py1, px2, py2);
+
   context.fillStyle = color;
   if (bFilled) {
-    let w = px2 - px1 + 1;
-    let h = py2 - py1 + 1;
-    context.fillRect(px1, py1, w, h);
+    context.fillRect(r.x, r.y, r.width, r.height);
   } else {
-    draw_rect(px1, py1, px2, py2, context);
+    draw_rect_R(r, context);
   }
 }
 
