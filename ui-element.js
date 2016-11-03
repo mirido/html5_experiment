@@ -444,22 +444,24 @@ DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
     let r = encode_to_rect(pt1.x, pt1.y, pt2.x, pt2.y);
 
     // ガイド矩形描画
-    context.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
+    // context.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
+    context.globalAlpha = 0.5;
     context.fillStyle = color;
     if (this.m_bFilled) {
       context.fillRect(r.x, r.y, r.width, r.height);
     } else {
       draw_rect_R(r, context);
     }
-    context.globalCompositeOperation = 'source-over';
+    context.globalAlpha = 1.0;
+    // context.globalCompositeOperation = 'source-over';
 
     // オーバレイにもガイドを描画
     alt_ctx.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
-    alt_ctx.fillStyle = color;
+    alt_ctx.fillStyle = get_cursor_color(color);
     // alt_ctx.globalAlpha = 0.5;
     draw_rect_R(r, alt_ctx);
     // alt_ctx.globalAlpha = 1.0;
-    alt_ctx.globalCompositeOperation = 'source-over';   // ガイドなのでxor描画
+    alt_ctx.globalCompositeOperation = 'source-over';
   }
 }
 
@@ -757,17 +759,7 @@ function CursorBase01(diameter, pixel_pre_renderer)
 CursorBase01.prototype.setParam = function(diameter, color, pixel_pre_renderer)
 {
   const margin = Math.ceil(diameter / 2);
-  let colors = get_components_from_RGBx(color);
-  colors[0] ^= 0xff;
-  colors[1] ^= 0xff;
-  colors[2] ^= 0xff;
-  if ( (colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
-  	|| (colors[0] == 0 && colors[1] == 0 && colors[2] == 0) )
-  {
-    // 白色(デフォルト背景色と同じ)や黒色は避ける。
-    colors[0] = colors[1] = colors[2] = 128;
-  }
-  color = get_color_as_RGB(colors);
+  color = get_cursor_color(color);
 
   this.m_pre_rendered = null;
   this.m_ha = 0;
