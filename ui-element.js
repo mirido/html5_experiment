@@ -664,7 +664,8 @@ Effect_PencilRect.runtime_renderer2_ex = function(px1, py1, px2, py2, color, bFi
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_PencilRect.prototype.setParam = function(color)
+/// 第1引数thicknessは、DrawToolBase.OnDrawStart()から共通に呼ぶ都合上設けたもので、非使用。
+Effect_PencilRect.prototype.setParam = function(thickness, color)
 {
     // 引数仕様合わせのためのクロージャ生成
     let runtime_renderer1 = function(px, py, context) {
