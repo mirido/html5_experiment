@@ -102,6 +102,7 @@ function DrawerBase(drawOp, effect, cursor)
   // 描画管理
   this.m_points = [];
   this.m_imagePatch = null;
+  this.m_altImagePatch = null;
   this.m_bWrtProtect = false;
 }
 
@@ -112,6 +113,9 @@ DrawerBase.prototype.OnDrawStart = function(e)
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
+  let alt_ctx = (this.m_drawOp.getAltContext != null)
+    ? this.m_drawOp.getAltContext(e)
+    : null;
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -128,10 +132,15 @@ DrawerBase.prototype.OnDrawStart = function(e)
   // 描画内容確定 or ガイド表示
   let bFixed = this.m_drawOp.testOnDrawStart(e, this.m_points, context);
   if (bFixed) {
+    // レイヤー上の画素確定
     this.m_effect.apply(this.m_points, context);
     this.m_points.splice(0, this.m_points.length - 1);  // 末尾以外を削除
   } else {
+    // ガイド表示
     this.m_imagePatch = new ImagePatch(context, w, h, this.m_points, margin);
+    if (alt_ctx != null) {
+      this.m_altImagePatch = new ImagePatch(alt_ctx, w, h, this.m_points, margin);
+    }
     this.m_drawOp.guideOnDrawStart(e, this.m_points, context);
   }
 
@@ -147,6 +156,9 @@ DrawerBase.prototype.OnDrawing = function(e)
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
+  let alt_ctx = (this.m_drawOp.getAltContext != null)
+    ? this.m_drawOp.getAltContext(e)
+    : null;
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -164,6 +176,10 @@ DrawerBase.prototype.OnDrawing = function(e)
     this.m_imagePatch.restore(context);
     this.m_imagePatch = null;
   }
+  if (this.m_altImagePatch != null) {
+    this.m_altImagePatch.restore(alt_ctx);
+    this.m_altImagePatch = null;
+  }
 
   // 点列記憶
   this.m_points.push(cur_pt);
@@ -171,10 +187,15 @@ DrawerBase.prototype.OnDrawing = function(e)
   // 描画内容確定 or ガイド表示
   let bFixed = this.m_drawOp.testOnDrawing(e, this.m_points, context);
   if (bFixed) {
+  	// レイヤー上の画素確定
     this.m_effect.apply(this.m_points, context);
     this.m_points.splice(0, this.m_points.length - 1);  // 末尾以外を削除
   } else {
+  	// ガイド表示
     this.m_imagePatch = new ImagePatch(context, w, h, this.m_points, margin);
+    if (alt_ctx != null) {
+      this.m_altImagePatch = new ImagePatch(alt_ctx, w, h, this.m_points, margin);
+    }
     this.m_drawOp.guideOnDrawing(e, this.m_points, context);
   }
 
@@ -189,6 +210,9 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
+  let alt_ctx = (this.m_drawOp.getAltContext != null)
+    ? this.m_drawOp.getAltContext(e)
+    : null;
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -206,6 +230,10 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   if (this.m_imagePatch != null) {
     this.m_imagePatch.restore(context);
     this.m_imagePatch = null;
+  }
+  if (this.m_altImagePatch != null) {
+    this.m_altImagePatch.restore(alt_ctx);
+    this.m_altImagePatch = null;
   }
 
   // 点列記憶
@@ -404,6 +432,8 @@ DrawOp_Rectangle.prototype.guideOnDrawStart = function(e, points, context)
 DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
 {
   if (points.length >= 2) {
+    let alt_ctx = e.m_sender.getOverlay().getContext('2d');
+
     // 最新描画色取得
     let setting = this.m_setting;
     let color = setting.getColor();
@@ -422,6 +452,14 @@ DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
       draw_rect_R(r, context);
     }
     context.globalCompositeOperation = 'source-over';
+
+    // オーバレイにもガイドを描画
+    alt_ctx.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
+    alt_ctx.fillStyle = color;
+    // alt_ctx.globalAlpha = 0.5;
+    draw_rect_R(r, alt_ctx);
+    // alt_ctx.globalAlpha = 1.0;
+    alt_ctx.globalCompositeOperation = 'source-over';   // ガイドなのでxor描画
   }
 }
 
@@ -430,6 +468,13 @@ DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
 
 /// マージンを取得する。
 DrawOp_Rectangle.prototype.getMargin = function() { return 0; }
+
+/// 代替描画先コンテキストを指定する。(Optional)
+DrawOp_Rectangle.prototype.getAltContext = function(e)
+{
+  let ctx_overlay = e.m_sender.getOverlay().getContext('2d');
+  return ctx_overlay;
+}
 
 //
 //  EffectBase01: 描画効果全般の基底クラス
