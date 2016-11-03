@@ -139,7 +139,6 @@ function ToolChain(iconBounds)
   this.m_tools = [];
   this.m_curToolNo = 0;
   this.m_bActive = false;
-  this.m_lastEvent = null;
 }
 
 /// アクティブにする。
@@ -231,6 +230,7 @@ ToolChain.prototype.OnSelection = function(e)
     switch (action) {
     case 1:   // カレントツールのアクティブ化
       this.m_bActive = true;
+      e.m_sender.attatchImage();    // (Undo/Redo)
       this.m_tools[cur_idx].OnSelected(e);
       // console.dir(this.m_iconBounds);
       break;
@@ -242,6 +242,7 @@ ToolChain.prototype.OnSelection = function(e)
       assert(this.m_bActive);
       this.m_tools[cur_idx].OnDiselected(e);
       this.m_curToolNo = nxt_idx;
+      e.m_sender.attatchImage();    // (Undo/Redo)
       this.m_tools[nxt_idx].OnSelected(e);
       break;
     case 4:   // 当ツールチェーンの選択解除
@@ -411,6 +412,8 @@ function ToolPalette(pictCanvas)
 	this.drawToolChainBounds(width, height);
 
   // ツールチェーン初期化
+  this.m_layerTool = null;    // (Undo/Redo)
+  this.m_maskTools = [];      // (Undo/Rddo)
   this.initToolChain();
 
   // 初期表示
@@ -439,6 +442,10 @@ function ToolPalette(pictCanvas)
   this.m_palette.addEventListener("contextmenu", function(e) {
     e.preventDefault();
   }, false);
+
+  // 操作履歴
+  // attatchHistory()メソッドで設定する。
+  this.m_history = null;    // (Undo/Redo)
 }
 
 /// ツールチェーンの枠線を描く。
@@ -508,7 +515,11 @@ ToolPalette.prototype.initToolChain = function()
   toolDic[2200].show(this.m_setting, 1, 0, this.m_palette);   // G
   toolDic[2300].show(this.m_setting, 2, 0, this.m_palette);   // B
   toolDic[2400].show(this.m_setting, 3, 0, this.m_palette);   // A
-  toolDic[2700].show(this.m_setting, this.m_palette);
+  toolDic[2700].show(this.m_setting, this.m_palette);     // レイヤーツール
+
+  this.m_layerTool = toolDic[2700];       // (Undo/Redo)
+  this.m_maskTools.push(toolDic[601]);    // (Undo/Redo)
+  this.m_maskTools.push(toolDic[602]);    // (Undo/Redo)
 }
 
 /// ドラッグ開始処理。
@@ -574,9 +585,6 @@ ToolPalette.prototype.handleEvent = function(e)
 
       // 描画ツールに引き渡す情報を構成
     	let mod_e = new PointingEvent(this, e);
-    	// this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー  -- NG. IEは非サポート。
-      this.m_lastEvent = new PointingEvent(this, e);
-      // console.dir(this.m_lastEvent);
 
       // ツールチェーンに通知
       let bHit = this.OnDraggingStart(mod_e);
@@ -590,9 +598,6 @@ ToolPalette.prototype.handleEvent = function(e)
     } else {
       // 描画ツールに引き渡す情報を構成
     	let mod_e = new PointingEvent(this, e);
-    	// this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー  -- NG. IEは非サポート。
-      this.m_lastEvent = new PointingEvent(this, e);
-      // console.dir(this.m_lastEvent);
 
       // ツールチェーンに通知
       this.m_toolMap[this.m_curToolChainIdx].OnSelection(mod_e);
@@ -648,6 +653,7 @@ ToolPalette.prototype.redirectTo = function(extTool)
     clientY: -1
   };
   let mod_e = new PointingEvent(this, dummy_e);
+  this.attatchImage();    // (Undo/Redo)
   this.m_extTool.OnSelected(mod_e);
 };
 
@@ -743,4 +749,39 @@ ToolPalette.prototype.getBoundingDrawAreaRect = function()
 ToolPalette.prototype.getCommonSetting = function()
 {
   return this.m_setting;
+}
+
+/// 操作履歴オブジェクトを接続する。(Undo/Redo)
+/// 操作履歴を取る場合は、ツールやキャンバスに対する最初の操作が行われる前に呼ぶ必要がある。
+/// 操作履歴を取らない場合は一切呼んではならない。
+ToolPalette.prototype.attatchHistory = function(history)
+{
+  this.m_history = history;
+}
+
+/// 操作履歴に画像を添付する。(Undo/Redo)
+ToolPalette.prototype.attatchImage = function()
+{
+  if (this.m_history == null)
+    return;
+  this.m_history.attatchImage();
+}
+
+/// レイヤー可視属性を外部から設定する。(Undo/Redo)
+ToolPalette.prototype.setLayerVisibilityEx = function(visibilityList)
+{
+  // レイヤーの可視属性を共通設定に反映
+  let nlayers = this.m_setting.getNumLayers();
+  for (let i = 0; i < nlayers; ++i) {
+    this.m_setting.setLayerVisibility(i, visibilityList[i]);
+  }
+  this.m_layerTool.show(this.m_setting, this.m_palette);
+}
+
+/// マスク/逆マスクツールの内部状態を破棄し、キャンバス上の画像で作り直す。(Undo/Redo)
+ToolPalette.prototype.invalidateMaskTools = function()
+{
+  for (let i = 0; i < this.m_maskTools.length; ++i) {
+    this.m_maskTools[i].invalidate(this.m_pictCanvas);
+  }
 }

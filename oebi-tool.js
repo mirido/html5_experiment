@@ -74,8 +74,12 @@ DrawToolBase.prototype.OnDrawStart = function(e)
   // 最新の描画設定を反映
   let thickness = this.m_setting.getThickness();
   let color = this.m_setting.getColor();
-  this.m_effect.setParam(thickness, color);
+  let configClosure = this.m_effect.setParam(thickness, color);
+  assert(configClosure != null);    // (Undo/Redo)
   this.m_cursor.setParam(thickness, color);
+
+  // 操作履歴にエフェクト内容追記(Undo/Redo)
+  e.m_sender.appendEffect(this.m_effect, configClosure, e.m_sender.getCurLayerNo());
 }
 
 //
@@ -605,6 +609,7 @@ function MaskTool(iconBounds)
 
   this.m_bDealing = false;
   this.m_lastToolPalette = null;
+  this.m_bActive = false;     // (Undo/Redo)
 }
 
 /// アイコングラフィックを表示する。
@@ -776,6 +781,8 @@ MaskTool.prototype.OnSelected = function(e)
   // レイヤー固定要求リスナ登録
   this.m_lastToolPalette = toolPalette;
   toolPalette.addLayerFixListener(this);
+
+  this.m_bActive = true;    // (Undo/Redo)
 }
 
 /// 選択解除時呼ばれる。
@@ -792,6 +799,8 @@ MaskTool.prototype.OnDiselected = function(e)
     let surface = toolPalette.getSurface();
     this.fixMaskImage(surface, layer);
   }
+
+  this.m_bActive = false;   // (Undo/Redo)
 }
 
 /// 再ポイントされたとき呼ばれる。
@@ -850,6 +859,20 @@ MaskTool.prototype.OnLayerToBeFixed = function(pictCanvas, nextLayer)
   this.m_bDealing = false;
 }
 
+/// 作業中内容を破棄し、マスクを作り直す。(Undo/Redo)
+MaskTool.prototype.invalidate = function(pictCanvas)
+{
+  if (this.m_bActive) {
+    console.log("MaskTool::invalidate() called.");
+    this.m_bDealing = true;
+
+    let surface = pictCanvas.getSurface();
+    this.setupMaskImage(this.m_lastToolPalette, this.m_surfaceUser, surface);
+
+    this.m_bDealing = false;
+  }
+}
+
 //
 //  塗り潰しツール
 //
@@ -898,6 +921,7 @@ PaintTool.prototype.OnDrawStart = function(e)
     let color = setting.getColor();
     let ffst = new FloodFillState(layer, e.m_point.x, e.m_point.y, color);
     ffst.fill();
+    e.m_sender.appendPaintOperation(e.m_point, color, e.m_sender.getCurLayerNo());    // (Undo/Redo)
   }
 }
 

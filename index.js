@@ -20,6 +20,15 @@ let g_toolPalette;
 // 塗り潰しツール
 let g_paintTool;
 
+// 操作履歴
+let g_history;			// (Undo/Rdo)
+
+// 「元に戻す」ボタン
+let g_UndoButton;		// (Undo/Rdo)
+
+// 「やり直し」ボタン
+let g_RedoButton;		// (Undo/Rdo)
+
 // イベントハンドラ登録
 window.onload = init_wnd;
 window.onclose = dispose_wnd;
@@ -35,6 +44,15 @@ function init_wnd()
 	g_pictureCanvas = new PictureCanvas();
 	g_toolPalette = new ToolPalette(g_pictureCanvas);
 	g_paintTool = new PaintTool(g_toolPalette);
+
+	// 操作履歴追加(Undo/Redo)
+	g_history = new History(g_toolPalette, g_pictureCanvas);
+	g_pictureCanvas.attatchHistory(g_history);
+	g_toolPalette.attatchHistory(g_history);
+
+	// 「元に戻す」/「やり直し」ボタン
+	g_UndoButton = new UndoButton(g_history);
+	g_RedoButton = new RedoButton(g_history);
 
 	// キャンバスを白色でfill
 	g_pictureCanvas.eraseCanvas();
