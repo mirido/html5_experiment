@@ -867,6 +867,7 @@ MaskTool.prototype.invalidate = function(pictCanvas)
     this.m_bDealing = true;
 
     let surface = pictCanvas.getSurface();
+    erase_single_layer(surface);
     this.setupMaskImage(this.m_lastToolPalette, this.m_surfaceUser, surface);
 
     this.m_bDealing = false;
