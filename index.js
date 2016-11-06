@@ -91,7 +91,7 @@ function sample01(layer1, layer2)
 {
   var ctx = layer1.getContext('2d');
   /* 半透明度を指定 */
-  ctx.globalAlpha = 0.5;
+  // ctx.globalAlpha = 0.5;
   /* 円 #1 */
   ctx.beginPath();
   ctx.fillStyle = 'rgb(192, 80, 77)'; // 赤
@@ -118,7 +118,7 @@ function sample01(layer1, layer2)
 
 	// draw_circle()のテスト
 	ctx.fillStyle = 'rgb(0, 0, 0)';
-	ctx.globalAlpha = 1.0;
+	// ctx.globalAlpha = 1.0;
 	draw_circle(200, 200, 100, ctx, false);
 	draw_circle(200, 200, 30, ctx, false);
 	draw_circle(200, 200, 19, ctx, false);
