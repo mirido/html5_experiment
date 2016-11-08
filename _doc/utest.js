@@ -45,7 +45,7 @@ function utest_ImagePatch()
   // patch.m_bounds描画
   let r = patch.m_bounds;		// Alias
   ctx2.fillStyle = 'rgb(255,0,0)';
-  draw_rect_R(r, ctx2, 1);
+  draw_rect_R(r, ctx2);
   draw_line_1px(r.x, r.y, r.x + r.width - 1, r.y + r.height - 1, ctx2);
 
   // layer2を一旦消去し、右下に元画像提示
@@ -114,7 +114,7 @@ function utest_get_mask_image()
 	let surface = document.getElementById("surface");
 	let joint_canvas = document.getElementById("joint_canvas");
 
-  let tg_layer = layers[2];
+  let tg_layer = layers[1];
 
   {
     // tg_layerに描画 -- 黒色円弧の右下が青色矩形で一部欠ける。
@@ -136,7 +136,7 @@ function utest_get_mask_image()
 
   // マスク定着
   if (true) {
-    fix_mask_image(surface, tg_layer);
+    fix_image_w_mask(surface, surface, false, tg_layer);
   } else {
     let ctx_mask = surface.getContext('2d');
     let imgd = ctx_mask.getImageData(0, 0, surface.width, surface.height);

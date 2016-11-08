@@ -102,6 +102,7 @@ function DrawerBase(drawOp, effect, cursor)
   // 描画管理
   this.m_points = [];
   this.m_imagePatch = null;
+  this.m_altImagePatch = null;
   this.m_bWrtProtect = false;
 }
 
@@ -112,6 +113,9 @@ DrawerBase.prototype.OnDrawStart = function(e)
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
+  let alt_ctx = (this.m_drawOp.getAltContext != null)
+    ? this.m_drawOp.getAltContext(e)
+    : null;
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -128,16 +132,22 @@ DrawerBase.prototype.OnDrawStart = function(e)
   // 描画内容確定 or ガイド表示
   let bFixed = this.m_drawOp.testOnDrawStart(e, this.m_points, context);
   if (bFixed) {
+    // レイヤー上の画素確定
     this.m_effect.apply(this.m_points, context);
+    e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
     this.m_points.splice(0, this.m_points.length - 1);  // 末尾以外を削除
   } else {
+    // ガイド表示
     this.m_imagePatch = new ImagePatch(context, w, h, this.m_points, margin);
+    if (alt_ctx != null) {
+      this.m_altImagePatch = new ImagePatch(alt_ctx, w, h, this.m_points, margin);
+    }
     this.m_drawOp.guideOnDrawStart(e, this.m_points, context);
   }
 
   // カーソル描画
-  let ctx_surface = e.m_sender.getSurface().getContext('2d');
-  this.m_cursor.put(e, cur_pt, ctx_surface);
+  let ctx_cursor = e.m_sender.getOverlay().getContext('2d');
+  this.m_cursor.put(e, cur_pt, ctx_cursor);
 }
 
 /// 描画ストローク中に随時呼ばれる。
@@ -147,6 +157,9 @@ DrawerBase.prototype.OnDrawing = function(e)
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
+  let alt_ctx = (this.m_drawOp.getAltContext != null)
+    ? this.m_drawOp.getAltContext(e)
+    : null;
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -156,13 +169,17 @@ DrawerBase.prototype.OnDrawing = function(e)
   }
 
   // カーソルクリア
-  let ctx_surface = e.m_sender.getSurface().getContext('2d');
-  this.m_cursor.clear(ctx_surface);
+  let ctx_cursor = e.m_sender.getOverlay().getContext('2d');
+  this.m_cursor.clear(ctx_cursor);
 
   // 領域復元
   if (this.m_imagePatch != null) {
     this.m_imagePatch.restore(context);
     this.m_imagePatch = null;
+  }
+  if (this.m_altImagePatch != null) {
+    this.m_altImagePatch.restore(alt_ctx);
+    this.m_altImagePatch = null;
   }
 
   // 点列記憶
@@ -171,15 +188,21 @@ DrawerBase.prototype.OnDrawing = function(e)
   // 描画内容確定 or ガイド表示
   let bFixed = this.m_drawOp.testOnDrawing(e, this.m_points, context);
   if (bFixed) {
+  	// レイヤー上の画素確定
     this.m_effect.apply(this.m_points, context);
+    e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
     this.m_points.splice(0, this.m_points.length - 1);  // 末尾以外を削除
   } else {
+  	// ガイド表示
     this.m_imagePatch = new ImagePatch(context, w, h, this.m_points, margin);
+    if (alt_ctx != null) {
+      this.m_altImagePatch = new ImagePatch(alt_ctx, w, h, this.m_points, margin);
+    }
     this.m_drawOp.guideOnDrawing(e, this.m_points, context);
   }
 
   // カーソル描画
-  this.m_cursor.put(e, cur_pt, ctx_surface);
+  this.m_cursor.put(e, cur_pt, ctx_cursor);
 }
 
 /// 描画ストローク終了時に呼ばれる。
@@ -189,6 +212,9 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
+  let alt_ctx = (this.m_drawOp.getAltContext != null)
+    ? this.m_drawOp.getAltContext(e)
+    : null;
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -199,13 +225,17 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   }
 
   // カーソルクリア
-  let ctx_surface = e.m_sender.getSurface().getContext('2d');
-  this.m_cursor.clear(ctx_surface);
+  let ctx_cursor = e.m_sender.getOverlay().getContext('2d');
+  this.m_cursor.clear(ctx_cursor);
 
   // 領域復元
   if (this.m_imagePatch != null) {
     this.m_imagePatch.restore(context);
     this.m_imagePatch = null;
+  }
+  if (this.m_altImagePatch != null) {
+    this.m_altImagePatch.restore(alt_ctx);
+    this.m_altImagePatch = null;
   }
 
   // 点列記憶
@@ -215,6 +245,7 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   let bFixed = this.m_drawOp.testOnDrawEnd(e, this.m_points, context);
   if (bFixed) {
     this.m_effect.apply(this.m_points, context);
+    e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
   }
 }
 
@@ -263,7 +294,7 @@ NullEffect.prototype.apply = function(points, context) { }
 NullEffect.prototype.getMargin = function() { return 0; }
 
 /// パラメータ設定のためのplace holder。引数は派生クラス固有。
-NullEffect.prototype.setParam = function() { }
+NullEffect.prototype.setParam = function() { return function(obj) { /*NOP*/ }; }
 
 //
 //  カーソル0: NullCursor
@@ -404,23 +435,36 @@ DrawOp_Rectangle.prototype.guideOnDrawStart = function(e, points, context)
 DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
 {
   if (points.length >= 2) {
+    let alt_ctx = e.m_sender.getOverlay().getContext('2d');
+
     // 最新描画色取得
     let setting = this.m_setting;
     let color = setting.getColor();
 
-    // ガイド矩形描画
+    // ガイド矩形決定
     let pt1 = points[0];
     let pt2 = points[points.length - 1];
-    context.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
+    let r = encode_to_rect(pt1.x, pt1.y, pt2.x, pt2.y);
+
+    // ガイド矩形描画
+    // context.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
+    context.globalAlpha = 0.5;
     context.fillStyle = color;
     if (this.m_bFilled) {
-      let w = pt2.x - pt1.x + 1;
-      let h = pt2.y - pt1.y + 1;
-      context.fillRect(pt1.x, pt1.y, w, h);
+      context.fillRect(r.x, r.y, r.width, r.height);
     } else {
-      draw_rect(pt1.x, pt1.y, pt2.x, pt2.y, context);
+      draw_rect_R(r, context);
     }
-    context.globalCompositeOperation = 'source-over';
+    context.globalAlpha = 1.0;
+    // context.globalCompositeOperation = 'source-over';
+
+    // オーバレイにもガイドを描画
+    alt_ctx.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
+    alt_ctx.fillStyle = get_cursor_color(color);
+    // alt_ctx.globalAlpha = 0.5;
+    draw_rect_R(r, alt_ctx);
+    // alt_ctx.globalAlpha = 1.0;
+    alt_ctx.globalCompositeOperation = 'source-over';
   }
 }
 
@@ -429,6 +473,13 @@ DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
 
 /// マージンを取得する。
 DrawOp_Rectangle.prototype.getMargin = function() { return 0; }
+
+/// 代替描画先コンテキストを指定する。(Optional)
+DrawOp_Rectangle.prototype.getAltContext = function(e)
+{
+  let ctx_overlay = e.m_sender.getOverlay().getContext('2d');
+  return ctx_overlay;
+}
 
 //
 //  EffectBase01: 描画効果全般の基底クラス
@@ -553,6 +604,9 @@ Effect_Pencil.prototype.setParam = function(diameter, color)
     runtime_renderer1,
     runtime_renderer2
   );
+
+  // 再設定のためのクロージャを返す(Undo/Redo)
+  return function(obj) { obj.setParam(diameter, color); };
 }
 
 /// エフェクトを適用する。
@@ -620,6 +674,9 @@ Effect_Eraser.prototype.setParam = function(diameter, color)
     runtime_renderer1,
     runtime_renderer2
   );
+
+  // 再設定のためのクロージャを返す(Undo/Redo)
+  return function(obj) { obj.setParam(diameter, color); };
 }
 
 /// エフェクトを適用する。
@@ -653,35 +710,39 @@ Effect_PencilRect.runtime_renderer1_ex = function(px, py, color, context)
 /// 実行時render関数(2点用)。
 Effect_PencilRect.runtime_renderer2_ex = function(px1, py1, px2, py2, color, bFilled, context)
 {
+  let r = encode_to_rect(px1, py1, px2, py2);
+
   context.fillStyle = color;
   if (bFilled) {
-    let w = px2 - px1 + 1;
-    let h = py2 - py1 + 1;
-    context.fillRect(px1, py1, w, h);
+    context.fillRect(r.x, r.y, r.width, r.height);
   } else {
-    draw_rect(px1, py1, px2, py2, context);
+    draw_rect_R(r, context);
   }
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_PencilRect.prototype.setParam = function(color)
+/// 第1引数thicknessは、DrawToolBase.OnDrawStart()から共通に呼ぶ都合上設けたもので、非使用。
+Effect_PencilRect.prototype.setParam = function(thickness, color)
 {
-    // 引数仕様合わせのためのクロージャ生成
-    let runtime_renderer1 = function(px, py, context) {
-      Effect_PencilRect.runtime_renderer1_ex(px, py, color, context);
-    };
-    let bFilled = this.m_bFilled;
-    let runtime_renderer2 = function(px1, py1, px2, py2, context) {
-      Effect_PencilRect.runtime_renderer2_ex(px1, py1, px2, py2, color, bFilled, context);
-    };
+  // 引数仕様合わせのためのクロージャ生成
+  let runtime_renderer1 = function(px, py, context) {
+    Effect_PencilRect.runtime_renderer1_ex(px, py, color, context);
+  };
+  let bFilled = this.m_bFilled;
+  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+    Effect_PencilRect.runtime_renderer2_ex(px1, py1, px2, py2, color, bFilled, context);
+  };
 
-    // 描画条件決定
-    this.m_effectBase.setParamEx(
-      0,
-      null,
-      runtime_renderer1,
-      runtime_renderer2
-    );
+  // 描画条件決定
+  this.m_effectBase.setParamEx(
+    0,
+    null,
+    runtime_renderer1,
+    runtime_renderer2
+  );
+
+  // 再設定のためのクロージャを返す(Undo/Redo)
+  return function(obj) { obj.setParam(thickness, color); };
 }
 
 /// エフェクトを適用する。
@@ -710,17 +771,7 @@ function CursorBase01(diameter, pixel_pre_renderer)
 CursorBase01.prototype.setParam = function(diameter, color, pixel_pre_renderer)
 {
   const margin = Math.ceil(diameter / 2);
-  let colors = get_components_from_RGBx(color);
-  colors[0] ^= 0xff;
-  colors[1] ^= 0xff;
-  colors[2] ^= 0xff;
-  if ( (colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
-  	|| (colors[0] == 0 && colors[1] == 0 && colors[2] == 0) )
-  {
-    // 白色(デフォルト背景色と同じ)や黒色は避ける。
-    colors[0] = colors[1] = colors[2] = 128;
-  }
-  color = get_color_as_RGB(colors);
+  color = get_cursor_color(color);
 
   this.m_pre_rendered = null;
   this.m_ha = 0;
@@ -737,7 +788,7 @@ CursorBase01.prototype.setParam = function(diameter, color, pixel_pre_renderer)
 /// カーソルを描画する。
 CursorBase01.prototype.put = function(e, cur_pt, context)
 {
-  let layer = e.m_sender.getCurLayer();
+  let layer = e.m_sender.getOverlay();
   let w = layer.width;    // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = layer.height;   // (同上)
   // console.log("layer: w=" + layer.width + ", h=" + layer.height);
@@ -816,4 +867,380 @@ Cursor_Square.prototype.put = function(e, cur_pt, context)
 Cursor_Square.prototype.clear = function(context)
 {
   this.m_cursorBase.clear(context);
+}
+
+//
+//	History
+//
+
+const OebiEventType = {
+  RestorePoint: 0,
+  Normal: 1,
+  Paint: 2
+};
+
+/// 新しいインスタンスを初期化する。
+function History(toolPalette, pictCanvas)
+{
+  // 関連オブジェクト
+  this.m_toolPalette = toolPalette;
+  this.m_pictCanvas = pictCanvas;
+
+  // 履歴メモリ
+	this.m_eventHistory = [];
+
+  // 履歴カーソル
+  // 次にイベントを追記すべき場所を示す。
+	this.m_historyCursor = 0;
+
+  // イベント追記制御
+  this.m_bDealing = false;
+}
+
+/// 空か否かを返す。
+History.prototype.empty = function()
+{
+  return !(this.m_eventHistory.length > 0);
+}
+
+/// 操作履歴の長さ(イベント数)を返す。
+History.prototype.getLength = function()
+{
+	return this.m_eventHistory.length;
+}
+
+/// 操作履歴のカーソル位置を返す。
+History.prototype.getCursorIdx = function()
+{
+  // appendEvent()を呼んだ直後は、
+  // 当メソッドの戻り値と、getLength()メソッドの戻り値は一致する。
+  // wayBackTo()メソッドを呼ぶと、引数に与えたidxに対し、
+  // (idxが正しく履歴の範囲内ならば)当メソッドの戻り値はidx + 1になる。
+  return this.m_historyCursor;
+}
+
+/// エフェクト内容を追記する。
+/// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
+History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
+{
+  if (this.m_bDealing)
+    return;
+  console.log("History::appendEffect() called. Cursor=" + this.m_historyCursor);
+
+  // 履歴カーソルより後を削除
+	this.resetEvent(this.m_historyCursor);
+
+  // イベント追記
+  let histEnt = [];
+  histEnt.push(OebiEventType.Normal);
+  histEnt.push(effectObj);
+  histEnt.push(configClosure);
+  histEnt.push(layerNo);
+	this.m_eventHistory.push(histEnt);
+
+  // 履歴カーソル修正
+  // (インクリメントと同じ)
+	this.m_historyCursor = this.m_eventHistory.length;
+}
+
+/// 点列を追記する。
+/// 当メソッドでは履歴カーソルは動かない。
+History.prototype.appendPoints = function(effectObj, points)
+{
+  if (this.m_bDealing)
+    return;
+  console.log("History::appendPoints() called. Cursor=" + (this.m_historyCursor - 1));
+
+  // 点列追記
+  // 追記先は、エフェクト内容を最後に追記したエントリ。
+  assert(this.m_historyCursor > 0);
+  let histEnt = this.m_eventHistory[this.m_historyCursor - 1];
+  assert(histEnt[0] == OebiEventType.Normal && histEnt[1] == effectObj);
+  for (let i = 0; i < points.length; ++i) {
+    histEnt.push(points[i]);
+  }
+}
+
+/// 塗り潰し操作を追記する。
+/// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
+History.prototype.appendPaintOperation = function(point, color, layerNo)
+{
+  if (this.m_bDealing)
+    return;
+  console.log("History::appendPaintOperation() called. Cursor=" + this.m_historyCursor);
+
+  // 履歴カーソルより後を削除
+  this.resetEvent(this.m_historyCursor);
+
+  // イベント追記
+  let histEnt = [];
+  histEnt.push(OebiEventType.Paint);
+  histEnt.push(point);
+  histEnt.push(color);
+  histEnt.push(layerNo);
+  this.m_eventHistory.push(histEnt);
+
+  // 履歴カーソル修正
+  // (インクリメントと同じ)
+	this.m_historyCursor = this.m_eventHistory.length;
+}
+
+/// 画像を記録する。
+/// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
+History.prototype.attatchImage = function()
+{
+  if (this.m_bDealing)
+    return;
+	console.log("History::attatchImage() called.");
+
+  // 画像に変化があったか確認
+  // メモリ消費削減のため、変化が無ければ何もしない。
+  let bChanged;
+  if (this.empty()) {
+    console.log("History::attatchImage(): First recording.");
+    bChanged = true;    // イベント初回は変化があったとみなす。
+  } else {
+    bChanged = this.m_pictCanvas.isPictureStateChanged();
+    console.log("History::attatchImage(): Picture change state=" + bChanged);
+  }
+  if (!bChanged)
+    return false;
+
+  // 履歴カーソルより後を削除
+	this.resetEvent(this.m_historyCursor);
+
+  // 作業中レイヤーを固定
+  this.m_pictCanvas.raiseLayerFixRequest();
+
+	// レイヤーの画像データと可視属性取得
+	let imgdList = [];
+	let visibilityList = [];
+  let nlayers = this.m_pictCanvas.getNumLayers();
+	for (let i = 0; i < nlayers; ++i) {
+    let layer = this.m_pictCanvas.getLayer(i);
+		let w = layer.width;
+		let h = layer.height;
+		let ctx = layer.getContext('2d');
+		imgdList[i] = ctx.getImageData(0, 0, w, h);
+		visibilityList[i] = !layer.hidden;
+	}
+  let pictureInfo = {
+		m_imageDataList: imgdList,
+		m_visibilityList: visibilityList
+	};
+
+	// 画像追記
+  let histEnt = [];
+  histEnt.push(OebiEventType.RestorePoint);
+  histEnt.push(pictureInfo);
+  this.m_eventHistory.push(histEnt);
+  console.log("History::attatchImage(): Reserved at index " + this.m_historyCursor + ".");
+
+  // 履歴カーソル修正
+  // (インクリメントと同じ)
+	this.m_historyCursor = this.m_eventHistory.length;
+
+  // 画像の次の変化を捉える準備
+  this.m_pictCanvas.registerPictureState();
+}
+
+/// 指定エントリの画像を復元する。
+History.prototype.restoreImage = function(idx, pictureCanvas, toolPalette)
+{
+  let histEnt = this.m_eventHistory[idx];
+
+	// 画像付きか判定
+	if (histEnt[0] != OebiEventType.RestorePoint)
+		return false;			// 画像無しエントリならfalseを返す。
+
+	// レイヤーの画像と可視属性を復元
+	let pictureInfo = histEnt[1];
+  let nlayers = pictureCanvas.getNumLayers();
+	for (let i = 0; i < nlayers; ++i) {
+		let imgd = pictureInfo.m_imageDataList[i];
+    let layer = pictureCanvas.getLayer(i);
+    assert(imgd.width == layer.width && imgd.height == layer.height);
+		let ctx = layer.getContext('2d');
+		ctx.putImageData(imgd, 0, 0);
+		layer.hidden = !pictureInfo.m_visibilityList[i];
+	}
+
+  // レイヤー可視属性をレイヤーツールに反映
+  this.m_toolPalette.setLayerVisibilityEx(pictureInfo.m_visibilityList);
+
+	return true;
+}
+
+/// イベントをリセットする。
+History.prototype.resetEvent = function(resetPointIdx)
+{
+	if (resetPointIdx >= this.m_eventHistory.length)
+		return false;
+
+	// [resetPointIdx]以降のイベントエントリを削除
+	let deleteCount = this.m_eventHistory.length - resetPointIdx;
+	this.m_eventHistory.splice(resetPointIdx, deleteCount);
+	this.m_historyCursor = resetPointIdx;
+
+	return true;
+}
+
+/// 指定indexに対し、直近過去の画像付きイベントのindexを返す。
+History.prototype.getPrevImageHavingEventIdx = function(curIdx)
+{
+  for (let i = curIdx - 1; i >= 0; --i) {
+    let histEnt = this.m_eventHistory[i];
+    if (histEnt[0] == OebiEventType.RestorePoint) {
+      return i;
+    }
+  }
+  return null;
+}
+
+/// 履歴を指定位置に戻す。
+History.prototype.wayBackTo_Core = function(idx)
+{
+  // プリフェッチ
+  if (idx + 1 < this.m_eventHistory.length) {
+    let nextHistEnt = this.m_eventHistory[idx + 1];
+    if (nextHistEnt[0] == OebiEventType.RestorePoint) {   // (次が添付画像有り)
+      let curHistEnt = this.m_eventHistory[idx];
+      if (curHistEnt[0] != OebiEventType.RestorePoint) {  // (今は添付画像無し)
+        this.wayBackTo_Sub(idx + 1);
+        this.m_historyCursor = idx + 2;
+        return;
+      }
+    }
+  }
+
+  // 未来でない直近の復元ポイント取得
+  let histEnt = this.m_eventHistory[idx];
+  let imgIdx;
+  if (histEnt[0] == OebiEventType.RestorePoint) {    // (添付画像有り)
+    imgIdx = idx;
+  } else {
+    imgIdx = this.getPrevImageHavingEventIdx(idx);
+  }
+  assert(imgIdx != null);
+
+  // idxが指定する時点の画像復元
+  for (let i = imgIdx; i <= idx; ++i) {
+    this.wayBackTo_Sub(i);
+  }
+
+  // 履歴カーソル修正
+  this.m_historyCursor = idx + 1;
+}
+
+/// 差分計算して画像を更新する。
+History.prototype.wayBackTo_Sub = function(idx)
+{
+  // 描画準備
+  let histEnt = this.m_eventHistory[idx];
+  let k = 0;
+  let evtType = histEnt[k++];
+  if (evtType == OebiEventType.RestorePoint) {
+    // 画像復元
+    let bRet = this.restoreImage(idx, this.m_pictCanvas);
+    assert(bRet);
+
+    // マスク/逆マスクツールのinvalidate
+    // サーフェス上の画像と内部状態を破棄し、復元画像で作り直す。
+    this.m_toolPalette.invalidateMaskTools();
+  } else if (evtType == OebiEventType.Normal) {
+    let effectObj = histEnt[k++];
+    let configClosure = histEnt[k++];
+    let layerNo = histEnt[k++];
+    configClosure(effectObj);     // 適切なEffect::setParam()を描画時の引数で呼ぶ。
+
+    // 描画
+    let points = [];
+    while (k < histEnt.length) {
+      points.push(histEnt[k++]);
+    }
+    let layer = this.m_pictCanvas.getLayer(layerNo);
+    let context = layer.getContext('2d');
+    effectObj.apply(points, context);
+  } else if (evtType == OebiEventType.Paint) {
+    let point = histEnt[k++];
+    let color = histEnt[k++];
+    let layerNo = histEnt[k++];
+    let layer = this.m_pictCanvas.getLayer(layerNo);
+    let ffst = new FloodFillState(layer, point.x, point.y, color);
+    ffst.fill();
+  } else {
+    assert(false);
+  }
+}
+
+/// 履歴を指定位置に戻す。
+History.prototype.wayBackTo = function(idx)
+{
+  this.m_bDealing = true;
+  this.wayBackTo_Core(idx);
+  this.m_bDealing = false;
+}
+
+//
+//  「元に戻す」ボタン
+//
+
+/// 新しいインスタンスを初期化する。
+function UndoButton(history)
+{
+  this.m_history = history;
+  this.m_undoButton = document.getElementById('undo');
+  let undoButton = this;    // 束縛変数
+  this.m_undoButton.onclick = function() {
+    undoButton.OnClicked();
+  }
+}
+
+/// 「元に戻す」ボタンがクリックされたとき呼ばれる。
+UndoButton.prototype.OnClicked = function()
+{
+  let curIdx = this.m_history.getCursorIdx();
+
+  // 最新画像を操作履歴として保存すべきか否か判断
+  // 現在操作履歴末尾におり、かつ添付画像無し()復元ポイントでない)なら、
+  // レイヤー可視属性保存のため、画像を保存する。
+  if (curIdx == this.m_history.getLength()) {
+    let lastPictureIdx = this.m_history.getPrevImageHavingEventIdx(curIdx);
+    if (lastPictureIdx < curIdx - 1) {
+      console.log("UndoButton::OnClicked(): Saving last image.");
+      this.m_history.attatchImage();
+    }
+  }
+
+  let pictureHavingIdx = this.m_history.getPrevImageHavingEventIdx(curIdx - 1);
+  if (pictureHavingIdx != null) {
+    console.log("UndoButton::OnClicked(): waiBackTo(" + pictureHavingIdx + ")");
+    this.m_history.wayBackTo(pictureHavingIdx);
+  }
+}
+
+//
+//  「やり直し」ボタン
+//
+
+/// 新しいインスタンスを初期化する。
+function RedoButton(history)
+{
+  this.m_history = history;
+  this.m_redoButton = document.getElementById('redo');
+  let redoButton = this;    // 束縛変数
+  this.m_redoButton.onclick = function() {
+    redoButton.OnClicked();
+  }
+}
+
+/// 「元に戻す」ボタンがクリックされたとき呼ばれる。
+RedoButton.prototype.OnClicked = function()
+{
+  let curIdx = this.m_history.getCursorIdx();
+  assert(curIdx != null && 0 <= curIdx && curIdx <= this.m_history.getLength());
+  if (curIdx < this.m_history.getLength()) {
+    console.log("RedoButton::OnClicked(): waiBackTo(" + curIdx + ")");
+    this.m_history.wayBackTo(curIdx);
+  }
 }

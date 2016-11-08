@@ -46,27 +46,18 @@ function PictureCanvas()
 	this.m_allLayers = [
 		document.getElementById("canvas_0"),
 		document.getElementById("canvas_1"),
-		document.getElementById("canvas_2"),
-		document.getElementById("surface")
+		document.getElementById("surface"),
+		document.getElementById("overlay"),
 	];
 	this.m_joint_canvas = document.getElementById("joint_canvas");
 
 	// レイヤー区分
 	this.m_workingLayers = [
-		this.m_allLayers[1],
-		this.m_allLayers[2]
-	];
-	this.m_jointTargetLayers = [
 		this.m_allLayers[0],
-		this.m_allLayers[1],
-		this.m_allLayers[2]
+		this.m_allLayers[1]
 	];
-	this.m_surface = this.m_allLayers[3];
-
-	// 代替レイヤー
-	// .hidden = trueとしたレイヤーに対しては正常に描画できないため、
-	// 代替レイヤーを設ける。
-	this.m_altLayers = [];
+	this.m_surface = this.m_allLayers[2];
+	this.m_overlay = this.m_allLayers[3];
 
 	// 描画担当ツール
 	// イベントのフックを実現可能なように、複数登録を許す。
@@ -100,6 +91,15 @@ function PictureCanvas()
 
 	// レイヤ固定要求リスナ
 	this.m_layerFixListeners = [];
+
+	// 操作履歴
+  // attatchHistory()メソッドで設定する。
+  this.m_history = null;    // (Undo/Redo)
+
+	// 操作履歴関連
+	this.m_bPictureChanged = false;			// 描画内容が変更されたか否か(Undo/Redo)
+	this.m_lastVisibilityList = [];			// レイヤーの可視属性(Undo/Redo)
+	this.registerPictureState();
 }
 
 /// イベントリスナ。
@@ -160,7 +160,7 @@ PictureCanvas.prototype.handleEvent = function(e)
 /// 要素の絶対座標を返す。
 PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 {
-	let bounds = getBoundingClientRectWrp(this.m_allLayers[0]);
+	let bounds = getBoundingClientRectWrp(this.m_surface);	// hiddenでは有り得ないレイヤーを指定する。
 	return bounds;
 }
 
@@ -200,8 +200,6 @@ PictureCanvas.prototype.getNumLayers = function()
 PictureCanvas.prototype.getLayer = function(layerNo)
 {
 	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
-	if (this.m_altLayers[layerNo] != null)
-		return this.m_altLayers[layerNo];
 	return this.m_workingLayers[layerNo];
 }
 
@@ -221,12 +219,13 @@ PictureCanvas.prototype.changeLayer = function(layerNo)
 /// カレントレイヤーを取得する。
 PictureCanvas.prototype.getCurLayer = function()
 {
-	if (this.m_altLayers[this.m_nTargetLayerNo] != null) {
-		// console.log("this.m_altLayers[this.m_nTargetLayerNo]: w=" + this.m_altLayers[this.m_nTargetLayerNo].width + ", h=" + this.m_altLayers[this.m_nTargetLayerNo].height);
-		return this.m_altLayers[this.m_nTargetLayerNo];
-	}
-	// console.log("this.m_workingLayers[this.m_nTargetLayerNo]: w=" + this.m_workingLayers[this.m_nTargetLayerNo].width + ", h=" + this.m_workingLayers[this.m_nTargetLayerNo].height);
 	return this.m_workingLayers[this.m_nTargetLayerNo];
+}
+
+/// カレントレイヤー番号を返す。
+PictureCanvas.prototype.getCurLayerNo = function()
+{
+	return this.m_nTargetLayerNo;
 }
 
 /// サーフェスを取得する。
@@ -236,46 +235,28 @@ PictureCanvas.prototype.getSurface = function()
 	return this.m_surface;
 }
 
+/// オーバレイを取得する。
+PictureCanvas.prototype.getOverlay = function()
+{
+	return this.m_overlay;
+}
+
 /// レイヤーの可視属性を取得する。
 PictureCanvas.prototype.getLayerVisibility = function(layerNo)
 {
+	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
 	return !this.m_workingLayers[layerNo].hidden;
 }
 
 /// レイヤーの可視属性を設定する。
 PictureCanvas.prototype.setLayerVisibility = function(layerNo, bVisible)
 {
-	if (this.m_altLayers[layerNo] == null) {
-		if (!bVisible) {
-			// 不可視化処理
-			let layer = this.m_workingLayers[layerNo];		// Alias
-			let ctx = layer.getContext('2d');
-			let imgd = ctx.getImageData(0, 0, layer.width, layer.height);
-			this.m_altLayers[layerNo] = document.createElement('canvas');
-			this.m_altLayers[layerNo].setAttribute('width', layer.width);
-			this.m_altLayers[layerNo].setAttribute('height', layer.height);
-			let ctx2 = this.m_altLayers[layerNo].getContext('2d');
-			ctx2.putImageData(imgd, 0, 0);
-			layer.hidden = true;
-		}
-	} else {
-		assert(this.m_altLayers[layerNo] != null);
-		if (bVisible) {
-			// 可視化処理
-			let layer = this.m_workingLayers[layerNo];		// Alias
-			layer.hidden = false;
-			let ctx2 = this.m_altLayers[layerNo].getContext('2d');
-			let imgd = ctx2.getImageData(0, 0, layer.width, layer.height);
-			let ctx = layer.getContext('2d');
-			ctx.putImageData(imgd, 0, 0);
-			this.m_altLayers[layerNo] = null;
-		}
-	}
+	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
+	this.m_workingLayers[layerNo].hidden = !bVisible;
 }
 
 /// キャンバスを全クリアする。
 /// サーフェス等も含め、全レイヤーをクリアする。
-/// (ただし背景レイヤーのみは白色にする。)
 PictureCanvas.prototype.eraseCanvas = function()
 {
 	erase_canvas(this.m_allLayers);
@@ -285,7 +266,7 @@ PictureCanvas.prototype.eraseCanvas = function()
 /// サーフェス等、効果のためのレイヤーは含まない。
 PictureCanvas.prototype.getJointImage = function(dstCanvas)
 {
-	get_joint_image(this.m_jointTargetLayers, dstCanvas);
+	get_joint_image(this.m_workingLayers, dstCanvas);
 }
 
 /// View portをキャンバスにfitさせる。
@@ -394,4 +375,75 @@ PictureCanvas.prototype.raiseLayerFixRequest = function(nextLayer)
 			this.m_layerFixListeners[i].OnLayerToBeFixed(this, nextLayer);
 		}
 	}
+}
+
+/// 操作履歴オブジェクトを登録する。(Undo/Redo)
+/// Undo/Redo機能を使用する場合は、ツールやキャンバスに対する最初の操作が行われる前に呼ぶ必要がある。
+/// Undo/Redo機能を使わない場合は一切呼んではならない。
+PictureCanvas.prototype.attatchHistory = function(history)
+{
+  this.m_history = history;
+}
+
+/// 操作履歴にエフェクト内容を追記する。(Undo/Redo)
+PictureCanvas.prototype.appendEffect = function(effectObj, configClosure, layerNo)
+{
+	if (this.m_history == null)
+		return;
+	this.m_history.appendEffect(effectObj, configClosure, layerNo);
+}
+
+/// 操作履歴に点列を追記する。(Undo/Redo)
+PictureCanvas.prototype.appendPoints = function(effectObj, points)
+{
+	if (this.m_history == null)
+		return;
+	this.m_bPictureChanged = true;		// 画像が変更されたことを記憶(Undo/Redo)
+	this.m_history.appendPoints(effectObj, points);
+}
+
+/// 塗り潰し操作を追記する。(Undo/Redo)
+PictureCanvas.prototype.appendPaintOperation = function(point, color, layerNo)
+{
+  if (this.m_history == null)
+    return;
+	this.m_bPictureChanged = true;		// 画像が変更されたことを記憶(Undo/Redo)
+  this.m_history.appendPaintOperation(point, color, layerNo);
+}
+
+/// レイヤー可視属性を記憶する。(Undo/Redo)
+PictureCanvas.prototype.recordVisibility = function()
+{
+	if (this.m_history == null)
+		return;
+
+	for (let i = 0; i < this.m_workingLayers.length; ++i) {
+		this.m_lastVisibilityList[i] = !(this.m_workingLayers[i].hidden);
+	}
+}
+
+/// レイヤーの可視属性が変更されたか否か判定する。(Undo/Redo)
+PictureCanvas.prototype.isVisibilityChanged = function()
+{
+	if (this.m_history == null)
+		return;
+
+	for (let i = 0; i < this.m_workingLayers.length; ++i) {
+		if (this.m_lastVisibilityList[i] != !(this.m_workingLayers[i].hidden))
+			return true;
+	}
+	return false;
+}
+
+/// 画像の状態を記憶する。(Undo/Redo)
+PictureCanvas.prototype.registerPictureState = function()
+{
+	this.recordVisibility();
+	this.m_bPictureChanged = false;
+}
+
+/// 画像の状態に変化があったか否か判定する。(Undo/Redo)
+PictureCanvas.prototype.isPictureStateChanged = function()
+{
+	return (this.m_bPictureChanged || this.isVisibilityChanged());
 }

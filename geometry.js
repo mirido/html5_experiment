@@ -41,24 +41,35 @@ function decode_rect(rect, coords)
 }
 
 /// 矩形にエンコードする。
-function encode_rect(coords)
+function encode_to_rect(px1, py1, px2, py2)
 {
-	let rect = jsRect(
-		coords[0],
-		coords[1],
-		coords[2] - coords[0] + 1,
-		coords[3] - coords[1] + 1
-	);
+	if (px1 > px2) {
+		let tmp = px1; px1 = px2; px2 = tmp;
+	}
+	if (py1 > py2) {
+		let tmp = py1; py1 = py2; py2 = tmp;
+	}
+	let w = px2 - px1 + 1;
+	let h = py2 - py1 + 1;
+	let rect = jsRect(px1, py1, w, h);
 	return rect;
 }
 
 /// 矩形にエンコードする。(in-place)
-function encode_rect_in_place(coords, rect)
+function encode_to_rect_in_place(px1, py1, px2, py2, rect)
 {
-	rect.x = coords[0];
-	rect.y = coords[1];
-	rect.width  = coords[2] - coords[0] + 1;
-	rect.height = coords[3] - coords[1] + 1;
+	if (px1 > px2) {
+		let tmp = px1; px1 = px2; px2 = tmp;
+	}
+	if (py1 > py2) {
+		let tmp = py1; py1 = py2; py2 = tmp;
+	}
+	let w = px2 - px1 + 1;
+	let h = py2 - py1 + 1;
+	rect.x = px1;
+	rect.y = py1;
+	rect.width = w;
+	rect.height = h;
 }
 
 /// 座標列を画像内にクリップする。
@@ -89,7 +100,7 @@ function clip_rect_in_place(width, height, rect)
 	let coords = [];
 	decode_rect(rect, coords);
 	clip_coords(width, height, coords);
-	encode_rect_in_place(coords, rect);
+	encode_to_rect_in_place(coords[0], coords[1], coords[2], coords[3], rect);
 }
 
 /// 矩形を座標内にクリップする。
@@ -98,7 +109,7 @@ function clip_rect(rect, width, height)
 	let coords = [];
 	decode_rect(rect, coords);
 	clip_coords(width, height, coords);
-	return encode_rect(coords);
+	return encode_to_rect(coords[0], coords[1], coords[2], coords[3]);
 }
 
 /// 点列を包含する矩形を取得する。

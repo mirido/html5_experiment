@@ -74,8 +74,12 @@ DrawToolBase.prototype.OnDrawStart = function(e)
   // 最新の描画設定を反映
   let thickness = this.m_setting.getThickness();
   let color = this.m_setting.getColor();
-  this.m_effect.setParam(thickness, color);
+  let configClosure = this.m_effect.setParam(thickness, color);
+  assert(configClosure != null);    // (Undo/Redo)
   this.m_cursor.setParam(thickness, color);
+
+  // 操作履歴にエフェクト内容追記(Undo/Redo)
+  e.m_sender.appendEffect(this.m_effect, configClosure, e.m_sender.getCurLayerNo());
 }
 
 //
@@ -605,6 +609,7 @@ function MaskTool(iconBounds)
 
   this.m_bDealing = false;
   this.m_lastToolPalette = null;
+  this.m_bActive = false;     // (Undo/Redo)
 }
 
 /// アイコングラフィックを表示する。
@@ -689,6 +694,18 @@ MaskTool.prototype.setupSurface = function(toolPalette, layer, mask, bInv, surfa
   fix_image_w_mask(this.m_joint_canvas, workCanvas, bInv, surface);
 }
 
+/// レイヤーの番号を取得するためのヘルパ関数。
+function get_layer_no(toolPalette, layer)
+{
+  let nlayers = toolPalette.getNumLayers();
+  for (let i = 0; i < nlayers; ++i) {
+    let layer_i = toolPalette.getLayer(i);
+    if (layer_i == layer)
+      return i;
+  }
+  return null;
+}
+
 /// マスク画像を生成する。
 MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
 {
@@ -712,8 +729,28 @@ MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
       copy_layer(layer, this.m_saveCanvas);
 
       // 表示マスク生成
-      let bInv = (this.m_drawCompoIdx == 2);    // 逆マスク時true
-      this.setupSurface(toolPalette, layer, this.m_maskCanvas, bInv, surface);
+      // 当メソッドがOnLayerToBeFixed()イベントリスナから呼ばれた際、
+      // 際共通設定は最新の値に更新後であることが保証されるが、
+      // それ以外は不明。よって、layerの可視属性をlayer直からでなく、
+      // 共通設定から参照する。
+      let setting = toolPalette.getCommonSetting();
+      let layerNo = get_layer_no(toolPalette, layer);
+      assert(layerNo != null);
+      console.log("layerVisibility(" + layerNo + ")=" + setting.getLayerVisibility());
+      if (setting.getLayerVisibility(layerNo)) {  // (この後layerが可視になる)
+        // layerを可視化
+        let bHidden = layer.hidden;
+        layer.hidden = false;
+
+        // サーフェス上に表示マスク構成
+        let bInv = (this.m_drawCompoIdx == 2);    // 逆マスク時true
+        this.setupSurface(toolPalette, layer, this.m_maskCanvas, bInv, surface);
+
+        // layerの可視状態を復元
+        layer.hidden = bHidden;
+      } else {    // (この後layerが不可視になる)
+        erase_single_layer(surface);
+      }
     }
     break;
   default:
@@ -776,6 +813,8 @@ MaskTool.prototype.OnSelected = function(e)
   // レイヤー固定要求リスナ登録
   this.m_lastToolPalette = toolPalette;
   toolPalette.addLayerFixListener(this);
+
+  this.m_bActive = true;    // (Undo/Redo)
 }
 
 /// 選択解除時呼ばれる。
@@ -792,6 +831,8 @@ MaskTool.prototype.OnDiselected = function(e)
     let surface = toolPalette.getSurface();
     this.fixMaskImage(surface, layer);
   }
+
+  this.m_bActive = false;   // (Undo/Redo)
 }
 
 /// 再ポイントされたとき呼ばれる。
@@ -850,6 +891,21 @@ MaskTool.prototype.OnLayerToBeFixed = function(pictCanvas, nextLayer)
   this.m_bDealing = false;
 }
 
+/// 作業中内容を破棄し、マスクを作り直す。(Undo/Redo)
+MaskTool.prototype.invalidate = function(pictCanvas)
+{
+  if (this.m_bActive) {
+    console.log("MaskTool::invalidate() called.");
+    this.m_bDealing = true;
+
+    let surface = pictCanvas.getSurface();
+    erase_single_layer(surface);
+    this.setupMaskImage(this.m_lastToolPalette, this.m_surfaceUser, surface);
+
+    this.m_bDealing = false;
+  }
+}
+
 //
 //  塗り潰しツール
 //
@@ -898,6 +954,7 @@ PaintTool.prototype.OnDrawStart = function(e)
     let color = setting.getColor();
     let ffst = new FloodFillState(layer, e.m_point.x, e.m_point.y, color);
     ffst.fill();
+    e.m_sender.appendPaintOperation(e.m_point, color, e.m_sender.getCurLayerNo());    // (Undo/Redo)
   }
 }
 
