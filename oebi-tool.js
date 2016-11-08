@@ -694,6 +694,18 @@ MaskTool.prototype.setupSurface = function(toolPalette, layer, mask, bInv, surfa
   fix_image_w_mask(this.m_joint_canvas, workCanvas, bInv, surface);
 }
 
+/// レイヤーの番号を取得するためのヘルパ関数。
+function get_layer_no(toolPalette, layer)
+{
+  let nlayers = toolPalette.getNumLayers();
+  for (let i = 0; i < nlayers; ++i) {
+    let layer_i = toolPalette.getLayer(i);
+    if (layer_i == layer)
+      return i;
+  }
+  return null;
+}
+
 /// マスク画像を生成する。
 MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
 {
@@ -717,8 +729,28 @@ MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
       copy_layer(layer, this.m_saveCanvas);
 
       // 表示マスク生成
-      let bInv = (this.m_drawCompoIdx == 2);    // 逆マスク時true
-      this.setupSurface(toolPalette, layer, this.m_maskCanvas, bInv, surface);
+      // 当メソッドがOnLayerToBeFixed()イベントリスナから呼ばれた際、
+      // 際共通設定は最新の値に更新後であることが保証されるが、
+      // それ以外は不明。よって、layerの可視属性をlayer直からでなく、
+      // 共通設定から参照する。
+      let setting = toolPalette.getCommonSetting();
+      let layerNo = get_layer_no(toolPalette, layer);
+      assert(layerNo != null);
+      console.log("layerVisibility(" + layerNo + ")=" + setting.getLayerVisibility());
+      if (setting.getLayerVisibility(layerNo)) {  // (この後layerが可視になる)
+        // layerを可視化
+        let bHidden = layer.hidden;
+        layer.hidden = false;
+
+        // サーフェス上に表示マスク構成
+        let bInv = (this.m_drawCompoIdx == 2);    // 逆マスク時true
+        this.setupSurface(toolPalette, layer, this.m_maskCanvas, bInv, surface);
+
+        // layerの可視状態を復元
+        layer.hidden = bHidden;
+      } else {    // (この後layerが不可視になる)
+        erase_single_layer(surface);
+      }
     }
     break;
   default:
