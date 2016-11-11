@@ -71,6 +71,10 @@ function init_wnd()
 	// 画像合成
 	let joint_canvas = document.getElementById("joint_canvas");
 	g_pictureCanvas.getJointImage(joint_canvas);
+
+	// キャンバス状態を記憶(Undo/Redo)
+	// この時点のキャンバス状態がundo/redoの起点となる。
+	g_history.attatchImage();
 }
 
 /// ウィンドウが閉じるとき呼ばれる。
