@@ -34,6 +34,25 @@ function PointingEventClone(e)
 	this.m_button = e.m_button;
 };
 
+/// クリックイベントを合成する。
+function VirtualClickEvent(sender, iconBounds)
+{
+	this.m_sender = sender;
+	let bounds = sender.getBoundingDrawAreaRect();
+	let cx, cy;
+	if (iconBounds != null) {
+		cx = Math.floor(iconBounds.x + iconBounds.width / 2);
+		cy = Math.floor(iconBounds.y + iconBounds.height / 2);
+	} else {
+		cx = bounds.x - 1;
+		cy = bounds.y - 1;
+	}
+	this.m_point = jsPoint(cx, cy);
+	this.m_spKey = 0x0;
+	this.m_type = 'mousedown';
+	this.m_button = 1;
+}
+
 //
 //	PictureCanvas
 //
