@@ -736,7 +736,7 @@ MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
       let setting = toolPalette.getCommonSetting();
       let layerNo = get_layer_no(toolPalette, layer);
       assert(layerNo != null);
-      console.log("layerVisibility(" + layerNo + ")=" + setting.getLayerVisibility());
+      console.log("layerVisibility(" + layerNo + ")=" + setting.getLayerVisibility(layerNo));
       if (setting.getLayerVisibility(layerNo)) {  // (この後layerが可視になる)
         // layerを可視化
         let bHidden = layer.hidden;
