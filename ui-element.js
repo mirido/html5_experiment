@@ -1112,7 +1112,7 @@ History.prototype.getImageHavingIdxBefore = function(idx)
   let foundIdx = null;
   let indices = this.getImageHavingIndices();
   for (let i = 0; i < indices.length; ++i) {
-    if (i <= idx) {
+    if (indices[i] <= idx) {
       foundIdx = indices[i];
     } else {
       break;
