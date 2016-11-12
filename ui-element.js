@@ -875,7 +875,8 @@ Cursor_Square.prototype.clear = function(context)
 
 const OebiEventType = {
   Normal: 1,
-  Paint: 2
+  Paint: 2,
+  VisibilityChange: 3
 };
 
 /// 新しいインスタンスを初期化する。
@@ -897,6 +898,7 @@ function History(toolPalette, pictCanvas)
 
   // イベント追記制御
   this.m_bDealing = false;
+  this.m_bTakeSnapshotOnDrawStart = false;
 }
 
 /// 空か否かを返す。
@@ -914,7 +916,7 @@ History.prototype.getLength = function()
 /// 操作履歴のカーソル位置を返す。
 History.prototype.getCursorIdx = function()
 {
-  // appendEvent()を呼んだ直後は、
+  // appendEffect()他、履歴カーソルを進めるメソッドを呼んだ直後は、
   // 当メソッドの戻り値と、getLength()メソッドの戻り値は一致する。
   // wayBackTo()メソッドを呼ぶと、引数に与えたidxに対し、
   // (idxが正しく履歴の範囲内ならば)当メソッドの戻り値もidxになる。
@@ -927,10 +929,16 @@ History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
 {
   if (this.m_bDealing)
     return;
-  console.log("History::appendEffect() called. Cursor=" + this.m_historyCursor);
 
   // 履歴カーソル以降を削除
-	this.resetEvent(this.m_historyCursor);
+  this.resetEvent(this.m_historyCursor);
+  console.log("History::appendEffect() called. Cursor=" + this.m_historyCursor);
+
+  // キャンバス状態のスナップショット取得判断
+  if (this.m_bTakeSnapshotOnDrawStart) {
+    this.attatchImage();
+    this.m_bTakeSnapshotOnDrawStart = false;
+  }
 
   // イベント追記
   let histEnt = [];
@@ -939,7 +947,12 @@ History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
   histEnt.push(configClosure);          // エフェクトを設定するクロージャ
   histEnt.push(layerNo);                // 対象レイヤー番号
   histEnt.push([]);                     // 点列
+  let maskTool = this.m_toolPalette.getActiveMaskTool();
+  histEnt.push(maskTool);               // マスクツール
+  let maskColor = this.m_toolPalette.getCommonSetting().getMaskColor();
+  histEnt.push(maskColor);              // マスク色
 	this.m_eventHistory.push(histEnt);
+  console.log(this.m_imageLog);
 
   // 履歴カーソル修正
   // (インクリメントと同じ)
@@ -970,10 +983,16 @@ History.prototype.appendPaintOperation = function(point, color, layerNo)
 {
   if (this.m_bDealing)
     return;
-  console.log("History::appendPaintOperation() called. Cursor=" + this.m_historyCursor);
 
   // 履歴カーソルより後を削除
   this.resetEvent(this.m_historyCursor);
+  console.log("History::appendPaintOperation() called. Cursor=" + this.m_historyCursor);
+
+  // キャンバス状態のスナップショット取得判断
+  if (this.m_bTakeSnapshotOnDrawStart) {
+    this.attatchImage();
+    this.m_bTakeSnapshotOnDrawStart = false;
+  }
 
   // イベント追記
   let histEnt = [];
@@ -981,6 +1000,53 @@ History.prototype.appendPaintOperation = function(point, color, layerNo)
   histEnt.push(point);                    // 開始点
   histEnt.push(color);                    // 配置色
   histEnt.push(layerNo);                  // 対象レイヤー番号
+  let maskTool = this.m_toolPalette.getActiveMaskTool();
+  histEnt.push(maskTool);                 // マスクツール
+  let maskColor = this.m_toolPalette.getCommonSetting().getMaskColor();
+  histEnt.push(maskColor);                // マスク色
+  this.m_eventHistory.push(histEnt);
+  console.log(this.m_imageLog);
+
+  // 履歴カーソル修正
+  // (インクリメントと同じ)
+	this.m_historyCursor = this.m_eventHistory.length;
+}
+
+/// レイヤー可視属性変更を追記する。
+/// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
+/// ただし、操作履歴の先頭以外での呼び出しは何もしない。
+History.prototype.appendVisibilityChange = function()
+{
+  // レイヤー可視属性が変わったので、
+  // 次回描画ストローク開始時にスナップショット取得判断させる。
+  this.m_bTakeSnapshotOnDrawStart = true;
+
+  // 過去履歴中か否か判定
+  if (this.m_historyCursor < this.m_eventHistory.length) {
+    // 途中までundoされた状態(過去履歴中)なので何もしない。
+    // m_bTakeSnapshotOnDrawStartフラグに基づき、描画ストローク開始時に
+    // スナップショット取得を判断させる。
+    return;
+  }
+
+  // 以下、操作履歴の先端に居る場合の処理。
+  // 操作履歴の先端にレイヤーの最新の可視属性変更を追記する。
+  // これは、一旦undoされた後、redoで最新状態に戻されたとき、
+  // 可視状態まで含めてキャンバスの状態を復元するために必要である。
+  assert(this.m_historyCursor == this.m_eventHistory.length);   // resetEvent()は不要のはず。
+
+  // レイヤー可視属性取得
+	let visibilityList = [];
+  let nlayers = this.m_pictCanvas.getNumLayers();
+	for (let i = 0; i < nlayers; ++i) {
+    let layer = this.m_pictCanvas.getLayer(i);
+		visibilityList[i] = !layer.hidden;
+	}
+
+  // レイヤー可視属性記録
+  let histEnt = [];
+  histEnt.push(OebiEventType.VisibilityChange);
+  histEnt.push(visibilityList);
   this.m_eventHistory.push(histEnt);
 
   // 履歴カーソル修正
@@ -1008,7 +1074,9 @@ History.prototype.attatchImage = function()
     console.log("History::attatchImage(): Picture change state=" + bChanged);
   }
   if (!bChanged) {
-    delete this.m_imageLog[this.m_historyCursor];
+    if (this.m_historyCursor > 0) {
+      delete this.m_imageLog[this.m_historyCursor];
+    }
     return false;
   }
 
@@ -1034,7 +1102,7 @@ History.prototype.attatchImage = function()
 
 	// 画像添付予約
   this.m_imageLog[this.m_historyCursor] = pictureInfo;
-  console.log("History::attatchImage(): Reserved at index " + this.m_historyCursor + ".");
+  console.log("History::attatchImage(): Reserved to cursor " + this.m_historyCursor + ".");
 
   // 画像の次の変化を捉える準備
   this.m_pictCanvas.registerPictureState();
@@ -1045,6 +1113,7 @@ History.prototype.restoreImage = function(idx, pictureCanvas)
 {
   if (!idx in this.m_imageLog)
     return false;     // 画像無しエントリならfalseを返す。
+  console.log("History::restoreImage(): Restoreing cursor " + idx + "...");
 
 	// レイヤーの画像と可視属性を復元
   let pictureInfo = this.m_imageLog[idx];
@@ -1154,7 +1223,10 @@ History.prototype.wayBackTo_Sub = function(idx)
     let configClosure = histEnt[k++];
     let layerNo = histEnt[k++];
     let points = histEnt[k++];
+    let maskTool = histEnt[k++];
+    let maskColor = histEnt[k++];
     configClosure(effectObj);     // 適切なEffect::setParam()を描画時の引数で呼ぶ。
+    this.m_toolPalette.activateMaskTool(maskTool, maskColor);   // マスクツール設定
 
     // 描画
     // 描画ツールをクリックだけして別のツールをクリックした場合は
@@ -1168,9 +1240,17 @@ History.prototype.wayBackTo_Sub = function(idx)
     let point = histEnt[k++];
     let color = histEnt[k++];
     let layerNo = histEnt[k++];
+    let maskTool = histEnt[k++];
+    let maskColor = histEnt[k++];
+    this.m_toolPalette.activateMaskTool(maskTool, maskColor);   // マスクツール設定
+
+    // 描画
     let layer = this.m_pictCanvas.getLayer(layerNo);
     let ffst = new FloodFillState(layer, point.x, point.y, color);
     ffst.fill();
+  } else if (evtType == OebiEventType.VisibilityChange) {
+    let visibilityList = histEnt[k++];
+    this.m_toolPalette.setLayerVisibilityEx(visibilityList);
   } else {
     assert(false);
   }
