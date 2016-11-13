@@ -219,9 +219,19 @@ function draw_rect(x0, y0, x1, y1, context)
 {
 	// console.log("draw_rect: (" + x0 + ", " + y0 + ")-(" + x1 + ", " + y1 + ")");
 	draw_line_1px(x0, y0, x1, y0, context);
-	draw_line_1px(x0, y0, x0, y1, context);
-	draw_line_1px(x1, y0, x1, y1, context);
-	draw_line_1px(x0, y1, x1, y1, context);
+	if (y0 < y1) {
+		if (y1 - y0 > 1) {
+			draw_line_1px(x0, y0 + 1, x0, y1 - 1, context);
+			draw_line_1px(x1, y0 + 1, x1, y1 - 1, context);
+		}
+		draw_line_1px(x0, y1, x1, y1, context);
+	} else if (y0 > y1) {
+		if (y0 - y1 > 1) {
+			draw_line_1px(x0, y0 - 1, x0, y1 + 1, context);
+			draw_line_1px(x1, y0 - 1, x1, y1 + 1, context);
+		}
+		draw_line_1px(x0, y1, x1, y1, context);
+	}
 }
 
 /// 塗り潰し無しの矩形を描画する。
