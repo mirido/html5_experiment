@@ -736,7 +736,7 @@ MaskTool.prototype.setupMaskImage = function(toolPalette, layer, surface)
       let setting = toolPalette.getCommonSetting();
       let layerNo = get_layer_no(toolPalette, layer);
       assert(layerNo != null);
-      console.log("layerVisibility(" + layerNo + ")=" + setting.getLayerVisibility());
+      console.log("layerVisibility(" + layerNo + ")=" + setting.getLayerVisibility(layerNo));
       if (setting.getLayerVisibility(layerNo)) {  // (この後layerが可視になる)
         // layerを可視化
         let bHidden = layer.hidden;
@@ -906,6 +906,9 @@ MaskTool.prototype.invalidate = function(pictCanvas)
   }
 }
 
+/// アクティブか否かを返す。(Undo/Redo)
+MaskTool.prototype.isActive = function() { return this.m_bActive; }
+
 //
 //  塗り潰しツール
 //
@@ -997,7 +1000,16 @@ LayerTool.prototype.updateSetting = function(setting, e)
     {
       let bLayerVisible = setting.getLayerVisibility(layerNo);
       console.log("bLayerVisible=" + bLayerVisible);
-      setting.setLayerVisibility(layerNo, !bLayerVisible);
+      setting.setLayerVisibility(layerNo, !bLayerVisible);  // レイヤー可視属性変更
+
+      // レイヤー可視属性変更記録(Undo/Redo)
+      // レイヤーツールに対する操作は描画ストロークを待たずに
+      // 即座にキャンバスに反映されるので、
+      // キャンバスのスナップショットを正しく撮るために特別なケアが必要。
+      // (他のツールでは、OnSelected()呼び出し直前に呼ばれる
+      //  History::attatchImage()だけで必要十分なスナップショットが撮られる。)
+      e.m_sender.getHistory().appendVisibilityChange();
+
       break;
     }
   default:
