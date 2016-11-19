@@ -43,7 +43,6 @@ DrawToolBase.prototype.OnSelected = function(e)
 
   // 描画ツール設定
   e.m_sender.addDrawer(this);
-  e.m_sender.addDrawer(this.m_drawerCore);
 }
 
 /// 選択解除時呼ばれる。
@@ -52,7 +51,6 @@ DrawToolBase.prototype.OnDiselected = function(e)
   // console.log("DrawerBase::OnDiselected() called. ");
 
   // 描画ツール解除
-  e.m_sender.removeDrawer(this.m_drawerCore);
   e.m_sender.removeDrawer(this);
 
   // 非選択時アイコン描画
@@ -80,6 +78,23 @@ DrawToolBase.prototype.OnDrawStart = function(e)
 
   // 操作履歴にエフェクト内容追記(Undo/Redo)
   e.m_sender.appendEffect(this.m_effect, configClosure, e.m_sender.getCurLayerNo());
+
+  // DrawerBaseに委譲
+  this.m_drawerCore.OnDrawStart(e);
+}
+
+/// 描画ストローク中に随時呼ばれる。
+DrawToolBase.prototype.OnDrawing = function(e)
+{
+  // DrawerBaseに委譲
+  this.m_drawerCore.OnDrawing(e);
+}
+
+/// 描画ストローク終了時に呼ばれる。
+DrawToolBase.prototype.OnDrawEnd = function(e)
+{
+  // DrawerBaseに委譲
+  this.m_drawerCore.OnDrawEnd(e);
 }
 
 //
