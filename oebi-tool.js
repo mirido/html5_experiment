@@ -137,12 +137,6 @@ PencilTool.prototype.OnPicked = function(e)
   this.m_drawToolBase.OnPicked(e);
 }
 
-/// 描画ストローク開始時に呼ばれる。
-PencilTool.prototype.OnDrawStart = function(e)
-{
-  this.m_drawToolBase.OnDrawStart(e);
-}
-
 //
 //  四角ツール
 //
@@ -184,12 +178,6 @@ FillRectTool.prototype.OnDiselected = function(e)
 FillRectTool.prototype.OnPicked = function(e)
 {
   this.m_drawToolBase.OnPicked(e);
-}
-
-/// 描画ストローク開始時に呼ばれる。
-FillRectTool.prototype.OnDrawStart = function(e)
-{
-  this.m_drawToolBase.OnDrawStart(e);
 }
 
 //
@@ -235,12 +223,6 @@ LineRectTool.prototype.OnPicked = function(e)
   this.m_drawToolBase.OnPicked(e);
 }
 
-/// 描画ストローク開始時に呼ばれる。
-LineRectTool.prototype.OnDrawStart = function(e)
-{
-  this.m_drawToolBase.OnDrawStart(e);
-}
-
 //
 //  消しペンツール
 //
@@ -279,12 +261,6 @@ EraseTool.prototype.OnDiselected = function(e)
 EraseTool.prototype.OnPicked = function(e)
 {
   this.m_drawToolBase.OnPicked(e);
-}
-
-/// 描画ストローク開始時に呼ばれる。
-EraseTool.prototype.OnDrawStart = function(e)
-{
-  this.m_drawToolBase.OnDrawStart(e);
 }
 
 //
