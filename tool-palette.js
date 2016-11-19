@@ -142,11 +142,32 @@ function ToolChain(iconBounds)
 }
 
 /// アクティブにする。
-ToolChain.prototype.activate = function(toolPalette)
+ToolChain.prototype.activate = function(toolPalette, /*[option]*/ targetObj)
 {
   let iconBounds = this.m_iconBounds;
   let mod_e = new VirtualClickEvent(toolPalette, iconBounds);
+
+  // 対象指定有り時の処理
+  if (targetObj != null) {    // (具体的対象指定有り)
+    // 対象検索
+    for (let i = 0; i < this.m_tools.length; ++i) {
+      if (this.m_tools[i] == targetObj) {     // (対象発見)
+        let tgToolNo = i;
+        if (tgToolNo == this.m_curToolNo) {   // (現在選択中または最後に選択したツールと同じ)
+          // VirtualClickEvent()で目的のツールを確実にアクティブにするため、
+          // 一旦選択を解除する。(テクニックに走りすぎ;)
+          this.inactivate(toolPalette);
+        }
+        this.OnSelection(mod_e, tgToolNo);    // this.m_tools[tgToolNo]が確実に非アクティブ→アクティブに遷移する。
+        return true;
+      }
+    }
+    return false;
+  }
+
   this.OnSelection(mod_e);
+
+  return true;
 }
 
 /// 非アクティブにする。
@@ -165,7 +186,7 @@ ToolChain.prototype.isInControl = function(e)
 }
 
 /// ツール選択変更時にツールパレットから呼ばれる。
-ToolChain.prototype.OnSelection = function(e)
+ToolChain.prototype.OnSelection = function(e, /*[opt]*/ targetToolNo)
 {
   let bHit = false;
   let bIncludes = rect_includes(this.m_iconBounds, e.m_point);
@@ -183,6 +204,9 @@ ToolChain.prototype.OnSelection = function(e)
   } else if (!this.m_bActive) {  // (非選択状態)
     if (bIncludes && this.m_tools.length > 0) {
       bHit = true;
+      if (targetToolNo != null) {
+        this.m_curToolNo = targetToolNo;  // カレントツール強制変更
+      }
       action = 1;         // カレントツールのアクティブ化
       cur_idx = this.m_curToolNo;
     }
@@ -192,7 +216,11 @@ ToolChain.prototype.OnSelection = function(e)
       bHit = true;
 
       // 次のツールがあるか?
-      nxt_idx = (cur_idx + 1) % this.m_tools.length;
+      if (targetToolNo != null) {
+        nxt_idx = targetToolNo;   // 切替先ツール強制変更
+      } else {
+        nxt_idx = (cur_idx + 1) % this.m_tools.length;
+      }
       if (nxt_idx == cur_idx) {
         action = 2;       // カレントツールのpick
       } else {
@@ -804,18 +832,30 @@ ToolPalette.prototype.getActiveMaskTool = function()
 ToolPalette.prototype.activateMaskTool = function(expMaskTool, maskColor)
 {
   if (expMaskTool != null) {
+    let maskToolChain = this.m_toolMap[6];
+    let curActiveMaskTool = maskToolChain.getActiveTool();
+    let curMaskColor = this.m_setting.getMaskColor();
+
+    // 変更の必要性判断
+    if (curActiveMaskTool == expMaskTool && curMaskColor == maskColor)
+      return;
+
     // マスク色設定
-    this.m_setting.setMaskColor(maskColor);
+    if (curMaskColor != maskColor) {
+      this.m_setting.setMaskColor(maskColor);
+    }
 
     // 求めるマスクツールを有効化
-    // do { } while()ループにより、マスクツールが仮想的に1回はクリックされ、
-    // マスク色が反映される。
-    let maskToolChain = this.m_toolMap[6];
-    let curActiveMaskTool;
-    do {
-      maskToolChain.activate(this);
-      curActiveMaskTool = maskToolChain.getActiveTool();
-      console.log("curActiveMaskTool=" + curActiveMaskTool.m_drawCompoIdx + ", expMaskTool=" + expMaskTool.m_drawCompoIdx);
-    } while (curActiveMaskTool != expMaskTool);
+    // { /*UTEST*/
+    //   let curActiveMaskTool = maskToolChain.getActiveTool();
+    //   console.log("******* curActiveMaskTool=" + curActiveMaskTool.m_drawCompoIdx + ", expMaskTool=" + expMaskTool.m_drawCompoIdx);
+    // }
+    let bRet = maskToolChain.activate(this, expMaskTool);
+    assert(bRet);
+    // { /*UTEST*/
+    //   let curActiveMaskTool = maskToolChain.getActiveTool();
+    //   console.log("******* curActiveMaskTool=" + curActiveMaskTool.m_drawCompoIdx + ", expMaskTool=" + expMaskTool.m_drawCompoIdx);
+    //   assert(curActiveMaskTool == expMaskTool);
+    // }
   }
 }
