@@ -31,7 +31,14 @@ function getBrowserType()
 function unify_rect(rect)
 {
   if (rect.x == null) {
-    return jsRect(rect.left, rect.top, rect.width, rect.height);
+    // Chromeのときここに来る。
+    // 等倍以外の表示のとき、座標が小数点付きで返されるためMath.ceil()で処置する。
+    return jsRect(
+      Math.ceil(rect.left),
+      Math.ceil(rect.top),
+      Math.ceil(rect.width),
+      Math.ceil(rect.height)
+    );
   } else {
     return rect;
   }
