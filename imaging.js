@@ -4,6 +4,43 @@
 'use strict';
 
 //
+//  画像データ操作
+//
+
+/// ガイド表示用の半透明 & 色反転画像データを取得する。
+function get_guide_image(src_imgd, dst_imgd)
+{
+  const width = src_imgd.width;
+  const height = src_imgd.height;
+  assert(dst_imgd.width == width && dst_imgd.height == height);
+  let colors = [];
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base = head + px * 4;
+
+      // 色を変換の上で半透明化
+      // 色の変換規則は現状get_cursor_color()の規則と合わせている。
+      if (src_imgd.data[base + 3] != 0) {
+        colors[0] = (0xff ^ src_imgd.data[base + 0]);
+        colors[1] = (0xff ^ src_imgd.data[base + 1]);
+        colors[2] = (0xff ^ src_imgd.data[base + 2]);
+        if ( (colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
+        	|| (colors[0] == 0 && colors[1] == 0 && colors[2] == 0) )
+        {
+          // 白色(デフォルト背景色と同じ)や黒色は避ける。
+          colors[0] = colors[1] = colors[2] = 128;
+        }
+        dst_imgd.data[base + 0] = colors[0];
+        dst_imgd.data[base + 1] = colors[1];
+        dst_imgd.data[base + 2] = colors[2];
+        dst_imgd.data[base + 3] = 128;
+      }
+    }
+  }
+}
+
+//
 //  単一キャンバス操作
 //
 
@@ -41,6 +78,38 @@ function erase_single_layer(canvas)
 {
   let ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+/// レイヤーに、合成操作'source-over'で画像データをputする。
+function putImageDataEx(src_imgd, context, sx, sy)
+{
+  const w = src_imgd.width;
+  const h = src_imgd.height;
+
+  // 描画先画像データ取得
+  // 矩形領域(sx, sy, w, h)が画像外にはみ出していてもクリッピングは不要。
+  // HTML5 canvas 2D contextの仕様
+  // https://www.w3.org/TR/2dcontext/
+  // の「14 Pixel manipulation」によると、getImageData()での画像データ主得時、
+  // 画像からはみ出した範囲は「透明な黒」で埋められたデータが返される。
+  let dst_imgd = context.getImageData(sx, sy, w, h);
+
+  // ソース画像データsrc_imgdの不透明画素のみをcanvasのデータに反映
+  for (let py = 0; py < h; ++py) {
+    let head = py * 4 * w;
+    for (let px = 0; px < w; ++px) {
+      let base = head + px * 4;
+      if (src_imgd.data[base + 3] == 255) {
+        dst_imgd.data[base + 0] = src_imgd.data[base + 0];
+        dst_imgd.data[base + 1] = src_imgd.data[base + 1];
+        dst_imgd.data[base + 2] = src_imgd.data[base + 2];
+        dst_imgd.data[base + 3] = 255;
+      }
+    }
+  }
+
+  // 再描画
+  context.putImageData(dst_imgd, sx, sy);
 }
 
 //

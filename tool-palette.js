@@ -449,6 +449,8 @@ function ToolPalette(pictCanvas)
   // ツールチェーンのactivate()を呼ぶ必要がある。
   this.m_toolMap[toolChainGroups[0][2]].activate(this);   // 四角ツール(一旦有効化)
   this.m_toolMap[toolChainGroups[0][2]].inactivate(this); // 四角ツール(戻す)
+  this.m_toolMap[toolChainGroups[0][3]].activate(this);   // コピーツール(一旦有効化)
+  this.m_toolMap[toolChainGroups[0][3]].inactivate(this); // コピーツール(戻す)
   this.m_toolMap[toolChainGroups[0][0]].activate(this);   // 鉛筆ツール
   this.m_toolMap[toolChainGroups[2][0]].activate(this);   // 通常ツール
   this.m_toolMap[toolChainGroups[3][1]].activate(this);   // カラーパレットの黒色
@@ -506,6 +508,7 @@ ToolPalette.prototype.initToolChain = function()
   addToolHelper(this.m_toolMap[0], 'PencilTool', 0, toolDic);
   addToolHelper(this.m_toolMap[2], 'FillRectTool', 200, toolDic);
   addToolHelper(this.m_toolMap[2], 'LineRectTool', 201, toolDic);
+  addToolHelper(this.m_toolMap[3], 'CopyTool', 300, toolDic);
   addToolHelper(this.m_toolMap[4], 'EraseTool', 400, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 600, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 601, toolDic);
@@ -528,6 +531,7 @@ ToolPalette.prototype.initToolChain = function()
   toolDic[0].show(this.m_setting, this.m_palette);        // 鉛筆ツール
   toolDic[200].show(this.m_setting, this.m_palette);      // 四角ツール
   toolDic[201].show(this.m_setting, this.m_palette);      // 線四角ツール
+  toolDic[300].show(this.m_setting, this.m_palette);      // コピーツール
   toolDic[400].show(this.m_setting, this.m_palette);      // 消しペンツール
   toolDic[600].show(this.m_setting, 0, this.m_palette);   // 通常ツール
   toolDic[601].show(this.m_setting, 1, this.m_palette);   // マスクツール

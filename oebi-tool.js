@@ -224,6 +224,52 @@ LineRectTool.prototype.OnPicked = function(e)
 }
 
 //
+//  コピーツール
+//
+
+/// 新しいインスタンスを初期化する。
+function CopyTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_captureOp = null;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+CopyTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_captureOp = new DrawOp_RectCapture(setting);
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    'コピー',
+    this.m_captureOp,
+    new Effect_RectPaste(this.m_captureOp),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+CopyTool.prototype.OnSelected = function(e)
+{
+  this.m_captureOp.resetCapture();
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+CopyTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+CopyTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+//
 //  消しペンツール
 //
 

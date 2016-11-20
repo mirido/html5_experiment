@@ -104,6 +104,27 @@ function DrawerBase(drawOp, effect, cursor)
   this.m_imagePatch = null;
   this.m_altImagePatch = null;
   this.m_bWrtProtect = false;
+
+  // OnDrawEnd()呼び出し時点のエフェクト適用 or ガイド表示適用前画像
+  // (カーソルは消去済み)
+  this.m_lastLayerNo = null;
+  this.m_lastImageData = null;
+  this.m_altLayer = null;
+  this.m_lastAltImageData = null;
+}
+
+/// 描画した領域の画像を復元する。
+DrawerBase.prototype.restoreImagePatch = function(context, alt_ctx)
+{
+  // 領域復元
+  if (this.m_imagePatch != null) {
+    this.m_imagePatch.restore(context);
+    this.m_imagePatch = null;
+  }
+  if (this.m_altImagePatch != null) {
+    this.m_altImagePatch.restore(alt_ctx);
+    this.m_altImagePatch = null;
+  }
 }
 
 /// 描画ストローク開始時に呼ばれる。
@@ -113,9 +134,10 @@ DrawerBase.prototype.OnDrawStart = function(e)
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
-  let alt_ctx = (this.m_drawOp.getAltContext != null)
-    ? this.m_drawOp.getAltContext(e)
+  let altLayer = (this.m_drawOp.getAltLayer != null)
+    ? this.m_drawOp.getAltLayer(e)
     : null;
+  let alt_ctx = (altLayer != null) ? altLayer.getContext('2d') : null;
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -124,6 +146,9 @@ DrawerBase.prototype.OnDrawStart = function(e)
     this.m_bWrtProtect = true;
     return;
   }
+
+  // 領域復元(描画ストローク2回目以降)
+  this.restoreImageOnDrawEnd(e.m_sender);
 
   // 点列記憶
   this.m_points.splice(0, this.m_points.length);   // 全クリア
@@ -157,9 +182,10 @@ DrawerBase.prototype.OnDrawing = function(e)
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
-  let alt_ctx = (this.m_drawOp.getAltContext != null)
-    ? this.m_drawOp.getAltContext(e)
+  let altLayer = (this.m_drawOp.getAltLayer != null)
+    ? this.m_drawOp.getAltLayer(e)
     : null;
+  let alt_ctx = (altLayer != null) ? altLayer.getContext('2d') : null;
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -173,14 +199,7 @@ DrawerBase.prototype.OnDrawing = function(e)
   this.m_cursor.clear(ctx_cursor);
 
   // 領域復元
-  if (this.m_imagePatch != null) {
-    this.m_imagePatch.restore(context);
-    this.m_imagePatch = null;
-  }
-  if (this.m_altImagePatch != null) {
-    this.m_altImagePatch.restore(alt_ctx);
-    this.m_altImagePatch = null;
-  }
+  this.restoreImagePatch(context, alt_ctx);
 
   // 点列記憶
   this.m_points.push(cur_pt);
@@ -212,9 +231,10 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
-  let alt_ctx = (this.m_drawOp.getAltContext != null)
-    ? this.m_drawOp.getAltContext(e)
+  let altLayer = (this.m_drawOp.getAltLayer != null)
+    ? this.m_drawOp.getAltLayer(e)
     : null;
+  let alt_ctx = (altLayer != null) ? altLayer.getContext('2d') : null;
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -229,14 +249,7 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   this.m_cursor.clear(ctx_cursor);
 
   // 領域復元
-  if (this.m_imagePatch != null) {
-    this.m_imagePatch.restore(context);
-    this.m_imagePatch = null;
-  }
-  if (this.m_altImagePatch != null) {
-    this.m_altImagePatch.restore(alt_ctx);
-    this.m_altImagePatch = null;
-  }
+  this.restoreImagePatch(context, alt_ctx);
 
   // 点列記憶
   this.m_points.push(cur_pt);
@@ -246,6 +259,44 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   if (bFixed) {
     this.m_effect.apply(this.m_points, context);
     e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
+  } else {
+    // 引き続く描画ストロークのための準備
+    // メモリ節約のため、描画オペレータにguideOnDrawEnd()が定義されているときのみ実施する。
+    if (this.m_drawOp.guideOnDrawEnd != null) {
+      // キャンバス状態保存
+      this.m_lastLayerNo = e.m_sender.getCurLayerNo();
+      this.m_lastImageData = context.getImageData(0, 0, w, h);
+      if (alt_ctx != null) {
+        this.m_lastAltLayer = altLayer;
+        this.m_lastAltImageData = alt_ctx.getImageData(0, 0, w, h);
+      }
+
+      // ガイド表示(表示を伴わない単なる後処理のこともある。)
+      this.m_drawOp.guideOnDrawEnd(e, this.m_points, context);
+    }
+  }
+}
+
+/// OnDrawEnd()時のキャンバス状態(カーソル無し、ガイド表示直前)を復元する。
+DrawerBase.prototype.restoreImageOnDrawEnd = function(pictCanvas)
+{
+  let lastLayerNo = this.m_lastLayerNo;
+  if (lastLayerNo == null)
+    return;
+
+  let lastLayer = pictCanvas.getLayer(lastLayerNo);
+  let context = lastLayer.getContext('2d');
+  let altLayer = this.m_lastAltLayer;
+  let alt_ctx = (altLayer != null) ? altLayer.getContext('2d') : null;
+
+  // 領域復元
+  if (this.m_lastImageData != null) {
+    context.putImageData(this.m_lastImageData, 0, 0);
+    this.m_lastImageData = null;
+  }
+  if (this.m_lastAltImageData != null) {
+    alt_ctx.putImageData(this.m_lastAltImageData, 0, 0);
+    this.m_lastAltImageData = null;
   }
 }
 
@@ -422,6 +473,9 @@ DrawOp_Rectangle.prototype.testOnDrawing = function(e, points, context)
 /// 描画ストローク終了時の画素固定判断を行う。
 DrawOp_Rectangle.prototype.testOnDrawEnd = function(e, points, context)
 {
+  if (points.length > 2) {
+    points.splice(1, points.length - 2);  // 先頭と末尾以外を削除
+  }
   return true;
 }
 
@@ -474,11 +528,266 @@ DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
 /// マージンを取得する。
 DrawOp_Rectangle.prototype.getMargin = function() { return 0; }
 
-/// 代替描画先コンテキストを指定する。(Optional)
-DrawOp_Rectangle.prototype.getAltContext = function(e)
+/// 代替描画先レイヤーを指定する。(Optional)
+DrawOp_Rectangle.prototype.getAltLayer = function(e)
 {
-  let ctx_overlay = e.m_sender.getOverlay().getContext('2d');
-  return ctx_overlay;
+  return e.m_sender.getOverlay();
+}
+
+//
+//  描画オペレータ3: 画像コピー & ペースト(or 変形)操作
+//  (単純コピーの他、ペースト前の画像加工にも対応可能)
+//
+
+/// 新しいインスタンスを初期化する。
+function DrawOp_RectCapture(setting, /*[opt]*/ yankFunc)
+{
+  this.m_setting = setting;
+  this.m_drawOpForGuide = new DrawOp_Rectangle(setting, false);
+
+  // コピー内容
+  if (yankFunc == null) {
+    // デフォルトのyank関数
+    // 指定レイヤーlayerの矩形領域rect内の画像をそのまま返す。
+    yankFunc = function(layer, rect) {
+      let context = layer.getContext('2d');
+      let imgd = context.getImageData(rect.x, rect.y, rect.width, rect.height);
+      return {
+        m_imgd: imgd,
+        m_rect: rect
+      };
+    };
+  }
+  this.m_yankFunc = yankFunc;       // yank関数
+  this.m_yankData = null;           // yank関数の出力(画像データ)
+
+  // ペースト制御
+  // ペーストハンドルからのドラッグ量に合わせてペースト先をシフトさせる。
+  // ペーストハンドルは、ペーストモードにおける描画ストローク開始位置が充てられる。
+  this.m_pasteHandlePoint = null;   // ペーストハンドル
+  this.m_pasteGuideImgd = null;     // ペースト時ガイド表示用の画像データ
+  this.m_lastSpKeyState = 0x0;
+}
+
+/// ペーストモードの点列変換。
+DrawOp_RectCapture.prototype.convPointsToPasteArea = function(points)
+{
+  // 最新クリック座標のみ取得
+  let pt0 = points[points.length - 1];  // 末尾要素記憶
+
+  // ペースト先矩形に変換
+  let rect = this.m_yankData.m_rect;
+  if (this.m_pasteHandlePoint == null) {
+    // コピーモード終了時のguideOnDrawEnd()から呼ばれたときここに来る。
+    // (SHIFTキー押下でペーストモード継続時も同じ。)
+    /*NOP*/
+  } else {
+    // ペーストモード以降に呼ばれたときここに来る。
+    let ofs_x = pt0.x - this.m_pasteHandlePoint.x;
+    let ofs_y = pt0.y - this.m_pasteHandlePoint.y;
+    let sx = rect.x + ofs_x;
+    let sy = rect.y + ofs_y;
+    rect = jsRect(sx, sy, rect.width, rect.height);
+  }
+  points.splice(0, points.length);      // 一旦空にする
+  points[0] = jsPoint(rect.x, rect.y);
+  points[1] = jsPoint(rect.x + rect.width - 1, rect.y + rect.height - 1);
+}
+
+/// ペーストモードのガイド表示を行う。
+DrawOp_RectCapture.prototype.drawPasteModeGuide = function(e, points, context)
+{
+  assert(points.length == 2);   // convPointsToPasteArea()による処理済pointsが前提。
+  let alt_ctx = e.m_sender.getOverlay().getContext('2d');
+
+  // オーバレイに画像データを描画
+  // let imgd = this.m_yankData.m_imgd;
+  let imgd = this.m_pasteGuideImgd;
+  let rect = this.m_yankData.m_rect;
+  let sx = points[0].x;
+  let sy = points[0].y;
+  alt_ctx.putImageData(imgd, sx, sy);
+  let r = jsRect(sx, sy, rect.width, rect.height);
+
+  // 最新描画色取得
+  let setting = this.m_setting;
+  let color = setting.getColor();
+
+  // オーバレイにガイドを描画
+  alt_ctx.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
+  alt_ctx.fillStyle = get_cursor_color(color);
+  // alt_ctx.globalAlpha = 0.5;
+  draw_rect_R(r, alt_ctx);
+  // alt_ctx.globalAlpha = 1.0;
+  alt_ctx.globalCompositeOperation = 'source-over';
+}
+
+/// 描画ストローク開始時の画素固定判断を行う。
+DrawOp_RectCapture.prototype.testOnDrawStart = function(e, points, context)
+{
+  if (this.m_yankData == null) {   // (コピーモード)
+    return this.m_drawOpForGuide.testOnDrawStart(e, points, context);
+  } else {    // (ペーストモード)
+    // ペーストハンドル取得
+    if (this.m_pasteHandlePoint == null) {
+      this.m_pasteHandlePoint = points[0];
+    }
+
+    // ペーストエリアに変換
+    this.convPointsToPasteArea(points);
+
+    return false;
+  }
+}
+
+/// 描画ストローク中の画素固定判断を行う。
+DrawOp_RectCapture.prototype.testOnDrawing = function(e, points, context)
+{
+  if (this.m_yankData == null) {    // (コピーモード)
+    return this.m_drawOpForGuide.testOnDrawing(e, points, context);
+  } else {    // (ペーストモード)
+    // ペーストエリアに変換
+    this.convPointsToPasteArea(points);
+
+    return false;
+  }
+}
+
+/// 描画ストローク終了時の画素固定判断を行う。
+DrawOp_RectCapture.prototype.testOnDrawEnd = function(e, points, context)
+{
+  if (this.m_yankData == null) {   // (コピーモード)
+    // 矩形ガイド表示委譲先に後始末の機会を与える。
+    this.m_drawOpForGuide.testOnDrawEnd(e, points, context);
+
+    // この直後にguideOnDrawEnd()メソッドで
+    // 矩形範囲内の画像を取得する。
+    return false;
+  } else {    // (ペーストモード)
+    // ペーストエリアに変換
+    this.convPointsToPasteArea(points);
+
+    // 次モード決定準備
+    // ここではモード遷移の判断材料の記憶のみ行う。
+    // 実際のモード遷移はgotoNext()メソッドで行う。
+    // この後エフェクトオブジェクトがm_yankDataを参照するので、
+    // この場でリセットを伴うモード遷移はできない。
+    this.m_lastSpKeyState = e.m_spKey;
+
+    // この直後にエフェクトオブジェクトに取得画像を定着させる。
+    // pointsは、convPointsToPasteArea()メソッドでペースト先を指す2点に変換済み。
+    assert(points.length == 2);
+    return ((this.m_lastSpKeyState & SpKey.KY_ALT) == 0);   // ALTキー押下状態ならpasteキャンセル
+  }
+}
+
+/// 描画ストローク開始時ガイド表示処理。
+DrawOp_RectCapture.prototype.guideOnDrawStart = function(e, points, context)
+{
+  if (this.m_yankData == null) {    // (コピーモード)
+    this.m_drawOpForGuide.guideOnDrawStart(e, points, context);
+  } else {    // (ペーストモード)
+    this.drawPasteModeGuide(e, points, context);
+  }
+}
+
+/// 描画ストローク中ガイド表示処理。
+DrawOp_RectCapture.prototype.guideOnDrawing = function(e, points, context)
+{
+  if (this.m_yankData == null) {    // (コピーモード)
+    this.m_drawOpForGuide.guideOnDrawing(e, points, context);
+  } else {    // (ペーストモード)
+    this.drawPasteModeGuide(e, points, context);
+  }
+}
+
+/// 描画ストローク終了時ガイド表示処理。
+DrawOp_RectCapture.prototype.guideOnDrawEnd = function(e, points, context)
+{
+  if (this.m_yankData == null) {    // (コピーモード)
+    // 矩形ガイド表示委譲先に後始末の機会を与える。
+    if (this.m_drawOpForGuide.guideOnDrawEnd != null) {
+      this.m_drawOpForGuide.guideOnDrawEnd(e, points, context);
+    }
+
+    // 画像取得
+    // console.log("DrawOp_RectCapture::guideOnDrawEnd(): Copying image...");
+    // console.log(points);
+    if (points.length >= 2) {
+      // 画像データ取得
+      assert(points.length == 2);
+      let r = get_outbounds(points, 0);
+      let curLayer = e.m_sender.getCurLayer();
+      this.m_yankData = this.m_yankFunc(curLayer, r);   // ここでm_yankFuncに従い画像変換が行われる。
+
+      // ガイド表示用画像生成
+      let context = curLayer.getContext('2d');
+      let src_imgd = this.m_yankData.m_imgd;
+      this.m_pasteGuideImgd = context.createImageData(src_imgd.width, src_imgd.height);
+      get_guide_image(src_imgd, this.m_pasteGuideImgd);
+
+      // ペースト基準位置初期化
+      this.m_pasteHandlePoint = null;
+
+      // 最初のガイド表示
+      this.convPointsToPasteArea(points);
+      this.drawPasteModeGuide(e, points, context);
+    }
+  } else {
+    // ALTキー押下でペーストがキャンセルされたときここに来る。
+    // このときはSHIFTキー押下相当のrestartをかける。
+    assert((this.m_lastSpKeyState & SpKey.KY_ALT) != 0);
+    this.m_lastSpKeyState = SpKey.KY_SHIFT;
+    this.gotoNext();
+  }
+}
+
+/// マージンを取得する。
+DrawOp_RectCapture.prototype.getMargin = function()
+{
+  return 0;
+}
+
+/// 代替描画先レイヤーを指定する。(Optional)
+DrawOp_RectCapture.prototype.getAltLayer = function(e)
+{
+  return e.m_sender.getOverlay();
+}
+
+/// コピーモードに戻る。(クラス固有)
+DrawOp_RectCapture.prototype.resetCapture = function()
+{
+  this.m_yankData = null;
+  this.m_pasteHandlePoint = null;
+  this.m_pasteGuideImgd = null;
+}
+
+/// 画像データを取得する。(クラス固有)
+DrawOp_RectCapture.prototype.getYankData = function()
+{
+  return this.m_yankData;
+}
+
+/// 次のモードに遷移する。(クラス固有)
+DrawOp_RectCapture.prototype.gotoNext = function()
+{
+  if ((this.m_lastSpKeyState & SpKey.KY_SHIFT) != 0) {    // (SHIFTキー押下)
+    // コピーデータを保持したまま現在のモードを維持する。
+    // ただし、ペーストハンドルは取り直す。
+    this.m_pasteHandlePoint = null;
+
+    // コピー元位置にガイド表示
+    // 一応動くが超Ad-hocなコードなので注意。
+    // 現状のconvPointsToPasteArea()とdrawPasteModeGuide()の内部の詳細に
+    // べったり依存している。
+    let points = [ jsRect(0, 0) ];
+    this.convPointsToPasteArea(points);
+    let dymmy_e = { m_sender: g_pictureCanvas };
+    this.drawPasteModeGuide(dymmy_e, points, null);
+  } else {
+    // コピーモードに戻る。
+    this.resetCapture();
+  }
 }
 
 //
@@ -753,6 +1062,81 @@ Effect_PencilRect.prototype.apply = function(points, context)
 
 /// マージンを取得する。
 Effect_PencilRect.prototype.getMargin = function() { return 0; }
+
+//
+//  エフェクト4: 矩形領域ペースト
+//
+
+/// 新しいインスタンスを取得する。
+function Effect_RectPaste(copyAndPasteOp)
+{
+  this.m_effectBase = new EffectBase01();
+  this.m_copyAndPasteOp = copyAndPasteOp;   // 実行時rendering時に裏で手を握る相手
+}
+
+// Pre-render関数は無し。
+
+/// 実行時render関数(1点用)。
+Effect_RectPaste.runtime_renderer1_ex = function(px, py, color, context)
+{
+  assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+}
+
+/// 実行時render関数(2点用)。
+Effect_RectPaste.runtime_renderer2_ex = function(px1, py1, px2, py2, obj, context)
+{
+  let r = encode_to_rect(px1, py1, px2, py2);
+
+  // コピーデータのpaste
+  let yankData = obj.m_copyAndPasteOp.getYankData();
+  if (yankData != null) {
+    let imgd = yankData.m_imgd;
+    assert(imgd.width == px2 - px1 + 1 && imgd.height == py2 - py1 + 1);
+    // context.putImageData(imgd, px1, py1);
+    putImageDataEx(imgd, context, px1, py1);
+  } else {
+    // ここへはredo時かつコピーデータが失われたとき来る。
+    // コピーデータが失われているので何も出来ない。
+    /*NOP*/
+  }
+
+  // 次のモードに遷移
+  obj.m_copyAndPasteOp.gotoNext();
+}
+
+/// パラメータを設定する。(クラス固有)
+/// 第1引数thicknessは、DrawToolBase.OnDrawStart()から共通に呼ぶ都合上設けたもので、非使用。
+Effect_RectPaste.prototype.setParam = function(thickness, color)
+{
+  // 引数仕様合わせのためのクロージャ生成
+  let runtime_renderer1 = function(px, py, context) {
+    Effect_RectPaste.runtime_renderer1_ex(px, py, color, context);
+  };
+  let thisObj = this;     // 束縛変数
+  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+    Effect_RectPaste.runtime_renderer2_ex(px1, py1, px2, py2, thisObj, context);
+  };
+
+  // 描画条件決定
+  this.m_effectBase.setParamEx(
+    0,
+    null,
+    runtime_renderer1,
+    runtime_renderer2
+  );
+
+  // 再設定のためのクロージャを返す(Undo/Redo)
+  return function(obj) { obj.setParam(thickness, color); };
+}
+
+/// エフェクトを適用する。
+Effect_RectPaste.prototype.apply = function(points, context)
+{
+  this.m_effectBase.apply(points, context);
+}
+
+/// マージンを取得する。
+Effect_RectPaste.prototype.getMargin = function() { return 0; }
 
 //
 //  CursorBase01: 円形や方形等のカーソルの基底クラス
