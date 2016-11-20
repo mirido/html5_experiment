@@ -863,3 +863,19 @@ ToolPalette.prototype.activateMaskTool = function(expMaskTool, maskColor)
     // }
   }
 }
+
+/// 操作履歴巻き戻しリスナを追加する。(Undo/Redo)
+ToolPalette.prototype.addHistoryRewindListener = function(listener)
+{
+  if (this.m_history != null) {
+    this.m_history.addHistoryRewindListener(listener);
+  }
+}
+
+/// 操作履歴変更リスナを削除する。(Undo/Redo)
+ToolPalette.prototype.removeHistoryRewindListener = function(listener)
+{
+  if (this.m_history != null) {
+    this.m_history.removeHistoryRewindListener(listener);
+  }
+}

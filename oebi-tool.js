@@ -50,6 +50,9 @@ DrawToolBase.prototype.OnDiselected = function(e)
 {
   // console.log("DrawerBase::OnDiselected() called. ");
 
+  // OnDrawEnd()時のガイド表示(もしあれば)を消去
+  this.m_drawerCore.restoreImageOnDrawEnd();
+
   // 描画ツール解除
   e.m_sender.removeDrawer(this);
 
@@ -95,6 +98,13 @@ DrawToolBase.prototype.OnDrawEnd = function(e)
 {
   // DrawerBaseに委譲
   this.m_drawerCore.OnDrawEnd(e);
+}
+
+/// OnDrawEnd()時に描画したガイドを消す。
+DrawToolBase.prototype.restoreImageOnDrawEnd = function()
+{
+  // DrawerBaseに委譲
+  this.m_drawerCore.restoreImageOnDrawEnd();
 }
 
 //
@@ -253,6 +263,7 @@ CopyTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 CopyTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.addHistoryRewindListener(this);    // (Undo/Redo)
   this.m_captureOp.resetCapture();
   this.m_drawToolBase.OnSelected(e);
 }
@@ -261,12 +272,21 @@ CopyTool.prototype.OnSelected = function(e)
 CopyTool.prototype.OnDiselected = function(e)
 {
   this.m_drawToolBase.OnDiselected(e);
+  e.m_sender.removeHistoryRewindListener(this);   // (Undo/Redo)
 }
 
 /// 再ポイントされたとき呼ばれる。
 CopyTool.prototype.OnPicked = function(e)
 {
   this.m_drawToolBase.OnPicked(e);
+}
+
+/// 操作履歴が巻き戻されるとき呼ばれる。(Undo/Redo)
+CopyTool.prototype.OnHistoryRewind = function(history)
+{
+  this.m_drawToolBase.restoreImageOnDrawEnd();
+  history.attatchImage();
+  this.m_captureOp.resetCapture();
 }
 
 //

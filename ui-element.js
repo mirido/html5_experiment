@@ -105,11 +105,12 @@ function DrawerBase(drawOp, effect, cursor)
   this.m_altImagePatch = null;
   this.m_bWrtProtect = false;
 
-  // OnDrawEnd()呼び出し時点のエフェクト適用 or ガイド表示適用前画像
-  // (カーソルは消去済み)
-  this.m_lastLayerNo = null;
+  // OnDrawEnd()呼び出し時点の対象レイヤー
+  this.m_lastLayer = null;
+  this.m_lastAltLayer = null;
+
+  // OnDrawEnd()で確定した画像データ
   this.m_lastImageData = null;
-  this.m_altLayer = null;
   this.m_lastAltImageData = null;
 }
 
@@ -148,7 +149,7 @@ DrawerBase.prototype.OnDrawStart = function(e)
   }
 
   // 領域復元(描画ストローク2回目以降)
-  this.restoreImageOnDrawEnd(e.m_sender);
+  this.restoreImageOnDrawEnd();
 
   // 点列記憶
   this.m_points.splice(0, this.m_points.length);   // 全クリア
@@ -256,47 +257,64 @@ DrawerBase.prototype.OnDrawEnd = function(e)
 
   // 描画内容確定判断
   let bFixed = this.m_drawOp.testOnDrawEnd(e, this.m_points, context);
+
+  // altLayer最終状態保存
+  // コピー&ペースト操作やベジエ曲線描画操作等、複数の描画ストロークで
+  // 1つの描画結果を成すツールでは、この後にもガイド表示が行われる。
+  // それを消すための画像データをここで記憶する。
+  // ただし、guideOnDrawEnd()を持たない(古い)描画操作については、
+  // ここで記憶した画像が未来の時点でDrawerBaseによって勝手に再描画されることを
+  // 想定していないため、記憶をスキップする。
+  if (this.m_drawOp.guideOnDrawEnd != null) {
+    if (alt_ctx != null) {
+      this.m_lastAltLayer = altLayer;
+      this.m_lastAltImageData = alt_ctx.getImageData(0, 0, altLayer.width, altLayer.height);
+    } else {
+      this.m_lastAltLayer = null;
+    }
+  }
+
+  // エフェクト適用
   if (bFixed) {
+    // guideOnDrawEnd()を持つ描画操作については、ここでのaltLayerへのガイド表示を許す。
+    // curLayerへは画素の定着のみ許可、ガイド表示は禁止。
     this.m_effect.apply(this.m_points, context);
     e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
-  } else {
-    // 引き続く描画ストロークのための準備
-    // メモリ節約のため、描画オペレータにguideOnDrawEnd()が定義されているときのみ実施する。
-    if (this.m_drawOp.guideOnDrawEnd != null) {
-      // キャンバス状態保存
-      this.m_lastLayerNo = e.m_sender.getCurLayerNo();
-      this.m_lastImageData = context.getImageData(0, 0, w, h);
-      if (alt_ctx != null) {
-        this.m_lastAltLayer = altLayer;
-        this.m_lastAltImageData = alt_ctx.getImageData(0, 0, w, h);
-      }
+  }
 
-      // ガイド表示(表示を伴わない単なる後処理のこともある。)
+  // 対象レイヤーの最終状態保存
+  // altLayerの最終状態保存と同じ理由で、画素定着を行った直後の対象レイヤーの画像データを記憶する。
+  if (this.m_drawOp.guideOnDrawEnd != null) {
+    // 最終状態保存
+    this.m_lastLayer = curLayer;
+    this.m_lastImageData = context.getImageData(0, 0, curLayer.width, curLayer.height);
+
+    // ガイド表示
+    // これ以降に描画したガイドはストローク完了後から
+    // 次回OnDrawStart()呼び出しまで画面に残ったままになる。
+    // OnDrawStart()を呼び出すことなくガイドを消すには、
+    // 明示的にrestoreImageOnDrawEnd()を呼ぶ必要がある。
+    // guideOnDrawEnd()以外にもこの後ガイド描画する要素が有り得るので、
+    // 上で行っている最終状態保存はbFixedとは無関係に実施が必要。
+    if (!bFixed) {
+      // ここでのaltLayerまたはcurLayerへのガイド表示を許す。
       this.m_drawOp.guideOnDrawEnd(e, this.m_points, context);
     }
   }
 }
 
-/// OnDrawEnd()時のキャンバス状態(カーソル無し、ガイド表示直前)を復元する。
-DrawerBase.prototype.restoreImageOnDrawEnd = function(pictCanvas)
+/// OnDrawEnd()以降に描画したガイドを消す。
+DrawerBase.prototype.restoreImageOnDrawEnd = function()
 {
-  let lastLayerNo = this.m_lastLayerNo;
-  if (lastLayerNo == null)
-    return;
-
-  let lastLayer = pictCanvas.getLayer(lastLayerNo);
-  let context = lastLayer.getContext('2d');
-  let altLayer = this.m_lastAltLayer;
-  let alt_ctx = (altLayer != null) ? altLayer.getContext('2d') : null;
-
-  // 領域復元
-  if (this.m_lastImageData != null) {
+  if (this.m_lastLayer != null) {
+    let context = this.m_lastLayer.getContext('2d');
     context.putImageData(this.m_lastImageData, 0, 0);
-    this.m_lastImageData = null;
+    this.m_lastLayer = null;
   }
-  if (this.m_lastAltImageData != null) {
+  if (this.m_lastAltLayer != null) {
+    let alt_ctx = this.m_lastAltLayer.getContext('2d');
     alt_ctx.putImageData(this.m_lastAltImageData, 0, 0);
-    this.m_lastAltImageData = null;
+    this.m_lastAltLayer = null;
   }
 }
 
@@ -779,7 +797,7 @@ DrawOp_RectCapture.prototype.gotoNext = function()
     // コピー元位置にガイド表示
     // 一応動くが超Ad-hocなコードなので注意。
     // 現状のconvPointsToPasteArea()とdrawPasteModeGuide()の内部の詳細に
-    // べったり依存している。
+    // 大きく依存している。
     let points = [ jsRect(0, 0) ];
     this.convPointsToPasteArea(points);
     let dymmy_e = { m_sender: g_pictureCanvas };
@@ -1283,6 +1301,9 @@ function History(toolPalette, pictCanvas)
   // イベント追記制御
   this.m_bDealing = false;
   this.m_bTakeSnapshotOnDrawStart = false;
+
+  // 操作履歴変更リスナ
+  this.m_historyRewindListeners = [];
 }
 
 /// 空か否かを返す。
@@ -1579,6 +1600,13 @@ History.prototype.getImageHavingIdxBefore = function(idx)
 /// ただし、[idx]が画像付きエントリの場合は当該画像を直接描画する。
 History.prototype.wayBackTo_Core = function(idx)
 {
+  // 巻き戻し通知
+  if (  this.m_historyCursor == this.m_eventHistory.length
+     && idx < this.m_historyCursor  )   // (履歴の先端からの巻き戻し)
+   {
+     this.raiseHistoryRewindNotification();
+   }
+
   // 未来でない直近の画像付きエントリ取得
   let restorePointIdx = this.getImageHavingIdxBefore(idx);
   assert(restorePointIdx != null);    // [0]が必ず画像付きのため、nullにはならないはず。
@@ -1646,6 +1674,26 @@ History.prototype.wayBackTo = function(idx)
   this.m_bDealing = true;
   this.wayBackTo_Core(idx);
   this.m_bDealing = false;
+}
+
+/// 操作履歴巻き戻しリスナを追加する。
+History.prototype.addHistoryRewindListener = function(listener)
+{
+  add_to_unique_list(this.m_historyRewindListeners, listener);
+}
+
+/// 操作履歴変更リスナを削除する。
+History.prototype.removeHistoryRewindListener = function(listener)
+{
+  remove_from_unique_list(this.m_historyRewindListeners, listener);
+}
+
+/// 操作履歴変更をリスナに通知する。
+History.prototype.raiseHistoryRewindNotification = function()
+{
+  for (let i = 0; i < this.m_historyRewindListeners.length; ++i) {
+    this.m_historyRewindListeners[i].OnHistoryRewind(this);
+  }
 }
 
 //
