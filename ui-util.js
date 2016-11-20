@@ -418,29 +418,7 @@ KeyStateManager.prototype.dispose = function()
 /// イベントリスナ。
 KeyStateManager.prototype.handleEvent = function(e)
 {
-  switch (e.type) {
-    case 'mousedown':
-    case 'touchstart':
-      if (e.button != 0) {
-        this.m_bRightButtonDown = true;
-      }
-      return;
-    case 'mouseup':
-    case 'touchend':
-      // 161030-1「SHIFT+CTRL+右クリックでスポイトツールを働かせた後、単にクリックしただけでもスポイトツールとして働き続ける。」
-      // の暫定対策。左ボタン以外のボタンのupで特殊キーが全て離されたとみなす。
-      if (this.m_bRightButtonDown) {
-        this.m_bShiftDown = false;
-        this.m_bCtrlDown = false;
-        this.m_bAltDown = false;
-        this.m_bMetaDown = false;
-        this.m_bRightButtonDown = false;
-      }
-      return;
-    default:
-      /*NOP*/
-      break;
-  }
+  // 最新キー押下状態取得
   let key_event = (e || window.event);
   // console.log("key_event=(" + key_event.shiftKey + ", " + key_event.ctrlKey + ")");
   this.m_bShiftDown = (key_event.shiftKey);
@@ -452,6 +430,30 @@ KeyStateManager.prototype.handleEvent = function(e)
   //   + ", this.m_bAltDown=" + this.m_bAltDown
   //   + ", this.m_bMetaDown=" + this.m_bMetaDown
   // );
+
+  switch (e.type) {
+    case 'mousedown':
+    case 'touchstart':
+      if (e.button != 0) {
+        this.m_bRightButtonDown = true;
+      }
+      break;
+    case 'mouseup':
+    case 'touchend':
+      // 161030-1「SHIFT+CTRL+右クリックでスポイトツールを働かせた後、単にクリックしただけでもスポイトツールとして働き続ける。」
+      // の暫定対策。左ボタン以外のボタンのupで特殊キーが全て離されたとみなす。
+      if (this.m_bRightButtonDown) {
+        this.m_bShiftDown = false;
+        this.m_bCtrlDown = false;
+        this.m_bAltDown = false;
+        this.m_bMetaDown = false;
+        this.m_bRightButtonDown = false;
+      }
+      break;
+    default:
+      /*NOP*/
+      break;
+  }
 }
 
 /// 特殊キーの押下状態を取得する。
