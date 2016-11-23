@@ -142,7 +142,7 @@ function ToolChain(iconBounds)
 }
 
 /// アクティブにする。
-ToolChain.prototype.activate = function(toolPalette, /*[option]*/ targetObj)
+ToolChain.prototype.activate = function(toolPalette, /*[opt]*/ targetObj)
 {
   let iconBounds = this.m_iconBounds;
   let mod_e = new VirtualClickEvent(toolPalette, iconBounds);
@@ -609,6 +609,12 @@ ToolPalette.prototype.handleEvent = function(e)
 {
 	// console.log("ToolPalette::handleEvent: " + e.type);
 	// console.dir(e);
+
+  // 描画ストローク中のポインティングイベントは無視する。
+  if (this.m_pictCanvas.isDrawing()) {
+    assert(!this.m_bDragging);
+    return;
+  }
 
   // ドラッグ状態管理
   if (!this.m_bDragging) {

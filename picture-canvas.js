@@ -186,6 +186,12 @@ PictureCanvas.prototype.handleEvent = function(e)
 	}
 }
 
+/// 描画ストローク中か否かを返す。
+PictureCanvas.prototype.isDrawing = function()
+{
+	return (this.m_draggingButton != null);
+}
+
 /// 要素の絶対座標を返す。
 PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 {
