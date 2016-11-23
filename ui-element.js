@@ -266,6 +266,12 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   // ここで記憶した画像が未来の時点でDrawerBaseによって勝手に再描画されることを
   // 想定していないため、記憶をスキップする。
   if (this.m_drawOp.guideOnDrawEnd != null) {
+    // 作業中レイヤー固定(1)
+    // 現状想定では代替レイヤーはオーバレイしかなく、
+    // オーバレイはマスク/逆マスクとは無関係なので実は不要…
+    e.m_sender.raiseLayerFixRequest();
+
+    // 代替レイヤー内容記憶
     if (alt_ctx != null) {
       this.m_lastAltLayer = altLayer;
       this.m_lastAltImageData = alt_ctx.getImageData(0, 0, altLayer.width, altLayer.height);
@@ -285,6 +291,11 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   // 対象レイヤーの最終状態保存
   // altLayerの最終状態保存と同じ理由で、画素定着を行った直後の対象レイヤーの画像データを記憶する。
   if (this.m_drawOp.guideOnDrawEnd != null) {
+    // 作業中レイヤー固定(2)
+    // (1)と違い、こちらは必須。行わないと、
+    // マスク/逆マスクが正しく反映されていない描画結果を記憶することになる。
+    e.m_sender.raiseLayerFixRequest();
+
     // 最終状態保存
     this.m_lastLayer = curLayer;
     this.m_lastImageData = context.getImageData(0, 0, curLayer.width, curLayer.height);
