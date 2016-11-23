@@ -1496,6 +1496,14 @@ History.prototype.attatchImage = function()
     return false;
   }
 
+  // 画像添付予約
+  this.attatchImage_Core();
+}
+
+/// 履歴カーソルが指すエントリに対し、画像添付を予約する。
+/// 当メソッド呼び出しでは履歴カーソルは変化しない。
+History.prototype.attatchImage_Core = function()
+{
   // 作業中レイヤーを固定
   this.m_pictCanvas.raiseLayerFixRequest();
 
@@ -1518,7 +1526,7 @@ History.prototype.attatchImage = function()
 
 	// 画像添付予約
   this.m_imageLog[this.m_historyCursor] = pictureInfo;
-  console.log("History::attatchImage(): Reserved to cursor " + this.m_historyCursor + ".");
+  console.log("History::attatchImage_Core(): Reserved to cursor " + this.m_historyCursor + ".");
 
   // 画像の次の変化を捉える準備
   this.m_pictCanvas.registerPictureState();
