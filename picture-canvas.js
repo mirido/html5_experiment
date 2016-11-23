@@ -86,7 +86,7 @@ function PictureCanvas()
 	this.m_nTargetLayerNo = this.m_workingLayers.length - 1;		// 描画対象レイヤー
 
 	// ポインタデバイスのドラッグ状態
-	this.m_bDragging = false;
+	this.m_draggingButton = null;
 	this.m_lastEvent = null;
 
 	// イベントハンドラ登録
@@ -126,6 +126,7 @@ PictureCanvas.prototype.handleEvent = function(e)
 {
 	// console.log("Event: " + e.type);
 	// console.dir(e);
+	// console.log("event=" + e.type + ", button=" + e.button);
 
 	// 描画ツールに引き渡す情報を構成
 	let mod_e = new PointingEvent(this, e);
@@ -137,33 +138,42 @@ PictureCanvas.prototype.handleEvent = function(e)
 	switch (e.type) {
 	case 'mousedown':
 	case 'touchstart':
-		// mouseupやtouchendを確実に捕捉するための登録
-		g_pointManager.notifyPointStart(this, e);
+		if (this.m_draggingButton == null) {		// (非ドラッグ状態)
+			// mouseupやtouchendを確実に捕捉するための登録
+			g_pointManager.notifyPointStart(this, e);
 
-		// 描画開始を通知
-		this.m_bDragging = true;
-		for (let i = 0; i < this.m_drawers.length; ++i) {
-			if (this.m_drawers[i].OnDrawStart) {
-				this.m_drawers[i].OnDrawStart(mod_e);
+			// ドラッグ状態に遷移
+			this.m_draggingButton = e.button;
+
+			// 描画ストローク開始を通知
+			for (let i = 0; i < this.m_drawers.length; ++i) {
+				if (this.m_drawers[i].OnDrawStart) {
+					this.m_drawers[i].OnDrawStart(mod_e);
+				}
 			}
 		}
 		break;
 	case 'mouseup':
 	case 'touchend':
 		// 描画終了を通知
-		if (this.m_bDragging) {
-			for (let i = 0; i < this.m_drawers.length; ++i) {
-				if (this.m_drawers[i].OnDrawEnd) {
-					this.m_drawers[i].OnDrawEnd(mod_e);
+		if (this.m_draggingButton != null) {				// (ドラッグ状態)
+			if (e.button == this.m_draggingButton) {	// (ドラッグ開始したボタンの押下解除イベント)
+				// 描画ストローク終了を通知
+				for (let i = 0; i < this.m_drawers.length; ++i) {
+					if (this.m_drawers[i].OnDrawEnd) {
+						this.m_drawers[i].OnDrawEnd(mod_e);
+					}
 				}
+
+				// ドラッグ状態解除
+				this.m_draggingButton = null;
 			}
 		}
-		this.m_bDragging = false;
 		break;
 	case 'mousemove':
 	case 'touchmove':
 		// ポインタの移動を通知
-		if (this.m_bDragging) {
+		if (this.m_draggingButton != null) {		// (ドラッグ状態)
 			for (let i = 0; i < this.m_drawers.length; ++i) {
 				if (this.m_drawers[i].OnDrawing) {
 					this.m_drawers[i].OnDrawing(mod_e);
@@ -191,7 +201,7 @@ PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 PictureCanvas.prototype.addDrawer = function(drawer)
 {
 	assert(drawer != null);
-	if (this.m_bDragging) {
+	if (this.m_draggingButton != null) {		// (ドラッグ状態)
 		assert(false);
 		return false;
 	}
@@ -202,7 +212,7 @@ PictureCanvas.prototype.addDrawer = function(drawer)
 PictureCanvas.prototype.removeDrawer = function(drawer)
 {
 	assert(drawer != null);
-	if (this.m_bDragging) {
+	if (this.m_draggingButton != null) {		// (ドラッグ状態)
 		assert(false);
 		return false;
 	}

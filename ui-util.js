@@ -207,8 +207,9 @@ function remove_from_unique_list(list, elem)
 /// 新しいインスタンスを初期化する。
 function PointManager()
 {
-  // 最後にmousedownまたはtouchstartが起きたオブジェクトのリスト
-  this.m_objOnLastPointStart = [];
+  // 最後にmousedownまたはtouchstartが起きたオブジェクトのリスト(の辞書)
+  // リストを、押下ボタン別に記憶する。
+  this.m_objOnLastPointStart = {};
 
   let bSupportTouch = ('ontouchend' in document);
   if (bSupportTouch) {
@@ -239,7 +240,10 @@ PointManager.prototype.notifyPointStart = function(obj, e)
 {
   // console.log("******* " + e);
   assert(e && (e.type == 'mousedown' || e.type == 'touchstart'));
-  add_to_unique_list(this.m_objOnLastPointStart, obj);
+  if (!(e.button in this.m_objOnLastPointStart)) {
+    this.m_objOnLastPointStart[e.button] = [];
+  }
+  add_to_unique_list(this.m_objOnLastPointStart[e.button], obj);
 }
 
 /// イベントリスナ。
@@ -253,12 +257,12 @@ PointManager.prototype.handleEvent = function(e)
     break;
   case 'mouseup':
   case 'touchend':
-    if (this.m_objOnLastPointStart) {
-      // let mod_e = Object.assign({ }, e);  // 値コピー  // NG。うまく機能しない。
-      let mod_e = e;    // Alias
-      for (let i = 0; i < this.m_objOnLastPointStart.length; ++i) {
-        this.m_objOnLastPointStart[i].handleEvent(mod_e);
+    if (e.button in this.m_objOnLastPointStart) {
+      let listeners = this.m_objOnLastPointStart[e.button];
+      for (let i = 0; i < listeners.length; ++i) {
+        listeners[i].handleEvent(e);
       }
+      this.m_objOnLastPointStart[e.button] = [];
       // (e.clientX, e.clientY)は、HTMLページ左上点を原点とする座標。
       // (e.screenX, e.screenY)は、モニタの左上点を原点とする座標。
       // いずれもHTMLページのスクロール位置とは無関係。
@@ -270,7 +274,6 @@ PointManager.prototype.handleEvent = function(e)
       // （e.clientX - window.pageXOffset, e.clientY - window.pageYOffset)
       // とする。
     }
-    this.m_objOnLastPointStart = [];
     break;
   default:
     /*NOP*/
