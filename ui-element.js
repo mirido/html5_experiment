@@ -1284,6 +1284,73 @@ Effect_RectEraser.prototype.apply = function(points, context)
 Effect_RectEraser.prototype.getMargin = function() { return 0; }
 
 //
+//  エフェクト6: 上下 or 左右反転
+//
+
+/// 新しいインスタンスを取得する。
+function Effect_FlipRect(bVert)
+{
+  this.m_bVert = bVert;
+  this.m_effectBase = new EffectBase01();
+}
+
+// Pre-render関数は無し。
+
+/// 実行時render関数(1点用)。
+Effect_FlipRect.runtime_renderer1_ex = function(px, py, context)
+{
+  assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+}
+
+/// 実行時render関数(2点用)。
+Effect_FlipRect.runtime_renderer2_ex = function(px1, py1, px2, py2, bVert, context)
+{
+  let r = encode_to_rect(px1, py1, px2, py2);
+  let imgd_src = context.getImageData(r.x, r.y, r.width, r.height);
+  let imgd_dst = context.createImageData(r.width, r.height);
+  if (bVert) {
+    get_vert_flip_image(imgd_src, imgd_dst);
+  } else {
+    get_mirror_image(imgd_src, imgd_dst);
+  }
+  context.putImageData(imgd_dst, r.x, r.y);
+}
+
+/// パラメータを設定する。(クラス固有)
+/// 第1引数thicknessは、DrawToolBase.OnDrawStart()から共通に呼ぶ都合上設けたもので、非使用。
+Effect_FlipRect.prototype.setParam = function(thickness, color)
+{
+  // 引数仕様合わせのためのクロージャ生成
+  let runtime_renderer1 = function(px, py, context) {
+    Effect_FlipRect.runtime_renderer1_ex(px, py, context);
+  };
+  let bVert = this.m_bVert;   // 束縛変数
+  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+    Effect_FlipRect.runtime_renderer2_ex(px1, py1, px2, py2, bVert, context);
+  };
+
+  // 描画条件決定
+  this.m_effectBase.setParamEx(
+    0,
+    null,
+    runtime_renderer1,
+    runtime_renderer2
+  );
+
+  // 再設定のためのクロージャを返す(Undo/Redo)
+  return function(obj) { obj.setParam(thickness, color); };
+}
+
+/// エフェクトを適用する。
+Effect_FlipRect.prototype.apply = function(points, context)
+{
+  this.m_effectBase.apply(points, context);
+}
+
+/// マージンを取得する。
+Effect_FlipRect.prototype.getMargin = function() { return 0; }
+
+//
 //  CursorBase01: 円形や方形等のカーソルの基底クラス
 //
 

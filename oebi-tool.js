@@ -294,6 +294,92 @@ CopyTool.prototype.OnHistoryRewind = function(history)
 }
 
 //
+//  左右反転ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function MirrorTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+MirrorTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    '左右反転',
+    new DrawOp_BoundingRect(setting),
+    new Effect_FlipRect(false),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+MirrorTool.prototype.OnSelected = function(e)
+{
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+MirrorTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+MirrorTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+//
+//  上下反転ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function VertFlipTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+VertFlipTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    '上下反転',
+    new DrawOp_BoundingRect(setting),
+    new Effect_FlipRect(true),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+VertFlipTool.prototype.OnSelected = function(e)
+{
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+VertFlipTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+VertFlipTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+//
 //  消しペンツール
 //
 

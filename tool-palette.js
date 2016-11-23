@@ -511,6 +511,8 @@ ToolPalette.prototype.initToolChain = function()
   addToolHelper(this.m_toolMap[2], 'FillRectTool', 200, toolDic);
   addToolHelper(this.m_toolMap[2], 'LineRectTool', 201, toolDic);
   addToolHelper(this.m_toolMap[3], 'CopyTool', 300, toolDic);
+  addToolHelper(this.m_toolMap[3], 'MirrorTool', 303, toolDic);
+  addToolHelper(this.m_toolMap[3], 'VertFlipTool', 304, toolDic);
   addToolHelper(this.m_toolMap[4], 'EraseTool', 400, toolDic);
   addToolHelper(this.m_toolMap[4], 'EraseRectTool', 401, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 600, toolDic);
@@ -535,6 +537,8 @@ ToolPalette.prototype.initToolChain = function()
   toolDic[200].show(this.m_setting, this.m_palette);      // 四角ツール
   toolDic[201].show(this.m_setting, this.m_palette);      // 線四角ツール
   toolDic[300].show(this.m_setting, this.m_palette);      // コピーツール
+  toolDic[303].show(this.m_setting, this.m_palette);      // 左右反転ツール
+  toolDic[304].show(this.m_setting, this.m_palette);      // 上下反転ツール
   toolDic[400].show(this.m_setting, this.m_palette);      // 消しペンツール
   toolDic[401].show(this.m_setting, this.m_palette);      // 消しペンツール
   toolDic[600].show(this.m_setting, 0, this.m_palette);   // 通常ツール

@@ -40,6 +40,48 @@ function get_guide_image(src_imgd, dst_imgd)
   }
 }
 
+/// 左右反転した画像データを取得する。
+function get_mirror_image(src_imgd, dst_imgd)
+{
+  const width = src_imgd.width;
+  const height = src_imgd.height;
+  assert(dst_imgd.width == width && dst_imgd.height == height);
+  let colors = [];
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    let tail = head + 4 * (width - 1);
+    for (let px = 0; px < width; ++px) {
+      let base_src = head + px * 4;
+      let base_dst = tail - px * 4;
+      dst_imgd.data[base_dst + 0] = src_imgd.data[base_src + 0];
+      dst_imgd.data[base_dst + 1] = src_imgd.data[base_src + 1];
+      dst_imgd.data[base_dst + 2] = src_imgd.data[base_src + 2];
+      dst_imgd.data[base_dst + 3] = src_imgd.data[base_src + 3];
+    }
+  }
+}
+
+/// 上下反転した画像データを取得する。
+function get_vert_flip_image(src_imgd, dst_imgd)
+{
+  const width = src_imgd.width;
+  const height = src_imgd.height;
+  assert(dst_imgd.width == width && dst_imgd.height == height);
+  let colors = [];
+  for (let py = 0; py < height; ++py) {
+    let head_src = py * 4 * width;
+    let head_dst = ((height - 1) - py) * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base_src = head_src + px * 4;
+      let base_dst = head_dst + px * 4;
+      dst_imgd.data[base_dst + 0] = src_imgd.data[base_src + 0];
+      dst_imgd.data[base_dst + 1] = src_imgd.data[base_src + 1];
+      dst_imgd.data[base_dst + 2] = src_imgd.data[base_src + 2];
+      dst_imgd.data[base_dst + 3] = src_imgd.data[base_src + 3];
+    }
+  }
+}
+
 //
 //  単一キャンバス操作
 //
