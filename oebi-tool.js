@@ -334,6 +334,49 @@ EraseTool.prototype.OnPicked = function(e)
 }
 
 //
+//  消し四角ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function EraseRectTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+EraseRectTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    '消し四角',
+    new DrawOp_BoundingRect(setting),
+    new Effect_RectEraser(),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+EraseRectTool.prototype.OnSelected = function(e)
+{
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+EraseRectTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+EraseRectTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+//
 //  線幅ツール
 //
 
@@ -481,6 +524,7 @@ ColorPalette.prototype.OnDrawStart = function(e)
     draw_color_palette(this.m_iconBounds, this.m_color, true, context);
   }
 }
+
 /// 設定が変化したとき呼ばれる。
 ColorPalette.prototype.OnSettingChanged = function(setting)
 {

@@ -820,6 +820,64 @@ DrawOp_RectCapture.prototype.gotoNext = function()
 }
 
 //
+//  描画オペレータ4: 矩形領域の画像取得
+//
+
+/// 新しいインスタンスを初期化する。
+function DrawOp_BoundingRect(setting)
+{
+  this.m_setting = setting;
+  this.m_drawOpForGuide = new DrawOp_Rectangle(setting, false);
+}
+
+/// 描画ストローク開始時の画素固定判断を行う。
+DrawOp_BoundingRect.prototype.testOnDrawStart = function(e, points, context)
+{
+  return this.m_drawOpForGuide.testOnDrawStart(e, points, context);
+}
+
+/// 描画ストローク中の画素固定判断を行う。
+DrawOp_BoundingRect.prototype.testOnDrawing = function(e, points, context)
+{
+  return this.m_drawOpForGuide.testOnDrawing(e, points, context);
+}
+
+/// 描画ストローク終了時の画素固定判断を行う。
+DrawOp_BoundingRect.prototype.testOnDrawEnd = function(e, points, context)
+{
+  // 矩形ガイド表示委譲先に後始末の機会を与える。
+  this.m_drawOpForGuide.testOnDrawEnd(e, points, context);
+
+  // この直後にエフェクトオブジェクトに
+  // 矩形範囲内の画像を処理させる。
+  return true;
+}
+
+/// 描画ストローク開始時ガイド表示処理。
+DrawOp_BoundingRect.prototype.guideOnDrawStart = function(e, points, context)
+{
+  this.m_drawOpForGuide.guideOnDrawStart(e, points, context);
+}
+
+/// 描画ストローク中ガイド表示処理。
+DrawOp_BoundingRect.prototype.guideOnDrawing = function(e, points, context)
+{
+  this.m_drawOpForGuide.guideOnDrawing(e, points, context);
+}
+
+/// マージンを取得する。
+DrawOp_BoundingRect.prototype.getMargin = function()
+{
+  return 0;
+}
+
+/// 代替描画先レイヤーを指定する。(Optional)
+DrawOp_BoundingRect.prototype.getAltLayer = function(e)
+{
+  return e.m_sender.getOverlay();
+}
+
+//
 //  EffectBase01: 描画効果全般の基底クラス
 //
 
@@ -1166,6 +1224,64 @@ Effect_RectPaste.prototype.apply = function(points, context)
 
 /// マージンを取得する。
 Effect_RectPaste.prototype.getMargin = function() { return 0; }
+
+//
+//  エフェクト5: 消し四角
+//
+
+/// 新しいインスタンスを取得する。
+function Effect_RectEraser()
+{
+  this.m_effectBase = new EffectBase01();
+}
+
+// Pre-render関数は無し。
+
+/// 実行時render関数(1点用)。
+Effect_RectEraser.runtime_renderer1_ex = function(px, py, context)
+{
+  assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+}
+
+/// 実行時render関数(2点用)。
+Effect_RectEraser.runtime_renderer2_ex = function(px1, py1, px2, py2, context)
+{
+  let r = encode_to_rect(px1, py1, px2, py2);
+  context.clearRect(r.x, r.y, r.width, r.height);
+}
+
+/// パラメータを設定する。(クラス固有)
+/// 第1引数thicknessは、DrawToolBase.OnDrawStart()から共通に呼ぶ都合上設けたもので、非使用。
+Effect_RectEraser.prototype.setParam = function(thickness, color)
+{
+  // 引数仕様合わせのためのクロージャ生成
+  let runtime_renderer1 = function(px, py, context) {
+    Effect_RectEraser.runtime_renderer1_ex(px, py, context);
+  };
+  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+    Effect_RectEraser.runtime_renderer2_ex(px1, py1, px2, py2, context);
+  };
+
+  // 描画条件決定
+  this.m_effectBase.setParamEx(
+    0,
+    null,
+    runtime_renderer1,
+    runtime_renderer2
+  );
+
+  // 再設定のためのクロージャを返す(Undo/Redo)
+  return function(obj) { obj.setParam(thickness, color); };
+}
+
+/// エフェクトを適用する。
+Effect_RectEraser.prototype.apply = function(points, context)
+{
+  this.m_effectBase.apply(points, context);
+}
+
+/// マージンを取得する。
+Effect_RectEraser.prototype.getMargin = function() { return 0; }
 
 //
 //  CursorBase01: 円形や方形等のカーソルの基底クラス

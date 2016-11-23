@@ -451,12 +451,14 @@ function ToolPalette(pictCanvas)
   this.m_toolMap[toolChainGroups[0][2]].inactivate(this); // 四角ツール(戻す)
   this.m_toolMap[toolChainGroups[0][3]].activate(this);   // コピーツール(一旦有効化)
   this.m_toolMap[toolChainGroups[0][3]].inactivate(this); // コピーツール(戻す)
+  this.m_toolMap[toolChainGroups[0][4]].activate(this);   // 消しペンツール(一旦有効化)
+  this.m_toolMap[toolChainGroups[0][4]].inactivate(this); // 消しペンツール(戻す)
   this.m_toolMap[toolChainGroups[0][0]].activate(this);   // 鉛筆ツール
   this.m_toolMap[toolChainGroups[2][0]].activate(this);   // 通常ツール
   this.m_toolMap[toolChainGroups[3][1]].activate(this);   // カラーパレットの黒色
   this.m_selToolChainIdxOf = [];
   this.m_selToolChainIdxOf[0] = toolChainGroups[0][0];    // 独立群[0]の選択ツール
-  this.m_selToolChainIdxOf[2] = toolChainGroups[2][0];    // 独立群[3]の選択ツール
+  this.m_selToolChainIdxOf[2] = toolChainGroups[2][0];    // 独立群[2]の選択ツール
   this.m_selToolChainIdxOf[3] = toolChainGroups[3][1];    // 独立群[3]の選択ツール
 
   // 外部ツール
@@ -510,6 +512,7 @@ ToolPalette.prototype.initToolChain = function()
   addToolHelper(this.m_toolMap[2], 'LineRectTool', 201, toolDic);
   addToolHelper(this.m_toolMap[3], 'CopyTool', 300, toolDic);
   addToolHelper(this.m_toolMap[4], 'EraseTool', 400, toolDic);
+  addToolHelper(this.m_toolMap[4], 'EraseRectTool', 401, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 600, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 601, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 602, toolDic);
@@ -533,6 +536,7 @@ ToolPalette.prototype.initToolChain = function()
   toolDic[201].show(this.m_setting, this.m_palette);      // 線四角ツール
   toolDic[300].show(this.m_setting, this.m_palette);      // コピーツール
   toolDic[400].show(this.m_setting, this.m_palette);      // 消しペンツール
+  toolDic[401].show(this.m_setting, this.m_palette);      // 消しペンツール
   toolDic[600].show(this.m_setting, 0, this.m_palette);   // 通常ツール
   toolDic[601].show(this.m_setting, 1, this.m_palette);   // マスクツール
   toolDic[602].show(this.m_setting, 2, this.m_palette);   // 逆マスクツール
