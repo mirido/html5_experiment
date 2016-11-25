@@ -258,14 +258,20 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   // 描画内容確定判断
   let bFixed = this.m_drawOp.testOnDrawEnd(e, this.m_points, context);
 
-  // altLayer最終状態保存
+  // キャンバスの最終状態保存
   // コピー&ペースト操作やベジエ曲線描画操作等、複数の描画ストロークで
   // 1つの描画結果を成すツールでは、この後にもガイド表示が行われる。
   // それを消すための画像データをここで記憶する。
   // ただし、guideOnDrawEnd()を持たない(古い)描画操作については、
   // ここで記憶した画像が未来の時点でDrawerBaseによって勝手に再描画されることを
   // 想定していないため、記憶をスキップする。
-  if (this.m_drawOp.guideOnDrawEnd != null) {
+  if (this.m_drawOp.guideOnDrawEnd == null) {   // (描画オペレータにguideOnDrawEnd()メソッド無し)
+    // エフェクト適用
+    if (bFixed) {
+      this.m_effect.apply(this.m_points, context);
+      e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
+    }
+  } else {    // (描画オペレータにguideOnDrawEnd()メソッド有り)
     // 作業中レイヤー固定(1)
     // 現状想定では代替レイヤーはオーバレイしかなく、
     // オーバレイはマスク/逆マスクとは無関係なので実は不要…
@@ -278,19 +284,15 @@ DrawerBase.prototype.OnDrawEnd = function(e)
     } else {
       this.m_lastAltLayer = null;
     }
-  }
 
-  // エフェクト適用
-  if (bFixed) {
-    // guideOnDrawEnd()を持つ描画操作については、ここでのaltLayerへのガイド表示を許す。
-    // curLayerへは画素の定着のみ許可、ガイド表示は禁止。
-    this.m_effect.apply(this.m_points, context);
-    e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
-  }
+    // エフェクト適用
+    if (bFixed) {
+      // guideOnDrawEnd()を持つ描画操作については、ここでのaltLayerへのガイド表示を許す。
+      // curLayerへは画素の定着のみ許可、ガイド表示は禁止。
+      this.m_effect.apply(this.m_points, context);
+      e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
+    }
 
-  // 対象レイヤーの最終状態保存
-  // altLayerの最終状態保存と同じ理由で、画素定着を行った直後の対象レイヤーの画像データを記憶する。
-  if (this.m_drawOp.guideOnDrawEnd != null) {
     // 作業中レイヤー固定(2)
     // (1)と違い、こちらは必須。行わないと、
     // マスク/逆マスクが正しく反映されていない描画結果を記憶することになる。
@@ -351,8 +353,8 @@ NullDrawOp.prototype.guideOnDrawStart = function(e, points, context) { }
 /// 描画ストローク中ガイド表示処理。
 NullDrawOp.prototype.guideOnDrawing = function(e, points, context) { }
 
-/// 描画ストローク終了時ガイド表示処理。
-NullDrawOp.prototype.guideOnDrawEnd = function(e, points, context) { }
+/// 描画ストローク終了時ガイド表示処理。(Optional)
+// NullDrawOp.prototype.guideOnDrawEnd = function(e, points, context) { }
 
 /// マージンを取得する。
 NullDrawOp.prototype.getMargin = function() { return 0; }
