@@ -1613,7 +1613,7 @@ History.prototype.appendPaintOperation = function(point, color, layerNo)
 
 /// レイヤー可視属性変更を追記する。
 /// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
-/// ただし、操作履歴の先頭以外での呼び出しは何もしない。
+/// ただし、操作履歴の先頭以外での呼び出しでは何もしない。
 History.prototype.appendVisibilityChange = function()
 {
   // レイヤー可視属性が変わったので、
@@ -1660,32 +1660,13 @@ History.prototype.attatchImage = function()
   if (this.m_bDealing)
     return;
 	console.log("History::attatchImage() called. Cursor=" + this.m_historyCursor);
-
-  // 画像に変化があったか確認
-  // メモリ消費削減のため、変化が無ければ何もしない。
-  // (古い添付画像があった場合は例外で、それは消す)
-  let bChanged;
-  if (this.empty()) {
-    console.log("History::attatchImage(): First recording.");
-    bChanged = true;    // イベント初回は変化があったとみなす。
-  } else {
-    bChanged = this.m_pictCanvas.isPictureStateChanged();
-    console.log("History::attatchImage(): Picture change state=" + bChanged);
-  }
-  if (!bChanged) {
-    if (this.m_historyCursor > 0) {
-      delete this.m_imageLog[this.m_historyCursor];
-    }
-    return false;
-  }
-
-  // 画像添付予約
-  this.attatchImage_Core();
+  this.takeSnapShot();
 }
 
 /// 履歴カーソルが指すエントリに対し、画像添付を予約する。
 /// 当メソッド呼び出しでは履歴カーソルは変化しない。
-History.prototype.attatchImage_Core = function()
+/// wayBackTo()経由の呼び出しか否かに関わらず作動する。
+History.prototype.takeSnapShot = function()
 {
   // 作業中レイヤーを固定
   this.m_pictCanvas.raiseLayerFixRequest();
@@ -1709,10 +1690,7 @@ History.prototype.attatchImage_Core = function()
 
 	// 画像添付予約
   this.m_imageLog[this.m_historyCursor] = pictureInfo;
-  console.log("History::attatchImage_Core(): Reserved to cursor " + this.m_historyCursor + ".");
-
-  // 画像の次の変化を捉える準備
-  this.m_pictCanvas.registerPictureState();
+  console.log("History::takeSnapShot(): Reserved to cursor " + this.m_historyCursor + ".");
 }
 
 /// 指定エントリの画像を復元する。

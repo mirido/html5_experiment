@@ -114,11 +114,6 @@ function PictureCanvas()
 	// 操作履歴
   // attatchHistory()メソッドで設定する。
   this.m_history = null;    // (Undo/Redo)
-
-	// 操作履歴関連
-	this.m_bPictureChanged = false;			// 描画内容が変更されたか否か(Undo/Redo)
-	this.m_lastVisibilityList = [];			// レイヤーの可視属性(Undo/Redo)
-	this.registerPictureState();
 }
 
 /// イベントリスナ。
@@ -433,7 +428,6 @@ PictureCanvas.prototype.appendPoints = function(effectObj, points)
 {
 	if (this.m_history == null)
 		return;
-	this.m_bPictureChanged = true;		// 画像が変更されたことを記憶(Undo/Redo)
 	this.m_history.appendPoints(effectObj, points);
 }
 
@@ -442,7 +436,6 @@ PictureCanvas.prototype.appendPaintOperation = function(point, color, layerNo)
 {
   if (this.m_history == null)
     return;
-	this.m_bPictureChanged = true;		// 画像が変更されたことを記憶(Undo/Redo)
   this.m_history.appendPaintOperation(point, color, layerNo);
 }
 
@@ -455,30 +448,4 @@ PictureCanvas.prototype.recordVisibility = function()
 	for (let i = 0; i < this.m_workingLayers.length; ++i) {
 		this.m_lastVisibilityList[i] = !(this.m_workingLayers[i].hidden);
 	}
-}
-
-/// レイヤーの可視属性が変更されたか否か判定する。(Undo/Redo)
-PictureCanvas.prototype.isVisibilityChanged = function()
-{
-	if (this.m_history == null)
-		return;
-
-	for (let i = 0; i < this.m_workingLayers.length; ++i) {
-		if (this.m_lastVisibilityList[i] != !(this.m_workingLayers[i].hidden))
-			return true;
-	}
-	return false;
-}
-
-/// 画像の状態を記憶する。(Undo/Redo)
-PictureCanvas.prototype.registerPictureState = function()
-{
-	this.recordVisibility();
-	this.m_bPictureChanged = false;
-}
-
-/// 画像の状態に変化があったか否か判定する。(Undo/Redo)
-PictureCanvas.prototype.isPictureStateChanged = function()
-{
-	return (this.m_bPictureChanged || this.isVisibilityChanged());
 }

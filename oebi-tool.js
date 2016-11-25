@@ -284,12 +284,8 @@ CopyTool.prototype.OnPicked = function(e)
 /// 操作履歴が巻き戻されるとき呼ばれる。(Undo/Redo)
 CopyTool.prototype.OnHistoryRewind = function(history)
 {
-  // TODO:
-  // History::attatchImage_Core()の直接呼出しではなく、
-  // History::m_bDealingフラグの管理方法と、画像の変化の検出方法を改善した上で
-  // History::attatchImage()呼び出しで解決する。
   this.m_drawToolBase.restoreImageOnDrawEnd();
-  history.attatchImage_Core();    // Ad-hoc
+  history.takeSnapShot();
   this.m_captureOp.resetCapture();
 }
 
