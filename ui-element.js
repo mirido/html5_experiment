@@ -357,9 +357,6 @@ NullDrawOp.prototype.guideOnDrawEnd = function(e, points, context) { }
 /// マージンを取得する。
 NullDrawOp.prototype.getMargin = function() { return 0; }
 
-/// パラメータ設定のためのplace holder。引数は派生クラス固有。
-NullDrawOp.prototype.setParam = function() { }
-
 //
 //  エフェクト0: NullEffect
 //
@@ -373,8 +370,8 @@ NullEffect.prototype.apply = function(points, context) { }
 /// マージンを取得する。
 NullEffect.prototype.getMargin = function() { return 0; }
 
-/// パラメータ設定のためのplace holder。引数は派生クラス固有。
-NullEffect.prototype.setParam = function() { return function(obj) { /*NOP*/ }; }
+/// パラメータ設定のためのplace holder。
+NullEffect.prototype.setParam = function(setting) { return function(obj) { /*NOP*/ }; }
 
 //
 //  カーソル0: NullCursor
@@ -389,8 +386,8 @@ NullCursor.prototype.put = function(e, cur_pt, context) { }
 /// カーソルをクリアする。
 NullCursor.prototype.clear = function(context) { }
 
-/// パラメータ設定のためのplace holder。引数は派生クラス固有。
-NullCursor.prototype.setParam = function() { }
+/// パラメータ設定のためのplace holder。
+NullCursor.prototype.setParam = function(setting) { }
 
 //
 //  描画オペレーター1: 手書き
@@ -978,7 +975,7 @@ Effect_Pencil.runtime_renderer2_ex = function(px1, py1, px2, py2, diameter, colo
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_Pencil.prototype.setParam = function(diameter, color)
+Effect_Pencil.prototype.setParamCustom = function(diameter, color)
 {
   // マージン決定
   this.m_margin = (diameter > 1) ? Math.ceil(diameter / 2) + 10 : 0;
@@ -1000,9 +997,17 @@ Effect_Pencil.prototype.setParam = function(diameter, color)
     runtime_renderer1,
     runtime_renderer2
   );
+}
+
+/// パラメータを設定する。
+Effect_Pencil.prototype.setParam = function(setting)
+{
+  let diameter = setting.getThickness();
+  let color = setting.getColor();
+  this.setParamCustom(diameter, color);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParam(diameter, color); };
+  return function(obj) { obj.setParamCustom(diameter, color); };
 }
 
 /// エフェクトを適用する。
@@ -1047,7 +1052,7 @@ Effect_Eraser.runtime_renderer2_ex = function(px1, py1, px2, py2, runtime_render
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_Eraser.prototype.setParam = function(diameter, color)
+Effect_Eraser.prototype.setParamCustom = function(diameter)
 {
   // マージン決定
   this.m_margin = (diameter > 1) ? Math.ceil((1.5 * diameter) / 2) : 0;
@@ -1070,9 +1075,16 @@ Effect_Eraser.prototype.setParam = function(diameter, color)
     runtime_renderer1,
     runtime_renderer2
   );
+}
+
+/// パラメータを設定する。
+Effect_Eraser.prototype.setParam = function(setting)
+{
+  let diameter = setting.getThickness();
+  this.setParamCustom(diameter);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParam(diameter, color); };
+  return function(obj) { obj.setParamCustom(diameter); };
 }
 
 /// エフェクトを適用する。
@@ -1117,8 +1129,7 @@ Effect_PencilRect.runtime_renderer2_ex = function(px1, py1, px2, py2, color, bFi
 }
 
 /// パラメータを設定する。(クラス固有)
-/// 第1引数thicknessは、DrawToolBase.OnDrawStart()から共通に呼ぶ都合上設けたもので、非使用。
-Effect_PencilRect.prototype.setParam = function(thickness, color)
+Effect_PencilRect.prototype.setParamCustom = function(color)
 {
   // 引数仕様合わせのためのクロージャ生成
   let runtime_renderer1 = function(px, py, context) {
@@ -1136,9 +1147,16 @@ Effect_PencilRect.prototype.setParam = function(thickness, color)
     runtime_renderer1,
     runtime_renderer2
   );
+}
+
+/// パラメータを設定する。
+Effect_PencilRect.prototype.setParam = function(setting)
+{
+  let color = setting.getColor();
+  this.setParamCustom(color);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParam(thickness, color); };
+  return function(obj) { obj.setParamCustom(color); };
 }
 
 /// エフェクトを適用する。
@@ -1192,8 +1210,7 @@ Effect_RectPaste.runtime_renderer2_ex = function(px1, py1, px2, py2, obj, contex
 }
 
 /// パラメータを設定する。(クラス固有)
-/// 第1引数thicknessは、DrawToolBase.OnDrawStart()から共通に呼ぶ都合上設けたもので、非使用。
-Effect_RectPaste.prototype.setParam = function(thickness, color)
+Effect_RectPaste.prototype.setParamCustom = function(color)
 {
   // 引数仕様合わせのためのクロージャ生成
   let runtime_renderer1 = function(px, py, context) {
@@ -1211,9 +1228,16 @@ Effect_RectPaste.prototype.setParam = function(thickness, color)
     runtime_renderer1,
     runtime_renderer2
   );
+}
+
+/// パラメータを設定する。
+Effect_RectPaste.prototype.setParam = function(setting)
+{
+  let color = setting.getColor();
+  this.setParamCustom(color);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParam(thickness, color); };
+  return function(obj) { obj.setParamCustom(color); };
 }
 
 /// エフェクトを適用する。
@@ -1251,8 +1275,7 @@ Effect_RectEraser.runtime_renderer2_ex = function(px1, py1, px2, py2, context)
 }
 
 /// パラメータを設定する。(クラス固有)
-/// 第1引数thicknessは、DrawToolBase.OnDrawStart()から共通に呼ぶ都合上設けたもので、非使用。
-Effect_RectEraser.prototype.setParam = function(thickness, color)
+Effect_RectEraser.prototype.setParamCustom = function()
 {
   // 引数仕様合わせのためのクロージャ生成
   let runtime_renderer1 = function(px, py, context) {
@@ -1270,8 +1293,15 @@ Effect_RectEraser.prototype.setParam = function(thickness, color)
     runtime_renderer2
   );
 
+}
+
+/// パラメータを設定する。
+Effect_RectEraser.prototype.setParam = function(setting)
+{
+  this.setParamCustom();
+
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParam(thickness, color); };
+  return function(obj) { obj.setParamCustom(); };
 }
 
 /// エフェクトを適用する。
@@ -1317,8 +1347,7 @@ Effect_FlipRect.runtime_renderer2_ex = function(px1, py1, px2, py2, bVert, conte
 }
 
 /// パラメータを設定する。(クラス固有)
-/// 第1引数thicknessは、DrawToolBase.OnDrawStart()から共通に呼ぶ都合上設けたもので、非使用。
-Effect_FlipRect.prototype.setParam = function(thickness, color)
+Effect_FlipRect.prototype.setParamCustom = function()
 {
   // 引数仕様合わせのためのクロージャ生成
   let runtime_renderer1 = function(px, py, context) {
@@ -1336,9 +1365,15 @@ Effect_FlipRect.prototype.setParam = function(thickness, color)
     runtime_renderer1,
     runtime_renderer2
   );
+}
+
+/// パラメータを設定する。(クラス固有)
+Effect_FlipRect.prototype.setParam = function(setting)
+{
+  this.setParamCustom();
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParam(thickness, color); };
+  return function(obj) { obj.setParamCustom(); };
 }
 
 /// エフェクトを適用する。
@@ -1360,11 +1395,11 @@ function CursorBase01(diameter, pixel_pre_renderer)
   this.m_pre_renderer = pixel_pre_renderer;
 
   if (diameter == null) { diameter = 1; }
-  this.setParam(diameter, 'rgb(0,0,0)', pixel_pre_renderer);
+  this.setParamCustom(diameter, 'rgb(0,0,0)', pixel_pre_renderer);
 }
 
 /// パラメータを設定する。(クラス固有)
-CursorBase01.prototype.setParam = function(diameter, color, pixel_pre_renderer)
+CursorBase01.prototype.setParamCustom = function(diameter, color, pixel_pre_renderer)
 {
   const margin = Math.ceil(diameter / 2);
   color = get_cursor_color(color);
@@ -1379,6 +1414,14 @@ CursorBase01.prototype.setParam = function(diameter, color, pixel_pre_renderer)
   }
 
   this.m_imagePatch = null;
+}
+
+/// パラメータを設定する。
+CursorBase01.prototype.setParam = function(setting)
+{
+  let diameter = setting.getThickness();
+  let color = setting.getColor();
+  this.setParamCustom(diameter, color, this.m_pre_renderer);
 }
 
 /// カーソルを描画する。
@@ -1419,10 +1462,10 @@ function Cursor_Circle(diameter)
   this.m_cursorBase = new CursorBase01(diameter, pre_render_pixel);
 }
 
-/// パラメータを設定する。(クラス固有)
-Cursor_Circle.prototype.setParam = function(diameter, color)
+/// パラメータを設定する。
+Cursor_Circle.prototype.setParam = function(setting)
 {
-  this.m_cursorBase.setParam(diameter, color, pre_render_pixel);
+  this.m_cursorBase.setParam(setting);
 }
 
 /// カーソルを描画する。
@@ -1448,9 +1491,9 @@ function Cursor_Square(diameter)
 }
 
 /// パラメータを設定する。(クラス固有)
-Cursor_Square.prototype.setParam = function(diameter, color)
+Cursor_Square.prototype.setParam = function(setting)
 {
-  this.m_cursorBase.setParam(diameter, color, pre_render_square);
+  this.m_cursorBase.setParam(setting);
 }
 
 /// カーソルを描画する。

@@ -73,11 +73,9 @@ DrawToolBase.prototype.OnDrawStart = function(e)
   // console.log("DrawerBase.OnDrawStart() called.");
 
   // 最新の描画設定を反映
-  let thickness = this.m_setting.getThickness();
-  let color = this.m_setting.getColor();
-  let configClosure = this.m_effect.setParam(thickness, color);
+  let configClosure = this.m_effect.setParam(this.m_setting);
   assert(configClosure != null);    // (Undo/Redo)
-  this.m_cursor.setParam(thickness, color);
+  this.m_cursor.setParam(this.m_setting);
 
   // 操作履歴にエフェクト内容追記(Undo/Redo)
   e.m_sender.appendEffect(this.m_effect, configClosure, e.m_sender.getCurLayerNo());
