@@ -1539,7 +1539,6 @@ function History(toolPalette, pictCanvas)
 
   // イベント追記制御
   this.m_bDealing = false;
-  this.m_bTakeSnapshotOnDrawStart = false;
 
   // 操作履歴変更リスナ
   this.m_historyRewindListeners = [];
@@ -1567,6 +1566,32 @@ History.prototype.getCursorIdx = function()
   return this.m_historyCursor;
 }
 
+/// 履歴カーソル位置に対する直近過去の添付画像と
+/// 現キャンバスとの間に可視属性に違いがあるか否か判定する。
+History.prototype.isVisibilityChanged = function()
+{
+  // 履歴先頭は常に違い無しとみなす。
+  if (this.m_historyCursor <= 0)
+    return false;
+
+  // 履歴カーソルに対して直近過去の画像付きエントリ取得
+  assert(this.m_historyCursor > 0);
+  let restorePointIdx = this.getImageHavingIdxBefore(this.m_historyCursor - 1);
+  assert(restorePointIdx != null);    // [0]が必ず画像付きのため、nullにはならないはず。
+
+  // 可視属性を現キャンバスと比較
+  let pictureInfo = this.m_imageLog[restorePointIdx];
+  let nlayers = this.m_pictCanvas.getNumLayers();
+	for (let i = 0; i < nlayers; ++i) {
+    let v1 = pictureInfo.m_visibilityList[i];
+    let v2 = this.m_pictCanvas.getLayerVisibility(i);
+    if (v1 != v2)
+      return true;
+  }
+
+  return false;
+}
+
 /// エフェクト内容を追記する。
 /// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
 History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
@@ -1579,9 +1604,8 @@ History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
   console.log("History::appendEffect() called. Cursor=" + this.m_historyCursor);
 
   // キャンバス状態のスナップショット取得判断
-  if (this.m_bTakeSnapshotOnDrawStart) {
-    this.attatchImage();
-    this.m_bTakeSnapshotOnDrawStart = false;
+  if (this.isVisibilityChanged()) {
+    this.appendVisibilityChange();
   }
 
   // イベント追記
@@ -1633,9 +1657,8 @@ History.prototype.appendPaintOperation = function(point, color, layerNo)
   console.log("History::appendPaintOperation() called. Cursor=" + this.m_historyCursor);
 
   // キャンバス状態のスナップショット取得判断
-  if (this.m_bTakeSnapshotOnDrawStart) {
-    this.attatchImage();
-    this.m_bTakeSnapshotOnDrawStart = false;
+  if (this.isVisibilityChanged()) {
+    this.appendVisibilityChange();
   }
 
   // イベント追記
@@ -1656,46 +1679,56 @@ History.prototype.appendPaintOperation = function(point, color, layerNo)
 	this.m_historyCursor = this.m_eventHistory.length;
 }
 
-/// レイヤー可視属性変更を追記する。
-/// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
-/// ただし、操作履歴の先頭以外での呼び出しでは何もしない。
+/// 操作履歴の先端にレイヤー可視属性変更を追記する。
+/// 当メソッドの呼び出しで、履歴カーソルが1エントリ進む。
 History.prototype.appendVisibilityChange = function()
 {
-  // レイヤー可視属性が変わったので、
-  // 次回描画ストローク開始時にスナップショット取得判断させる。
-  this.m_bTakeSnapshotOnDrawStart = true;
+  // 操作履歴の先端のみで呼ばれるはず。
+  // 仮に操作履歴の途中でレイヤー可視属性を追記すると、
+  // 追記箇所にもともといた履歴エントリが上書きされ、redo不能になるのでNG。
+  assert(this.m_historyCursor == this.m_eventHistory.length);
 
-  // 過去履歴中か否か判定
-  if (this.m_historyCursor < this.m_eventHistory.length) {
-    // 途中までundoされた状態(過去履歴中)なので何もしない。
-    // m_bTakeSnapshotOnDrawStartフラグに基づき、描画ストローク開始時に
-    // スナップショット取得を判断させる。
-    return;
-  }
+  // 履歴カーソルに対して直近過去の画像付きエントリ取得
+  assert(this.m_historyCursor > 0);
+  let restorePointIdx = this.getImageHavingIdxBefore(this.m_historyCursor - 1);
+  assert(restorePointIdx != null);    // [0]が必ず画像付きのため、nullにはならないはず。
+  let prevSnapshot = this.m_imageLog[restorePointIdx];
 
-  // 以下、操作履歴の先端に居る場合の処理。
-  // 操作履歴の先端にレイヤーの最新の可視属性変更を追記する。
-  // これは、一旦undoされた後、redoで最新状態に戻されたとき、
-  // 可視状態まで含めてキャンバスの状態を復元するために必要である。
-  assert(this.m_historyCursor == this.m_eventHistory.length);   // resetEvent()は不要のはず。
-
-  // レイヤー可視属性取得
-	let visibilityList = [];
-  let nlayers = this.m_pictCanvas.getNumLayers();
-	for (let i = 0; i < nlayers; ++i) {
-    let layer = this.m_pictCanvas.getLayer(i);
-		visibilityList[i] = !layer.hidden;
-	}
+  // 最新スナップショット取得
+  this.attatchImage();
+  let sv_cursor = this.m_historyCursor;
+  let lastSnapshot = this.m_imageLog[sv_cursor];
 
   // レイヤー可視属性記録
   let histEnt = [];
   histEnt.push(OebiEventType.VisibilityChange);
-  histEnt.push(visibilityList);
+  histEnt.push(lastSnapshot.m_visibilityList);
   this.m_eventHistory.push(histEnt);
 
   // 履歴カーソル修正
   // (インクリメントと同じ)
 	this.m_historyCursor = this.m_eventHistory.length;
+
+  // 最新スナップショットを最新カーソル位置に添付
+  this.m_imageLog[this.m_historyCursor] = lastSnapshot;
+
+  // 可視属性変更直前のスナップショットを一つ前のエントリに添付
+  // 当履歴エントリ前後では可視属性しか変更していないので、
+  // 画像データはlastSnapshotと同じ。
+  // 可視属性はprevSnapshotの可視属性と同じ。
+  this.m_imageLog[sv_cursor] = History.genPictureInfo(
+    lastSnapshot.m_imageDataList,
+    prevSnapshot.m_visibilityList
+  );
+}
+
+/// 画像情報オブジェクトを生成する。
+History.genPictureInfo = function(imgdList, visibilityList)
+{
+  return {
+    m_imageDataList: imgdList,
+    m_visibilityList: visibilityList
+  };
 }
 
 /// 履歴カーソルが指すエントリに対し、画像添付を予約する。
@@ -1705,14 +1738,7 @@ History.prototype.attatchImage = function()
   if (this.m_bDealing)
     return;
 	console.log("History::attatchImage() called. Cursor=" + this.m_historyCursor);
-  this.takeSnapShot();
-}
 
-/// 履歴カーソルが指すエントリに対し、画像添付を予約する。
-/// 当メソッド呼び出しでは履歴カーソルは変化しない。
-/// wayBackTo()経由の呼び出しか否かに関わらず作動する。
-History.prototype.takeSnapShot = function()
-{
   // 作業中レイヤーを固定
   this.m_pictCanvas.raiseLayerFixRequest();
 
@@ -1726,22 +1752,20 @@ History.prototype.takeSnapShot = function()
 		let h = layer.height;
 		let ctx = layer.getContext('2d');
 		imgdList[i] = ctx.getImageData(0, 0, w, h);
-		visibilityList[i] = !layer.hidden;
+		visibilityList[i] = this.m_pictCanvas.getLayerVisibility(i);
 	}
-  let pictureInfo = {
-		m_imageDataList: imgdList,
-		m_visibilityList: visibilityList
-	};
+  let pictureInfo = History.genPictureInfo(imgdList, visibilityList);
 
 	// 画像添付予約
   this.m_imageLog[this.m_historyCursor] = pictureInfo;
-  console.log("History::takeSnapShot(): Reserved to cursor " + this.m_historyCursor + ".");
+  console.log("History::attatchImage(): Reserved to cursor " + this.m_historyCursor + ".");
+  console.log(visibilityList);
 }
 
 /// 指定エントリの画像を復元する。
 History.prototype.restoreImage = function(idx, pictureCanvas)
 {
-  if (!idx in this.m_imageLog)
+  if (!(idx in this.m_imageLog))
     return false;     // 画像無しエントリならfalseを返す。
   console.log("History::restoreImage(): Restoreing cursor " + idx + "...");
 
@@ -1754,7 +1778,8 @@ History.prototype.restoreImage = function(idx, pictureCanvas)
     assert(imgd.width == layer.width && imgd.height == layer.height);
 		let ctx = layer.getContext('2d');
 		ctx.putImageData(imgd, 0, 0);
-		layer.hidden = !pictureInfo.m_visibilityList[i];
+    let v = pictureInfo.m_visibilityList[i];
+    pictureCanvas.setLayerVisibility(i, v);
 	}
 
   // レイヤー可視属性をレイヤーツールに反映
@@ -1825,13 +1850,6 @@ History.prototype.getImageHavingIdxBefore = function(idx)
 /// ただし、[idx]が画像付きエントリの場合は当該画像を直接描画する。
 History.prototype.wayBackTo_Core = function(idx)
 {
-  // 巻き戻し通知
-  if (  this.m_historyCursor == this.m_eventHistory.length
-     && idx < this.m_historyCursor  )   // (履歴の先端からの巻き戻し)
-   {
-     this.raiseHistoryRewindNotification();
-   }
-
   // 未来でない直近の画像付きエントリ取得
   let restorePointIdx = this.getImageHavingIdxBefore(idx);
   assert(restorePointIdx != null);    // [0]が必ず画像付きのため、nullにはならないはず。
@@ -1896,6 +1914,21 @@ History.prototype.wayBackTo_Sub = function(idx)
 /// 履歴を指定位置に戻す。
 History.prototype.wayBackTo = function(idx)
 {
+  // 履歴の先端からの巻き戻しの処理
+  if (  this.m_historyCursor == this.m_eventHistory.length
+     && idx < this.m_historyCursor  )
+  {
+    // Redoで可視属性が復元されるように追記
+    if (this.isVisibilityChanged()) {   // (可視属性変化有り)
+      this.appendVisibilityChange();
+      idx = this.m_eventHistory.length - 1;
+    }
+
+    // 必要なツールにundo発生を通知
+    this.raiseHistoryRewindNotification();
+  }
+
+  // 過去画像復元
   this.m_bDealing = true;
   this.wayBackTo_Core(idx);
   this.m_bDealing = false;
