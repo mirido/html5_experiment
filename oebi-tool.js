@@ -130,6 +130,7 @@ PencilTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 PencilTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Pencil);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -173,6 +174,7 @@ FillRectTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 FillRectTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -216,6 +218,7 @@ LineRectTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 LineRectTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -261,6 +264,7 @@ CopyTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 CopyTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   e.m_sender.addHistoryRewindListener(this);    // (Undo/Redo)
   this.m_captureOp.resetCapture();
   this.m_drawToolBase.OnSelected(e);
@@ -315,6 +319,7 @@ MirrorTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 MirrorTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -358,6 +363,7 @@ VertFlipTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 VertFlipTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -398,6 +404,7 @@ EraseTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 EraseTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Eraser);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -441,6 +448,7 @@ EraseRectTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 EraseRectTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -470,6 +478,8 @@ function ThicknessTool(iconBounds)
     "", "px",
     0, 30
   );
+  this.m_toolCanvas = null;
+  this.m_setting = null;
 }
 
 /// 最初の表示を行う。
@@ -484,6 +494,15 @@ ThicknessTool.prototype.show = function(setting, toolCanvas)
 ThicknessTool.prototype.OnSelected = function(e)
 {
   // console.log("ThicknessTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+
+  // キャンバス記憶
+  this.m_toolCanvas = e.m_sender.getToolPaletteCanvas();
+
+  // 設定変更追跡のための登録
+  this.m_setting = e.m_sender.getCommonSetting();
+  this.m_setting.addListener(this);
+
   let val = e.m_sender.getCommonSetting().getThickness();
   this.m_slideBar.OnSelected(e, val);
 }
@@ -492,7 +511,10 @@ ThicknessTool.prototype.OnSelected = function(e)
 ThicknessTool.prototype.OnDiselected = function(e)
 {
   // console.log("ThicknessTool::OnDiselected() called. ");
-  /*NOP*/
+
+  // 設定変更追跡のための登録を解除
+  let setting = e.m_sender.getCommonSetting();
+  setting.removeListener(this);
 }
 
 /// 再ポイントされたとき呼ばれる。
@@ -502,8 +524,18 @@ ThicknessTool.prototype.OnPicked = function(e)
   let val = this.m_slideBar.OnPicked(e);
 
   // 共通設定変更
-  let setting = e.m_sender.getCommonSetting();  // Alias
-  setting.setThickness(val);
+  assert(this.m_setting == e.m_sender.getCommonSetting());
+  this.m_setting.setThickness(val);
+}
+
+/// 設定が変化したとき呼ばれる。
+ThicknessTool.prototype.OnSettingChanged = function(setting)
+{
+  if (this.m_toolCanvas != null) {
+    let val = setting.getThickness();
+    let context = this.m_toolCanvas.getContext('2d');
+    this.m_slideBar.drawValue(val, context);
+  }
 }
 
 //
@@ -537,6 +569,7 @@ ColorPalette.prototype.show = function(color, bActive, toolCanvas)
 ColorPalette.prototype.OnSelected = function(e)
 {
   // console.log("ColorPalette::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
 
   // アイコン描画(選択状態)
   let context = e.m_sender.getToolPaletteCanvas().getContext('2d');
@@ -625,16 +658,14 @@ function ColorCompoTool(iconBounds)
   this.m_iconBounds = iconBounds;
   this.m_slideBar = null;
   this.m_colorCompoIdx = null;
-  this.m_alphaIdx = null;
   this.m_toolCanvas = null;
 }
 
 /// 最初の表示を行う。
 /// ここで与える引数により、RGBAのどのツールなのかが決まる。
-ColorCompoTool.prototype.show = function(setting, colorCompoIdx, alphaIdx, toolCanvas)
+ColorCompoTool.prototype.show = function(setting, colorCompoIdx, toolCanvas)
 {
   this.m_colorCompoIdx = colorCompoIdx;
-  this.m_alphaIdx = alphaIdx;
   this.m_toolCanvas = null;
 
   // 現在の色を取得する。
@@ -663,7 +694,7 @@ ColorCompoTool.prototype.show = function(setting, colorCompoIdx, alphaIdx, toolC
   case 3:
     viewColor = 'rgb(170,170,170)';
     pfx = 'A';
-    iniVal = setting.getAlpha(alphaIdx);
+    iniVal = setting.getAlpha();
     break;
   default:
     assert(false);
@@ -705,7 +736,7 @@ ColorCompoTool.prototype.getValue = function(setting)
     }
     break;
   case 3:
-    val = setting.getAlpha(this.m_alphaIdx);
+    val = setting.getAlpha();
     break;
   default:
     assert(false);
@@ -731,7 +762,7 @@ ColorCompoTool.prototype.setValue = function(val, setting)
     }
     break;
   case 3:
-    setting.setAlpha(this.m_alphaIdx, val);
+    setting.setAlpha(val);
     break;
   default:
     assert(false);
@@ -743,6 +774,7 @@ ColorCompoTool.prototype.setValue = function(val, setting)
 ColorCompoTool.prototype.OnSelected = function(e)
 {
   // console.log("ColorCompoTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   let setting = e.m_sender.getCommonSetting();
   let val = this.getValue(setting);
   this.m_slideBar.OnSelected(e, val);
@@ -977,6 +1009,7 @@ MaskTool.prototype.fixMaskImage = function(surface, layer)
 MaskTool.prototype.OnSelected = function(e)
 {
   // console.log("MaskTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + "), txt=" + this.m_faceText);
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   let toolPalette = e.m_sender;
 
   // マスク対象色取得
@@ -1224,6 +1257,7 @@ LayerTool.prototype.updateView = function(setting)
 /// ツール選択時呼ばれる。
 LayerTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   this.m_listBox.OnSelected(e);
 
   let setting = e.m_sender.getCommonSetting();
