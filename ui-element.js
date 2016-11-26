@@ -159,8 +159,8 @@ DrawerBase.prototype.OnDrawStart = function(e)
   let bFixed = this.m_drawOp.testOnDrawStart(e, this.m_points, context);
   if (bFixed) {
     // レイヤー上の画素確定
-    this.m_effect.apply(this.m_points, context);
-    e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
+    let reproClosure = this.m_effect.apply(this.m_points, context);
+    e.m_sender.appendPoints(this.m_effect, this.m_points, reproClosure);   // 点列追記(Undo/Redo)
     this.m_points.splice(0, this.m_points.length - 1);  // 末尾以外を削除
   } else {
     // ガイド表示
@@ -209,8 +209,8 @@ DrawerBase.prototype.OnDrawing = function(e)
   let bFixed = this.m_drawOp.testOnDrawing(e, this.m_points, context);
   if (bFixed) {
   	// レイヤー上の画素確定
-    this.m_effect.apply(this.m_points, context);
-    e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
+    let reproClosure = this.m_effect.apply(this.m_points, context);
+    e.m_sender.appendPoints(this.m_effect, this.m_points, reproClosure);   // 点列追記(Undo/Redo)
     this.m_points.splice(0, this.m_points.length - 1);  // 末尾以外を削除
   } else {
   	// ガイド表示
@@ -268,8 +268,8 @@ DrawerBase.prototype.OnDrawEnd = function(e)
   if (this.m_drawOp.guideOnDrawEnd == null) {   // (描画オペレータにguideOnDrawEnd()メソッド無し)
     // エフェクト適用
     if (bFixed) {
-      this.m_effect.apply(this.m_points, context);
-      e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
+      let reproClosure = this.m_effect.apply(this.m_points, context);
+      e.m_sender.appendPoints(this.m_effect, this.m_points, reproClosure);   // 点列追記(Undo/Redo)
     }
   } else {    // (描画オペレータにguideOnDrawEnd()メソッド有り)
     // 作業中レイヤー固定(1)
@@ -289,8 +289,8 @@ DrawerBase.prototype.OnDrawEnd = function(e)
     if (bFixed) {
       // guideOnDrawEnd()を持つ描画操作については、ここでのaltLayerへのガイド表示を許す。
       // curLayerへは画素の定着のみ許可、ガイド表示は禁止。
-      this.m_effect.apply(this.m_points, context);
-      e.m_sender.appendPoints(this.m_effect, this.m_points);   // 点列追記(Undo/Redo)
+      let reproClosure = this.m_effect.apply(this.m_points, context);
+      e.m_sender.appendPoints(this.m_effect, this.m_points, reproClosure);   // 点列追記(Undo/Redo)
     }
 
     // 作業中レイヤー固定(2)
@@ -367,6 +367,10 @@ NullDrawOp.prototype.getMargin = function() { return 0; }
 function NullEffect() { }
 
 /// エフェクトを適用する。
+/// setParam()が返すクロージャ、apply()呼び出し前画像、引き続き与えられる点列points
+/// の3点で描画結果が一意に定まるエフェクトについては戻り値voidまたはnullを返す。
+/// そうでないエフェクトについては、(obj, points, layer)から描画結果を復元する
+/// クロージャ(描画復元クロージャ)を返す約束とする。
 NullEffect.prototype.apply = function(points, context) { }
 
 /// マージンを取得する。
@@ -906,6 +910,7 @@ EffectBase01.prototype.setParamEx = function(
 /// エフェクトを適用する。
 EffectBase01.prototype.apply = function(points, context)
 {
+  let reproClosure;
   if (points.length == 1) {
     let pt = points[0];
     if (this.m_pre_rendered) {    // (Pre-rendering結果存在)
@@ -913,7 +918,7 @@ EffectBase01.prototype.apply = function(points, context)
     } else {
       // 実行時render関数(1点用)呼び出し
       // runtime_render1の引数仕様がここに適用される。
-      this.m_runtime_renderer1(pt.x, pt.y, context);
+      reproClosure = this.m_runtime_renderer1(pt.x, pt.y, context);
     }
   } else {
     assert(points.length > 0);
@@ -925,11 +930,12 @@ EffectBase01.prototype.apply = function(points, context)
       } else {
         // 実行時render関数(2点用)呼び出し
         // runtime_render2の引数仕様がここに適用される。
-        this.m_runtime_renderer2(prev.x, prev.y, pt.x, pt.y, context);
+        reproClosure = this.m_runtime_renderer2(prev.x, prev.y, pt.x, pt.y, context);
       }
       prev = pt;
     }
   }
+  return reproClosure;
 }
 
 /// マージンを取得する。
@@ -1195,20 +1201,27 @@ Effect_RectPaste.runtime_renderer2_ex = function(px1, py1, px2, py2, obj, contex
   let r = encode_to_rect(px1, py1, px2, py2);
 
   // コピーデータのpaste
+  let reproClosure;
   let yankData = obj.m_copyAndPasteOp.getYankData();
   if (yankData != null) {
     let imgd = yankData.m_imgd;
     assert(imgd.width == px2 - px1 + 1 && imgd.height == py2 - py1 + 1);
     // context.putImageData(imgd, px1, py1);
     putImageDataEx(imgd, context, px1, py1);
+
+    // 描画再現クロージャ生成
+    reproClosure = function(obj, points, layer) {
+      let repro_ctx = layer.getContext('2d');
+      putImageDataEx(imgd, repro_ctx, px1, py1);
+    };
   } else {
-    // ここへはredo時かつコピーデータが失われたとき来る。
-    // コピーデータが失われているので何も出来ない。
-    /*NOP*/
+    assert(false);    // ここに来たらバグ。
   }
 
   // 次のモードに遷移
   obj.m_copyAndPasteOp.gotoNext();
+
+  return reproClosure;
 }
 
 /// パラメータを設定する。(クラス固有)
@@ -1220,7 +1233,7 @@ Effect_RectPaste.prototype.setParamCustom = function(color)
   };
   let thisObj = this;     // 束縛変数
   let runtime_renderer2 = function(px1, py1, px2, py2, context) {
-    Effect_RectPaste.runtime_renderer2_ex(px1, py1, px2, py2, thisObj, context);
+    return Effect_RectPaste.runtime_renderer2_ex(px1, py1, px2, py2, thisObj, context);
   };
 
   // 描画条件決定
@@ -1245,7 +1258,7 @@ Effect_RectPaste.prototype.setParam = function(setting)
 /// エフェクトを適用する。
 Effect_RectPaste.prototype.apply = function(points, context)
 {
-  this.m_effectBase.apply(points, context);
+  return this.m_effectBase.apply(points, context);
 }
 
 /// マージンを取得する。
@@ -1600,6 +1613,16 @@ History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
     return;
 
   // 履歴カーソル以降を削除
+  if (this.m_historyCursor > 0) {
+    let prevHistEnt = this.m_eventHistory[this.m_historyCursor - 1];
+    if (   prevHistEnt[0] == OebiEventType.Normal
+        && prevHistEnt[4].length <= 0
+        && prevHistEnt[7] == null )
+    {
+      // 空のイベントなので削除
+      --(this.m_historyCursor);
+    }
+  }
   this.resetEvent(this.m_historyCursor);
   console.log("History::appendEffect() called. Cursor=" + this.m_historyCursor);
 
@@ -1619,6 +1642,7 @@ History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
   histEnt.push(maskTool);               // マスクツール
   let maskColor = this.m_toolPalette.getCommonSetting().getMaskColor();
   histEnt.push(maskColor);              // マスク色
+  histEnt.push(null);                   // 描画再現クロージャ
 	this.m_eventHistory.push(histEnt);
   console.log(this.m_imageLog);
 
@@ -1628,8 +1652,9 @@ History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
 }
 
 /// 履歴カーソルの一つ前のエントリに点列を追記する。
-/// 当メソッドでは履歴カーソルは動かない。
-History.prototype.appendPoints = function(effectObj, points)
+/// reproClosure == nullなら、当メソッド呼び出しでは履歴カーソルは動かない。
+/// reproClosure != nullのとき、履歴カーソルが1エントリ進む。
+History.prototype.appendPoints = function(effectObj, points, reproClosure)
 {
   if (this.m_bDealing)
     return;
@@ -1637,11 +1662,25 @@ History.prototype.appendPoints = function(effectObj, points)
 
   // 点列追記
   // 追記先は、エフェクト内容を最後に追記したエントリ。
+  // ただし当該エントリが描画再現エントリ(描画再現クロージャ != null)であれば、
+  // 次のエントリを作成してそこに追記する。
   assert(this.m_historyCursor > 0);
   let histEnt = this.m_eventHistory[this.m_historyCursor - 1];
   assert(histEnt[0] == OebiEventType.Normal && histEnt[1] == effectObj);
-  for (let i = 0; i < points.length; ++i) {
-    histEnt[4].push(points[i]);
+  if (histEnt[7] != null) {   // (描画再現エントリ)
+    // 同じエフェクトオブジェクトとconfigクロージャで新たなエントリを追記
+    // 引き続くappendPoint()呼び出しは追記したエントリを対象とする。
+    this.appendEffect(effectObj, histEnt[2], histEnt[3]);
+    histEnt = this.m_eventHistory[this.m_historyCursor - 1];
+  }
+  if (reproClosure == null) {
+    for (let i = 0; i < points.length; ++i) {
+      histEnt[4].push(points[i]);
+    }
+    histEnt[7] = null;
+  } else {
+    histEnt[4] = points;    // 描画再現のためには最新のpointsのみが必要。
+    histEnt[7] = reproClosure;
   }
 }
 
@@ -1880,16 +1919,21 @@ History.prototype.wayBackTo_Sub = function(idx)
     let points = histEnt[k++];
     let maskTool = histEnt[k++];
     let maskColor = histEnt[k++];
+    let reproClosure = histEnt[k++];
     configClosure(effectObj);     // 適切なEffect::setParam()を描画時の引数で呼ぶ。
     this.m_toolPalette.activateMaskTool(maskTool, maskColor);   // マスクツール設定
 
     // 描画
-    // 描画ツールをクリックだけして別のツールをクリックした場合は
-    // 点列が空の履歴エントリとなるので、(points.length > 0)のガード条件が必要。
-    if (points.length > 0) {
-      let layer = this.m_pictCanvas.getLayer(layerNo);
-      let context = layer.getContext('2d');
-      effectObj.apply(points, context);
+    if (reproClosure == null) {
+      // 描画ツールをクリックだけして別のツールをクリックした場合は
+      // 点列が空の履歴エントリとなるので、(points.length > 0)のガード条件が必要。
+      if (points.length > 0) {
+        let layer = this.m_pictCanvas.getLayer(layerNo);
+        let context = layer.getContext('2d');
+        effectObj.apply(points, context);
+      }
+    } else {
+      reproClosure(effectObj, points, this.m_pictCanvas.getLayer(layerNo));
     }
   } else if (evtType == OebiEventType.Paint) {
     let point = histEnt[k++];

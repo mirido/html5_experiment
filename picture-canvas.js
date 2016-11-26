@@ -424,11 +424,11 @@ PictureCanvas.prototype.appendEffect = function(effectObj, configClosure, layerN
 }
 
 /// 操作履歴に点列を追記する。(Undo/Redo)
-PictureCanvas.prototype.appendPoints = function(effectObj, points)
+PictureCanvas.prototype.appendPoints = function(effectObj, points, reproClosure)
 {
 	if (this.m_history == null)
 		return;
-	this.m_history.appendPoints(effectObj, points);
+	this.m_history.appendPoints(effectObj, points, reproClosure);
 }
 
 /// 塗り潰し操作を追記する。(Undo/Redo)
