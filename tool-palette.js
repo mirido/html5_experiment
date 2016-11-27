@@ -47,6 +47,11 @@ function CommonSetting(nlayers)
 
   // Selection boxとの連動(暫定処置)
   // this.m_thicknessSelector = new ThicknessSelector();
+
+  // イベント発行制御
+  this.m_editingObjs = {};
+  this.m_bEditing = true;
+  this.m_bChanged = false;
 }
 
 /// イベントハンドラを呼び出す。
@@ -68,7 +73,11 @@ CommonSetting.prototype.setColor = function(value) {
     return;
   this.m_color = value;
   this.callListener();
-  g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
+  if (this.m_bEditing) {
+    this.m_bChanged = true;
+  } else {
+    g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
+  }
 }
 CommonSetting.prototype.getAlpha = function() { return this.m_alpha; }
 CommonSetting.prototype.setAlpha = function(value) {
@@ -97,17 +106,25 @@ CommonSetting.prototype.setLayerVisibility = function(layerNo, bVisible) {
   if (this.m_layerVisibility[layerNo] == bVisible)
     return;
   this.m_layerVisibility[layerNo] = bVisible;
-  g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
-  g_pictureCanvas.setLayerVisibility(layerNo, bVisible);  // レイヤー可視属性変更
+  if (this.m_bEditing) {
+    this.m_bChanged = true;
+  } else {
+    g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
+    g_pictureCanvas.setLayerVisibility(layerNo, bVisible);  // レイヤー可視属性変更
+  }
 }
 CommonSetting.prototype.getCurLayerNo = function() { return this.m_curLayerNo; }
 CommonSetting.prototype.setCurLayerNo = function(layerNo) {
   if (this.m_curLayerNo == layerNo)
     return;
   this.m_curLayerNo = layerNo;
-  let nextLayer = g_pictureCanvas.getLayer(layerNo);
-  g_pictureCanvas.raiseLayerFixRequest(nextLayer);  // 作業中レイヤー固定要求(兼レイヤー変更予告)
-  g_pictureCanvas.changeLayer(layerNo);     // カレントレイヤー変更
+  if (this.m_bEditing) {
+    this.m_bChanged = true;
+  } else {
+    let nextLayer = g_pictureCanvas.getLayer(layerNo);
+    g_pictureCanvas.raiseLayerFixRequest(nextLayer);  // 作業中レイヤー固定要求(兼レイヤー変更予告)
+    g_pictureCanvas.changeLayer(layerNo);     // カレントレイヤー変更
+  }
 }
 
 /// 設定をシステム全体に周知する。
@@ -118,6 +135,10 @@ CommonSetting.prototype.source = function()
   let layerNo = this.m_curLayerNo;
   let nextLayer = g_pictureCanvas.getLayer(layerNo);
   g_pictureCanvas.raiseLayerFixRequest(nextLayer);  // 作業中レイヤー固定要求(兼レイヤー変更予告)
+  for (let i = 0; i < this.m_layerVisibility.length; ++i) {
+    let bVisible = this.m_layerVisibility[i];
+    g_pictureCanvas.setLayerVisibility(i, bVisible);  // レイヤー可視属性変更
+  }
   g_pictureCanvas.changeLayer(layerNo);     // カレントレイヤー変更
 }
 
@@ -184,6 +205,44 @@ CommonSetting.prototype.selectTool = function(toolType)
   this.setAlpha(alpha);
 }
 
+/// 設定値の編集を開始する。(編集中はイベント発生無し。)
+CommonSetting.prototype.beginEdit = function(objId)
+{
+  // console.log(this.m_editingObjs);
+  assert(!(objId in this.m_editingObjs));
+  this.extendEdit(objId);
+}
+
+/// 設定値の編集を延長する。(編集中はイベント発生無し。)
+CommonSetting.prototype.extendEdit = function(objId)
+{
+  // console.log(this.m_editingObjs);
+  this.m_editingObjs[objId] = true;
+  this.m_bEditing = true;
+}
+
+/// 設定値の編集を終了する。
+CommonSetting.prototype.endEdit = function(objId)
+{
+  // console.log(this.m_editingObjs);
+  assert(objId in this.m_editingObjs);
+  this.releaseEdit(objId);
+}
+
+/// 設定値の編集を終了する。
+CommonSetting.prototype.releaseEdit = function(objId)
+{
+  // console.log(this.m_editingObjs);
+  delete this.m_editingObjs[objId];
+  if (Object.keys(this.m_editingObjs).length <= 0) {
+    this.m_bEditing = false;
+    if (this.m_bChanged) {
+      this.source();
+      this.m_bChanged = false;
+    }
+  }
+}
+
 //
 //  ToolChain
 //
@@ -230,7 +289,12 @@ ToolChain.prototype.activate = function(toolPalette, /*[opt]*/ targetObj)
     return false;
   }
 
+  // ポインティング開始を通知
   this.OnSelection(mod_e);
+
+  // ポインティング終了を通知
+  modify_click_event_to_end_in_place(mod_e);
+  this.OnPointingEnd(mod_e);
 
   return true;
 }
@@ -338,6 +402,17 @@ ToolChain.prototype.OnSelection = function(e, /*[opt]*/ targetToolNo)
   }
 
   return bHit;
+}
+
+/// クリック後、またはドラッグ後に呼ばれる。
+ToolChain.prototype.OnPointingEnd = function(e)
+{
+  if (this.m_bActive) {
+    let curTool = this.m_tools[this.m_curToolNo];
+    if (curTool.OnPointingEnd != null) {
+      curTool.OnPointingEnd(e);
+    }
+  }
 }
 
 /// ツールを追加する。
@@ -712,6 +787,8 @@ ToolPalette.prototype.handleEvent = function(e)
     }
   } else {
     if (e.type == 'mouseup' || e.type == 'touchend') {
+      let mod_e = new PointingEvent(this, e);
+      this.m_toolMap[this.m_curToolChainIdx].OnPointingEnd(mod_e);
       this.m_bDragging = false;
     } else {
       // 描画ツールに引き渡す情報を構成

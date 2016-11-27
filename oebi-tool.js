@@ -659,7 +659,11 @@ function ColorCompoTool(iconBounds)
   this.m_slideBar = null;
   this.m_colorCompoIdx = null;
   this.m_toolCanvas = null;
+  this.m_objId = null;
 }
+
+// Object IDの生成源
+ColorCompoTool.m_instanceCnt = 0;
 
 /// 最初の表示を行う。
 /// ここで与える引数により、RGBAのどのツールなのかが決まる。
@@ -667,6 +671,7 @@ ColorCompoTool.prototype.show = function(setting, colorCompoIdx, toolCanvas)
 {
   this.m_colorCompoIdx = colorCompoIdx;
   this.m_toolCanvas = null;
+  this.m_objId = "ColorCompoTool_" + colorCompoIdx + "_" + ((ColorCompoTool.m_instanceCnt)++);
 
   // 現在の色を取得する。
   let color = setting.getColor();
@@ -774,6 +779,7 @@ ColorCompoTool.prototype.setValue = function(val, setting)
 ColorCompoTool.prototype.OnSelected = function(e)
 {
   // console.log("ColorCompoTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  e.m_sender.getCommonSetting().beginEdit(this.m_objId);
   e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   let setting = e.m_sender.getCommonSetting();
   let val = this.getValue(setting);
@@ -784,16 +790,23 @@ ColorCompoTool.prototype.OnSelected = function(e)
 ColorCompoTool.prototype.OnDiselected = function(e)
 {
   // console.log("ColorCompoTool::OnDiselected() called. ");
-  /*NOP*/
+  e.m_sender.getCommonSetting().releaseEdit(this.m_objId);
 }
 
 /// 再ポイントされたとき呼ばれる。
 ColorCompoTool.prototype.OnPicked = function(e)
 {
   // console.log("ColorCompoTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  e.m_sender.getCommonSetting().extendEdit(this.m_objId);
   let val = this.m_slideBar.OnPicked(e);
   let setting = e.m_sender.getCommonSetting();
   this.setValue(val, setting);
+}
+
+/// クリック終了またはドラッグ終了時に呼ばれる。
+ColorCompoTool.prototype.OnPointingEnd = function(e)
+{
+  e.m_sender.getCommonSetting().endEdit(this.m_objId);
 }
 
 /// 設定が変更されたとき呼ばれる。

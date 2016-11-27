@@ -53,6 +53,12 @@ function VirtualClickEvent(sender, iconBounds)
 	this.m_button = 1;
 }
 
+/// クリックイベントをクリック完了イベントに変更する。(In-place)
+function modify_click_event_to_end_in_place(e)
+{
+	e.m_type = 'mouseup';
+}
+
 //
 //	PictureCanvas
 //
