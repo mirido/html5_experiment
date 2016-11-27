@@ -76,8 +76,8 @@ function put_point_1px(px, py, context)
 	context.fillRect(px, py, 1, 1);
 }
 
-/// プレゼンハムのアルゴリズムで直線を描画する。(Pre-rendering前提)
-function draw_line(x0, y0, x1, y1, ha, pre_rendered, context)
+/// プレゼンハムのアルゴリズムで直線を描画する。(Plot関数指定)
+function draw_line_w_plot_func(x0, y0, x1, y1, plotFunc, context)
 {
 	var tmp;
 
@@ -109,10 +109,10 @@ function draw_line(x0, y0, x1, y1, ha, pre_rendered, context)
 	for (var x = x0; x <= x1; ++x) {
 		if (bSteep) {
 			// plot(y, x);
-			context.drawImage(pre_rendered, y - ha, x - ha);
+			plotFunc(y, x, context);
 		} else {
 			// plot(x, y);
-			context.drawImage(pre_rendered, x - ha, y - ha);
+			plotFunc(x, y, context);
 		}
 		error -= deltay;
 		if (error < 0) {
@@ -122,50 +122,19 @@ function draw_line(x0, y0, x1, y1, ha, pre_rendered, context)
 	}
 }
 
-/// プレゼンハムのアルゴリズムで直線を描画する。(実行時render指定)
+/// 直線を描画する。(Pre-rendering前提)
+function draw_line(x0, y0, x1, y1, ha, pre_rendered, context)
+{
+	let plotFunc = function(x, y, context) {
+		context.drawImage(pre_rendered, x - ha, y - ha);
+	};
+	draw_line_w_plot_func(x0, y0, x1, y1, plotFunc, context);
+}
+
+/// 直線を描画する。(実行時render指定)
 function draw_line_w_runtime_renderer(x0, y0, x1, y1, run_time_renderer, context)
 {
-	var tmp;
-
-	var bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
-	if (bSteep) {
-		// swap(x0, y0);
-		tmp = x0, x0 = y0, y0 = tmp;
-
-		// swap(x1, y1)
-		tmp = x1, x1 = y1, y1 = tmp;
-	}
-	if (x0 > x1) {
-		// swap(x0, x1)
-		tmp = x0, x0 = x1, x1 = tmp;
-
-		// swap(y0, y1)
-		tmp = y0, y0 = y1, y1 = tmp;
-	}
-	var deltax = x1 - x0
-	var deltay = Math.abs(y1 - y0)
-	var error = Math.floor(deltax / 2.0);
-	var ystep
-	var y = y0
-	if (y0 < y1) {
-		ystep = 1;
-	} else {
-		ystep = -1;
-	}
-	for (var x = x0; x <= x1; ++x) {
-		if (bSteep) {
-			// plot(y, x);
-			run_time_renderer(y, x, context);
-		} else {
-			// plot(x, y);
-			run_time_renderer(x, y, context);
-		}
-		error -= deltay;
-		if (error < 0) {
-			y += ystep;
-			error += deltax;
-		}
-	}
+	draw_line_w_plot_func(x0, y0, x1, y1, run_time_renderer, context);
 }
 
 /// プレゼンハムのアルゴリズムで1画素幅の直線を描画する。
