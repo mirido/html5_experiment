@@ -112,6 +112,34 @@ function DrawerBase(drawOp, effect, cursor)
   // OnDrawEnd()で確定した画像データ
   this.m_lastImageData = null;
   this.m_lastAltImageData = null;
+
+  // エフェクトオブジェクトに応じた設定
+  this.rfshSetting();
+}
+
+/// エフェクトオブジェクトに応じた内部の設定を行う。
+DrawerBase.prototype.rfshSetting = function()
+{
+  // レイヤー取得関数
+  if (this.m_effect.getMasterLayer != null) {
+    let effectObj = this.m_effect;
+    this.m_masterLayerGetter = function(e) { return effectObj.getMasterLayer(e); };
+  } else {
+    this.m_masterLayerGetter = function(e) { return e.m_sender.getCurLayer(e); };
+  }
+  if (this.m_effect.closeStroke != null) {
+    let effectObj = this.m_effect;
+    this.m_strokeFixer = function(e) { return effectObj.closeStroke(e); };
+  } else {
+    this.m_strokeFixer = function(e) { /*NOP*/ };
+  }
+  if (this.m_drawOp.getAltLayer != null) {
+    this.m_altLayerGetter = this.m_drawOp.getAltLayer;
+    this.m_altContextGetter = function(layer) { return layer.getContext('2d'); };
+  } else {
+    this.m_altLayerGetter = function(e) { return null; };
+    this.m_altContextGetter = function(layer) { return null; };
+  }
 }
 
 /// 描画した領域の画像を復元する。
@@ -131,14 +159,12 @@ DrawerBase.prototype.restoreImagePatch = function(context, alt_ctx)
 /// 描画ストローク開始時に呼ばれる。
 DrawerBase.prototype.OnDrawStart = function(e)
 {
-  let curLayer = e.m_sender.getCurLayer();
+  let curLayer = this.m_masterLayerGetter(e);
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
-  let altLayer = (this.m_drawOp.getAltLayer != null)
-    ? this.m_drawOp.getAltLayer(e)
-    : null;
-  let alt_ctx = (altLayer != null) ? altLayer.getContext('2d') : null;
+  let altLayer = this.m_altLayerGetter(e);
+  let alt_ctx = this.m_altContextGetter(altLayer);
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -179,14 +205,12 @@ DrawerBase.prototype.OnDrawStart = function(e)
 /// 描画ストローク中に随時呼ばれる。
 DrawerBase.prototype.OnDrawing = function(e)
 {
-  let curLayer = e.m_sender.getCurLayer();
+  let curLayer = this.m_masterLayerGetter(e);
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
-  let altLayer = (this.m_drawOp.getAltLayer != null)
-    ? this.m_drawOp.getAltLayer(e)
-    : null;
-  let alt_ctx = (altLayer != null) ? altLayer.getContext('2d') : null;
+  let altLayer = this.m_altLayerGetter(e);
+  let alt_ctx = this.m_altContextGetter(altLayer);
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -228,14 +252,12 @@ DrawerBase.prototype.OnDrawing = function(e)
 /// 描画ストローク終了時に呼ばれる。
 DrawerBase.prototype.OnDrawEnd = function(e)
 {
-  let curLayer = e.m_sender.getCurLayer();
+  let curLayer = this.m_masterLayerGetter(e);
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
   let context = curLayer.getContext('2d');
-  let altLayer = (this.m_drawOp.getAltLayer != null)
-    ? this.m_drawOp.getAltLayer(e)
-    : null;
-  let alt_ctx = (altLayer != null) ? altLayer.getContext('2d') : null;
+  let altLayer = this.m_altLayerGetter(e);
+  let alt_ctx = this.m_altContextGetter(altLayer);
   let cur_pt = e.m_point;
   let margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
@@ -271,6 +293,9 @@ DrawerBase.prototype.OnDrawEnd = function(e)
       let reproClosure = this.m_effect.apply(this.m_points, context);
       e.m_sender.appendPoints(this.m_effect, this.m_points, reproClosure);   // 点列追記(Undo/Redo)
     }
+
+    // エフェクトのストローク完結処理
+    this.m_strokeFixer(e);
   } else {    // (描画オペレータにguideOnDrawEnd()メソッド有り)
     // 作業中レイヤー固定(1)
     // 現状想定では代替レイヤーはオーバレイしかなく、
@@ -292,6 +317,9 @@ DrawerBase.prototype.OnDrawEnd = function(e)
       let reproClosure = this.m_effect.apply(this.m_points, context);
       e.m_sender.appendPoints(this.m_effect, this.m_points, reproClosure);   // 点列追記(Undo/Redo)
     }
+
+    // エフェクトのストローク完結処理
+    this.m_strokeFixer(e);
 
     // 作業中レイヤー固定(2)
     // (1)と違い、こちらは必須。行わないと、
@@ -378,6 +406,16 @@ NullEffect.prototype.getMargin = function() { return 0; }
 
 /// パラメータ設定のためのplace holder。
 NullEffect.prototype.setParam = function(setting) { return function(obj) { /*NOP*/ }; }
+
+/// 画素定着対象レイヤーを取得する。(Optional)
+/// 画素定着先レイヤーがカレントレイヤーなら定義不要。
+NullEffect.prototype.getMasterLayer = function(e) { return e.m_sender.getCurLayer(); }
+
+/// 描画ストロークを完結させる。(Optional)
+/// getMasterLayer()で指定したレイヤーの画素を、
+/// キャンバスの最終描画結果用レイヤー(カレントレイヤー等)に対して対し
+/// 1ストローク分まとめて定着させる。
+NullEffect.prototype.closeStroke = function(e) { /*NOP*/ }
 
 //
 //  カーソル0: NullCursor
@@ -890,7 +928,7 @@ DrawOp_BoundingRect.prototype.getAltLayer = function(e)
 /// 新しいインスタンスを取得する。
 function EffectBase01()
 {
-  this.setParamEx(null, null, null, null);
+  this.setParamEx(null, null, null, null, null);
 }
 
 /// パラメータを設定する。(クラス固有)
@@ -898,13 +936,27 @@ EffectBase01.prototype.setParamEx = function(
   ha,                   // [in] Pre-rendering配置オフセット
   pre_rendered,         // [in] Pre-rendering結果
   runtime_renderer1,    // [in] 実行時render関数(1点用)
-  runtime_renderer2     // [in] 実行時render関数(2点用)
+  runtime_renderer2,    // [in] 実行時render関数(2点用)
+  fGlobalAlpha,         // [in] α値([0, 1]で与えるので注意!)
+  bCompositeWithCopy    // [in] Pre-rendering結果をcopyする。(描画先との合成無し)
 )
 {
   this.m_ha = ha;
   this.m_pre_rendered = pre_rendered;
   this.m_runtime_renderer1 = runtime_renderer1;
   this.m_runtime_renderer2 = runtime_renderer2;
+  this.m_fGlobalAlpha = fGlobalAlpha;
+  if (pre_rendered != null && bCompositeWithCopy) {
+    let ctx = pre_rendered.getContext('2d');
+    let w = pre_rendered.width;
+    let h = pre_rendered.height;
+    let src_imgd = ctx.getImageData(0, 0, w, h);
+    this.m_plotFunc = function(x, y, context) {
+      putImageDataEx(src_imgd, context, x - ha, y - ha);
+    };
+  } else {
+    this.m_plotFunc = null;
+  }
 }
 
 /// エフェクトを適用する。
@@ -914,11 +966,17 @@ EffectBase01.prototype.apply = function(points, context)
   if (points.length == 1) {
     let pt = points[0];
     if (this.m_pre_rendered) {    // (Pre-rendering結果存在)
-      put_point(pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
+      if (this.m_plotFunc != null) {
+        this.m_plotFunc(pt.x, pt.y, context);
+      } else {
+        put_point(pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
+      }
     } else {
       // 実行時render関数(1点用)呼び出し
       // runtime_render1の引数仕様がここに適用される。
+      context.globalAlpha = this.m_fGlobalAlpha;
       reproClosure = this.m_runtime_renderer1(pt.x, pt.y, context);
+      context.globalAlpha = 1.0;
     }
   } else {
     assert(points.length > 0);
@@ -926,15 +984,22 @@ EffectBase01.prototype.apply = function(points, context)
     for (let i = 1; i < points.length; ++i) {
       let pt = points[i];
       if (this.m_pre_rendered) {  // (Pre-rendering結果存在)
-        draw_line(prev.x, prev.y, pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
+        if (this.m_plotFunc != null) {
+          draw_line_w_plot_func(prev.x, prev.y, pt.x, pt.y, this.m_plotFunc, context);
+        } else {
+          draw_line(prev.x, prev.y, pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
+        }
       } else {
         // 実行時render関数(2点用)呼び出し
         // runtime_render2の引数仕様がここに適用される。
+        context.globalAlpha = this.m_fGlobalAlpha;
         reproClosure = this.m_runtime_renderer2(prev.x, prev.y, pt.x, pt.y, context);
+        context.globalAlpha = 1.0;
       }
       prev = pt;
     }
   }
+
   return reproClosure;
 }
 
@@ -954,11 +1019,13 @@ function Effect_Pencil()
 }
 
 /// Pre-render関数。
-Effect_Pencil.pre_renderer = function(ha, diameter, color)
+Effect_Pencil.pre_renderer = function(ha, diameter, color, alpha)
 {
   console.log("color=" + color);
   if (diameter > 1) {
-    return pre_render_pixel(ha, diameter, color, true);
+    let mini_canvas = pre_render_pixel(ha, diameter, color, true);
+    make_opaque(mini_canvas, alpha);
+    return mini_canvas;
   } else {
     return null;    // 1 px描画時はpre-renderingしない。(好みの問題)
   }
@@ -983,7 +1050,7 @@ Effect_Pencil.runtime_renderer2_ex = function(px1, py1, px2, py2, diameter, colo
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_Pencil.prototype.setParamCustom = function(diameter, color)
+Effect_Pencil.prototype.setParamCustom = function(diameter, color, alpha)
 {
   // マージン決定
   this.m_margin = (diameter > 1) ? Math.ceil(diameter / 2) + 10 : 0;
@@ -997,13 +1064,18 @@ Effect_Pencil.prototype.setParamCustom = function(diameter, color)
     Effect_Pencil.runtime_renderer2_ex(px1, py1, px2, py2, diameter, color, context);
   };
 
+  // α合成対応
+  this.m_bMakeFloatingLayer = (alpha < 255);
+
   // 描画条件決定
   let ha = this.m_margin;
   this.m_effectBase.setParamEx(
     ha,
-    Effect_Pencil.pre_renderer(ha, diameter, color),
+    Effect_Pencil.pre_renderer(ha, diameter, color, alpha),
     runtime_renderer1,
-    runtime_renderer2
+    runtime_renderer2,
+    alpha / 255.0,
+    true
   );
 }
 
@@ -1012,10 +1084,11 @@ Effect_Pencil.prototype.setParam = function(setting)
 {
   let diameter = setting.getThickness();
   let color = setting.getColor();
-  this.setParamCustom(diameter, color);
+  let alpha = setting.getAlpha();
+  this.setParamCustom(diameter, color, alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(diameter, color); };
+  return function(obj) { obj.setParamCustom(diameter, color, alpha); };
 }
 
 /// エフェクトを適用する。
@@ -1026,6 +1099,20 @@ Effect_Pencil.prototype.apply = function(points, context)
 
 /// マージンを取得する。
 Effect_Pencil.prototype.getMargin = function() { return this.m_margin; }
+
+/// 画素定着対象レイヤーを取得する。(Optional)
+Effect_Pencil.prototype.getMasterLayer = function(e) {
+  if (this.m_bMakeFloatingLayer) {
+    e.m_sender.makeFloatingLayer();
+  }
+  return e.m_sender.getCurDstLayer();
+}
+
+/// 描画ストロークを完結させる。(Optional)
+Effect_Pencil.prototype.closeStroke = function(e)
+{
+  e.m_sender.releaseFloatingLayer();
+}
 
 //
 //  エフェクト2: 消しペン
@@ -1060,7 +1147,7 @@ Effect_Eraser.runtime_renderer2_ex = function(px1, py1, px2, py2, runtime_render
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_Eraser.prototype.setParamCustom = function(diameter)
+Effect_Eraser.prototype.setParamCustom = function(diameter, alpha)
 {
   // マージン決定
   this.m_margin = (diameter > 1) ? Math.ceil((1.5 * diameter) / 2) : 0;
@@ -1081,7 +1168,9 @@ Effect_Eraser.prototype.setParamCustom = function(diameter)
     ha,
     null,
     runtime_renderer1,
-    runtime_renderer2
+    runtime_renderer2,
+    alpha / 255.0,
+    false
   );
 }
 
@@ -1089,10 +1178,11 @@ Effect_Eraser.prototype.setParamCustom = function(diameter)
 Effect_Eraser.prototype.setParam = function(setting)
 {
   let diameter = setting.getThickness();
-  this.setParamCustom(diameter);
+  let alpha = setting.getAlpha();
+  this.setParamCustom(diameter, alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(diameter); };
+  return function(obj) { obj.setParamCustom(diameter, alpha); };
 }
 
 /// エフェクトを適用する。
@@ -1137,7 +1227,7 @@ Effect_PencilRect.runtime_renderer2_ex = function(px1, py1, px2, py2, color, bFi
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_PencilRect.prototype.setParamCustom = function(color)
+Effect_PencilRect.prototype.setParamCustom = function(color, alpha)
 {
   // 引数仕様合わせのためのクロージャ生成
   let runtime_renderer1 = function(px, py, context) {
@@ -1153,7 +1243,9 @@ Effect_PencilRect.prototype.setParamCustom = function(color)
     0,
     null,
     runtime_renderer1,
-    runtime_renderer2
+    runtime_renderer2,
+    alpha / 255.0,
+    false
   );
 }
 
@@ -1161,10 +1253,11 @@ Effect_PencilRect.prototype.setParamCustom = function(color)
 Effect_PencilRect.prototype.setParam = function(setting)
 {
   let color = setting.getColor();
-  this.setParamCustom(color);
+  let alpha = setting.getAlpha();
+  this.setParamCustom(color, alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(color); };
+  return function(obj) { obj.setParamCustom(color, alpha); };
 }
 
 /// エフェクトを適用する。
@@ -1225,7 +1318,7 @@ Effect_RectPaste.runtime_renderer2_ex = function(px1, py1, px2, py2, obj, contex
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_RectPaste.prototype.setParamCustom = function(color)
+Effect_RectPaste.prototype.setParamCustom = function(color, alpha)
 {
   // 引数仕様合わせのためのクロージャ生成
   let runtime_renderer1 = function(px, py, context) {
@@ -1241,7 +1334,9 @@ Effect_RectPaste.prototype.setParamCustom = function(color)
     0,
     null,
     runtime_renderer1,
-    runtime_renderer2
+    runtime_renderer2,
+    alpha / 255.0,
+    false
   );
 }
 
@@ -1249,10 +1344,11 @@ Effect_RectPaste.prototype.setParamCustom = function(color)
 Effect_RectPaste.prototype.setParam = function(setting)
 {
   let color = setting.getColor();
-  this.setParamCustom(color);
+  let alpha = setting.getAlpha();
+  this.setParamCustom(color, alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(color); };
+  return function(obj) { obj.setParamCustom(color, alpha); };
 }
 
 /// エフェクトを適用する。
@@ -1290,7 +1386,7 @@ Effect_RectEraser.runtime_renderer2_ex = function(px1, py1, px2, py2, context)
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_RectEraser.prototype.setParamCustom = function()
+Effect_RectEraser.prototype.setParamCustom = function(alpha)
 {
   // 引数仕様合わせのためのクロージャ生成
   let runtime_renderer1 = function(px, py, context) {
@@ -1305,18 +1401,20 @@ Effect_RectEraser.prototype.setParamCustom = function()
     0,
     null,
     runtime_renderer1,
-    runtime_renderer2
+    runtime_renderer2,
+    alpha / 255.0,
+    false
   );
-
 }
 
 /// パラメータを設定する。
 Effect_RectEraser.prototype.setParam = function(setting)
 {
-  this.setParamCustom();
+  let alpha = setting.getAlpha();
+  this.setParamCustom(alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(); };
+  return function(obj) { obj.setParamCustom(alpha); };
 }
 
 /// エフェクトを適用する。
@@ -1362,7 +1460,7 @@ Effect_FlipRect.runtime_renderer2_ex = function(px1, py1, px2, py2, bVert, conte
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_FlipRect.prototype.setParamCustom = function()
+Effect_FlipRect.prototype.setParamCustom = function(alpha)
 {
   // 引数仕様合わせのためのクロージャ生成
   let runtime_renderer1 = function(px, py, context) {
@@ -1378,17 +1476,20 @@ Effect_FlipRect.prototype.setParamCustom = function()
     0,
     null,
     runtime_renderer1,
-    runtime_renderer2
+    runtime_renderer2,
+    alpha / 255.0,
+    false
   );
 }
 
 /// パラメータを設定する。(クラス固有)
 Effect_FlipRect.prototype.setParam = function(setting)
 {
-  this.setParamCustom();
+  let alpha = setting.getAlpha();
+  this.setParamCustom(alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(); };
+  return function(obj) { obj.setParamCustom(alpha); };
 }
 
 /// エフェクトを適用する。
@@ -1923,17 +2024,28 @@ History.prototype.wayBackTo_Sub = function(idx)
     configClosure(effectObj);     // 適切なEffect::setParam()を描画時の引数で呼ぶ。
     this.m_toolPalette.activateMaskTool(maskTool, maskColor);   // マスクツール設定
 
+    // getMasterLayer()追加に伴うAd-hocな対応
+    let layer;
+    if (effectObj.getMasterLayer != null) {
+      layer = layerNo;    // Ad-hoc; このときlayerNoの中身はlayerへの参照。
+    } else {
+      layer = this.m_pictCanvas.getLayer(layerNo);
+    }
+
     // 描画
     if (reproClosure == null) {
       // 描画ツールをクリックだけして別のツールをクリックした場合は
       // 点列が空の履歴エントリとなるので、(points.length > 0)のガード条件が必要。
       if (points.length > 0) {
-        let layer = this.m_pictCanvas.getLayer(layerNo);
         let context = layer.getContext('2d');
         effectObj.apply(points, context);
       }
     } else {
-      reproClosure(effectObj, points, this.m_pictCanvas.getLayer(layerNo));
+      reproClosure(effectObj, points, layer);
+    }
+    if (effectObj.closeStroke != null) {
+      let dummy_e = { m_sender: this.m_pictCanvas };    // Ad-hoc
+      effectObj.closeStroke(dummy_e);
     }
   } else if (evtType == OebiEventType.Paint) {
     let point = histEnt[k++];

@@ -78,7 +78,15 @@ DrawToolBase.prototype.OnDrawStart = function(e)
   this.m_cursor.setParam(this.m_setting);
 
   // 操作履歴にエフェクト内容追記(Undo/Redo)
-  e.m_sender.appendEffect(this.m_effect, configClosure, e.m_sender.getCurLayerNo());
+  let param3;
+  if (this.m_effect.getMasterLayer != null) {
+    // Ad-hoc; getMasterLayer()が返すレイヤーは一般にレイヤー番号を持たないため、
+    // レイヤー番号の代わりにレイヤーへの参照そのものを記録する。
+    param3 = this.m_effect.getMasterLayer(e);
+  } else {
+    param3 = e.m_sender.getCurLayerNo();
+  }
+  e.m_sender.appendEffect(this.m_effect, configClosure, param3);
 
   // DrawerBaseに委譲
   this.m_drawerCore.OnDrawStart(e);

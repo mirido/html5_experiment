@@ -71,6 +71,7 @@ function PictureCanvas()
 	this.m_allLayers = [
 		document.getElementById("canvas_0"),
 		document.getElementById("canvas_1"),
+		document.getElementById("floating"),
 		document.getElementById("surface"),
 		document.getElementById("overlay"),
 	];
@@ -81,8 +82,11 @@ function PictureCanvas()
 		this.m_allLayers[0],
 		this.m_allLayers[1]
 	];
-	this.m_surface = this.m_allLayers[2];
-	this.m_overlay = this.m_allLayers[3];
+	this.m_floating = this.m_allLayers[2];
+	this.m_surface = this.m_allLayers[3];
+	this.m_overlay = this.m_allLayers[4];
+	this.m_floatingLayerUser = null;
+	this.m_floating.hidden = true;
 
 	// 描画担当ツール
 	// イベントのフックを実現可能なように、複数登録を許す。
@@ -264,6 +268,18 @@ PictureCanvas.prototype.getCurLayerNo = function()
 	return this.m_nTargetLayerNo;
 }
 
+/// カレント描画先レイヤーを取得する。
+/// フローティングレイヤーがあればそちらを返し、
+/// 無ければカレントレイヤーを返す。
+PictureCanvas.prototype.getCurDstLayer = function()
+{
+	if (this.m_floatingLayerUser != null) {
+		return this.m_floating;
+	} else {
+		return this.getCurLayer();
+	}
+}
+
 /// サーフェスを取得する。
 PictureCanvas.prototype.getSurface = function()
 {
@@ -411,6 +427,53 @@ PictureCanvas.prototype.raiseLayerFixRequest = function(nextLayer)
 			this.m_layerFixListeners[i].OnLayerToBeFixed(this, nextLayer);
 		}
 	}
+}
+
+/// カレントレイヤーにフローティングレイヤーを追加する。
+PictureCanvas.prototype.makeFloatingLayer = function()
+{
+	// フローティングレイヤー作成済か判定
+	let curLayer = this.getCurLayer();
+	if (this.m_floatingLayerUser == null) {
+		this.m_floatingLayerUser = curLayer;
+	} else {
+		assert(curLayer == this.m_floatingLayerUser);		// ここで引っかかったらreleaseFloatingLayer()の呼び忘れ。
+		return;
+	}
+
+	// フローティングレイヤー作成
+	assert(this.m_floating.hidden);
+	let z_idx = parseInt(curLayer.style.zIndex);
+	this.m_floating.style.zIndex = (z_idx + 1).toString(10);
+	this.m_floating.hidden = false;
+	// {	/*UTEST*/
+	// 	let context = this.m_floating.getContext('2d');
+	// 	let w = this.m_floating.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+	//   let h = this.m_floating.height;  // (同上)
+	// 	context.fillStyle = 'rgba(200,0,255,100)';
+	// 	context.fillRect(0, 0, w, h);
+	// }
+}
+
+/// フローティングレイヤーを開放する。
+PictureCanvas.prototype.releaseFloatingLayer = function(/*[opt]*/ bCancel)
+{
+	this.m_floating.hidden = true;
+	if (!bCancel) {
+		// フローティングレイヤー内容をカレントレイヤーに合成する。
+		let curLayer = this.getCurLayer();
+		let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+	  let h = curLayer.height;  // (同上)
+		assert(w == this.m_floating.width && h == this.m_floating.height);
+		let ctx_floating = this.m_floating.getContext('2d');
+		let ctx_current = curLayer.getContext('2d');
+		let imgd_floating = ctx_floating.getImageData(0, 0, w, h);
+		let imgd_current = ctx_current.getImageData(0, 0, w, h);
+		blend_image(imgd_floating, imgd_current);
+		ctx_current.putImageData(imgd_current, 0, 0);
+		erase_single_layer(this.m_floating);
+	}
+	this.m_floatingLayerUser = null;
 }
 
 /// 操作履歴オブジェクトを登録する。(Undo/Redo)

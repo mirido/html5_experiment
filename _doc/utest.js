@@ -9,13 +9,13 @@ function utest_pre_rendering()
   let py = this.m_lastPoint.y - ha;
 
   let mini_canvas = pre_render_pixel(ha, diameter, 'rgb(255, 0, 0)', true);
-  // make_opaque(mini_canvas);
+  // make_opaque(mini_canvas, 255);
   let ctx = this.m_lastSender.getLayer().getContext('2d');
   ctx.globalAlpha = 1.0;
   ctx.drawImage(mini_canvas, px, py);
 
   mini_canvas = pre_render_pixel(ha, diameter, 'rgb(0, 255, 0)', false);
-  // make_opaque(mini_canvas);
+  // make_opaque(mini_canvas, 255);
   ctx.drawImage(mini_canvas, px, py)
 }
 
