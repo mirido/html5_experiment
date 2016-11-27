@@ -211,7 +211,7 @@ function get_destinaton_out_image(src_canvas, dst_canvas)
     for (let px = 0; px < width; ++px) {
       let base = head + px * 4;
       let A1 = imgd1.data[base + 3];
-      if (A1 != 0) {
+      if (A1 == 255) {
         imgd2.data[base + 0] = 0;
         imgd2.data[base + 1] = 0;
         imgd2.data[base + 2] = 0;
@@ -256,7 +256,7 @@ function get_mask_image(src_canvas, color, dst_canvas)
       let G1 = imgd1.data[base + 1];
       let B1 = imgd1.data[base + 2];
       let A1 = imgd1.data[base + 3];
-      let bMatched = (A1 != 0 && (R1 == colors[0] && G1 == colors[1] && B1 == colors[2]));
+      let bMatched = (A1 == 255 && (R1 == colors[0] && G1 == colors[1] && B1 == colors[2]));
       if (bMatched) {
         imgd2.data[base + 0] = R1;
         imgd2.data[base + 1] = G1;
@@ -304,7 +304,7 @@ function fix_image_w_mask(src_canvas, mask_canvas, bInv, dst_canvas)
     for (let px = 0; px < width; ++px) {
       let base = head + px * 4;
       let A_mask = imgd_mask.data[base + 3];
-      let bMatched = (A_mask != 0);   // (マスク画素)
+      let bMatched = (A_mask == 255);   // (マスク画素)
       if (bInv) {
         bMatched = !bMatched;
       }
