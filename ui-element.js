@@ -1940,7 +1940,7 @@ History.prototype.getImageHavingIndices = function()
   for (let i = 0; i < keys.length; ++i) {
     indices.push(parseInt(keys[i]));
   }
-  indices.sort(function(a, b) { a - b; });
+  indices.sort(function(a, b) { return a - b; });
   return indices;
 }
 
