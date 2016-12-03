@@ -18,7 +18,8 @@ const ToolType = {
   TL_Pencil: 0,
   TL_WaterColor: 1,
   TL_Eraser: 2,
-  TL_Standard: 3
+  TL_Independent: 98,
+  TL_Standard: 99
 };
 
 /// 新しいインスタンスを初期化する。
@@ -192,7 +193,7 @@ CommonSetting.prototype.selectTool = function(toolType)
     break;
   case ToolType.TL_Eraser:
     thickness = this.m_thicknessDic[ToolType.TL_Eraser];
-    alpha = 255;
+    alpha = this.getAlpha();
     break;
   default:
     thickness = this.getThickness();

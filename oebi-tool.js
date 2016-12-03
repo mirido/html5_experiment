@@ -502,7 +502,7 @@ ThicknessTool.prototype.show = function(setting, toolCanvas)
 ThicknessTool.prototype.OnSelected = function(e)
 {
   // console.log("ThicknessTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
-  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
 
   // キャンバス記憶
   this.m_toolCanvas = e.m_sender.getToolPaletteCanvas();
@@ -788,7 +788,7 @@ ColorCompoTool.prototype.OnSelected = function(e)
 {
   // console.log("ColorCompoTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
   e.m_sender.getCommonSetting().beginEdit(this.m_objId);
-  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
   let setting = e.m_sender.getCommonSetting();
   let val = this.getValue(setting);
   this.m_slideBar.OnSelected(e, val);
@@ -1030,7 +1030,7 @@ MaskTool.prototype.fixMaskImage = function(surface, layer)
 MaskTool.prototype.OnSelected = function(e)
 {
   // console.log("MaskTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + "), txt=" + this.m_faceText);
-  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
   let toolPalette = e.m_sender;
 
   // マスク対象色取得
@@ -1278,7 +1278,7 @@ LayerTool.prototype.updateView = function(setting)
 /// ツール選択時呼ばれる。
 LayerTool.prototype.OnSelected = function(e)
 {
-  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
   this.m_listBox.OnSelected(e);
 
   let setting = e.m_sender.getCommonSetting();
