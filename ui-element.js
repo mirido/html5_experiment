@@ -1024,7 +1024,9 @@ Effect_Pencil.pre_renderer = function(ha, diameter, color, alpha)
   console.log("color=" + color);
   if (diameter > 1) {
     let mini_canvas = pre_render_pixel(ha, diameter, color, true);
-    make_opaque(mini_canvas, alpha);
+    if (alpha < 255) {
+      make_opaque(mini_canvas, alpha);
+    }
     return mini_canvas;
   } else {
     return null;    // 1 px描画時はpre-renderingしない。(好みの問題)
@@ -1067,11 +1069,31 @@ Effect_Pencil.prototype.setParamCustom = function(diameter, color, alpha)
   // α合成対応
   this.m_bMakeFloatingLayer = (alpha < 255);
 
-  // 描画条件決定
+  // Pre-rendering
+  // 「やり直し」高速化のため、必要なとき以外前回のpre-rendering結果を使う。
   let ha = this.m_margin;
+  let PRParams = [ ha, diameter, color, alpha ];
+  let bPRChanged = false;
+  if (this.m_prevPRParams == null) {
+    this.m_prevPRParams = PRParams;
+    bPRChanged = true;
+  } else {
+    for (let i = 0; i < PRParams.length; ++i) {
+      if (PRParams[i] != this.m_prevPRParams[i]) {
+        this.m_prevPRParams = PRParams;
+        bPRChanged = true;
+        break;
+      }
+    }
+  }
+  if (bPRChanged) {
+    this.m_pre_rendered = Effect_Pencil.pre_renderer(ha, diameter, color, alpha);
+  }
+
+  // 描画条件決定
   this.m_effectBase.setParamEx(
     ha,
-    Effect_Pencil.pre_renderer(ha, diameter, color, alpha),
+    this.m_pre_rendered,
     runtime_renderer1,
     runtime_renderer2,
     alpha / 255.0,
