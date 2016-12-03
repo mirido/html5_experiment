@@ -50,7 +50,7 @@ function CommonSetting(nlayers)
 
   // イベント発行制御
   this.m_editingObjs = {};
-  this.m_bEditing = true;
+  this.m_bEditing = false;
   this.m_bChanged = false;
 }
 
