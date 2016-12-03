@@ -719,7 +719,7 @@ ColorCompoTool.prototype.show = function(setting, colorCompoIdx, toolCanvas)
   this.m_slideBar = new MicroSlideBar(
     this.m_iconBounds, false,
     viewColor,
-    0, 255, iniVal,
+    ((colorCompoIdx == 3) ? 1 : 0), 255, iniVal,    // A値の下限は1
     pfx, "",
     -1, 255     // 値0でも色つきの線を表示させるため、exValMin=-1とする。
   );
