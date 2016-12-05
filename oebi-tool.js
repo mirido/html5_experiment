@@ -43,7 +43,6 @@ DrawToolBase.prototype.OnSelected = function(e)
 
   // 描画ツール設定
   e.m_sender.addDrawer(this);
-  e.m_sender.addDrawer(this.m_drawerCore);
 }
 
 /// 選択解除時呼ばれる。
@@ -51,8 +50,10 @@ DrawToolBase.prototype.OnDiselected = function(e)
 {
   // console.log("DrawerBase::OnDiselected() called. ");
 
+  // OnDrawEnd()時のガイド表示(もしあれば)を消去
+  this.m_drawerCore.restoreImageOnDrawEnd();
+
   // 描画ツール解除
-  e.m_sender.removeDrawer(this.m_drawerCore);
   e.m_sender.removeDrawer(this);
 
   // 非選択時アイコン描画
@@ -72,14 +73,44 @@ DrawToolBase.prototype.OnDrawStart = function(e)
   // console.log("DrawerBase.OnDrawStart() called.");
 
   // 最新の描画設定を反映
-  let thickness = this.m_setting.getThickness();
-  let color = this.m_setting.getColor();
-  let configClosure = this.m_effect.setParam(thickness, color);
+  let configClosure = this.m_effect.setParam(this.m_setting);
   assert(configClosure != null);    // (Undo/Redo)
-  this.m_cursor.setParam(thickness, color);
+  this.m_cursor.setParam(this.m_setting);
 
   // 操作履歴にエフェクト内容追記(Undo/Redo)
-  e.m_sender.appendEffect(this.m_effect, configClosure, e.m_sender.getCurLayerNo());
+  let param3;
+  if (this.m_effect.getMasterLayer != null) {
+    // Ad-hoc; getMasterLayer()が返すレイヤーは一般にレイヤー番号を持たないため、
+    // レイヤー番号の代わりにレイヤーへの参照そのものを記録する。
+    param3 = this.m_effect.getMasterLayer(e);
+  } else {
+    param3 = e.m_sender.getCurLayerNo();
+  }
+  e.m_sender.appendEffect(this.m_effect, configClosure, param3);
+
+  // DrawerBaseに委譲
+  this.m_drawerCore.OnDrawStart(e);
+}
+
+/// 描画ストローク中に随時呼ばれる。
+DrawToolBase.prototype.OnDrawing = function(e)
+{
+  // DrawerBaseに委譲
+  this.m_drawerCore.OnDrawing(e);
+}
+
+/// 描画ストローク終了時に呼ばれる。
+DrawToolBase.prototype.OnDrawEnd = function(e)
+{
+  // DrawerBaseに委譲
+  this.m_drawerCore.OnDrawEnd(e);
+}
+
+/// OnDrawEnd()時に描画したガイドを消す。
+DrawToolBase.prototype.restoreImageOnDrawEnd = function()
+{
+  // DrawerBaseに委譲
+  this.m_drawerCore.restoreImageOnDrawEnd();
 }
 
 //
@@ -107,6 +138,7 @@ PencilTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 PencilTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Pencil);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -120,12 +152,6 @@ PencilTool.prototype.OnDiselected = function(e)
 PencilTool.prototype.OnPicked = function(e)
 {
   this.m_drawToolBase.OnPicked(e);
-}
-
-/// 描画ストローク開始時に呼ばれる。
-PencilTool.prototype.OnDrawStart = function(e)
-{
-  this.m_drawToolBase.OnDrawStart(e);
 }
 
 //
@@ -156,6 +182,7 @@ FillRectTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 FillRectTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -169,12 +196,6 @@ FillRectTool.prototype.OnDiselected = function(e)
 FillRectTool.prototype.OnPicked = function(e)
 {
   this.m_drawToolBase.OnPicked(e);
-}
-
-/// 描画ストローク開始時に呼ばれる。
-FillRectTool.prototype.OnDrawStart = function(e)
-{
-  this.m_drawToolBase.OnDrawStart(e);
 }
 
 //
@@ -205,6 +226,7 @@ LineRectTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 LineRectTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -220,10 +242,149 @@ LineRectTool.prototype.OnPicked = function(e)
   this.m_drawToolBase.OnPicked(e);
 }
 
-/// 描画ストローク開始時に呼ばれる。
-LineRectTool.prototype.OnDrawStart = function(e)
+//
+//  コピーツール
+//
+
+/// 新しいインスタンスを初期化する。
+function CopyTool(iconBounds)
 {
-  this.m_drawToolBase.OnDrawStart(e);
+  this.m_iconBounds = iconBounds;
+  this.m_captureOp = null;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+CopyTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_captureOp = new DrawOp_RectCapture(setting);
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    'コピー',
+    this.m_captureOp,
+    new Effect_RectPaste(this.m_captureOp),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+CopyTool.prototype.OnSelected = function(e)
+{
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+  e.m_sender.addHistoryRewindListener(this);    // (Undo/Redo)
+  this.m_captureOp.resetCapture();
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+CopyTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+  e.m_sender.removeHistoryRewindListener(this);   // (Undo/Redo)
+}
+
+/// 再ポイントされたとき呼ばれる。
+CopyTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+/// 操作履歴が巻き戻されるとき呼ばれる。(Undo/Redo)
+CopyTool.prototype.OnHistoryRewind = function(history)
+{
+  this.m_drawToolBase.restoreImageOnDrawEnd();
+  history.attatchImage();
+  this.m_captureOp.resetCapture();
+}
+
+//
+//  左右反転ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function MirrorTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+MirrorTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    '左右反転',
+    new DrawOp_BoundingRect(setting),
+    new Effect_FlipRect(false),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+MirrorTool.prototype.OnSelected = function(e)
+{
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+MirrorTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+MirrorTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
+}
+
+//
+//  上下反転ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function VertFlipTool(iconBounds)
+{
+  this.m_iconBounds = iconBounds;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+VertFlipTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    '上下反転',
+    new DrawOp_BoundingRect(setting),
+    new Effect_FlipRect(true),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+VertFlipTool.prototype.OnSelected = function(e)
+{
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+VertFlipTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+VertFlipTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
 }
 
 //
@@ -251,6 +412,7 @@ EraseTool.prototype.show = function(setting, toolCanvas)
 /// 選択時呼ばれる。
 EraseTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Eraser);
   this.m_drawToolBase.OnSelected(e);
 }
 
@@ -266,10 +428,48 @@ EraseTool.prototype.OnPicked = function(e)
   this.m_drawToolBase.OnPicked(e);
 }
 
-/// 描画ストローク開始時に呼ばれる。
-EraseTool.prototype.OnDrawStart = function(e)
+//
+//  消し四角ツール
+//
+
+/// 新しいインスタンスを初期化する。
+function EraseRectTool(iconBounds)
 {
-  this.m_drawToolBase.OnDrawStart(e);
+  this.m_iconBounds = iconBounds;
+  this.m_drawToolBase = null;
+}
+
+/// 最初の表示を行う。
+EraseRectTool.prototype.show = function(setting, toolCanvas)
+{
+  this.m_drawToolBase = new DrawToolBase(
+    this.m_iconBounds,
+    '消し四角',
+    new DrawOp_BoundingRect(setting),
+    new Effect_RectEraser(),
+    new NullCursor()
+  );
+
+  this.m_drawToolBase.show(setting, toolCanvas);
+}
+
+/// 選択時呼ばれる。
+EraseRectTool.prototype.OnSelected = function(e)
+{
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+  this.m_drawToolBase.OnSelected(e);
+}
+
+/// 選択解除時呼ばれる。
+EraseRectTool.prototype.OnDiselected = function(e)
+{
+  this.m_drawToolBase.OnDiselected(e);
+}
+
+/// 再ポイントされたとき呼ばれる。
+EraseRectTool.prototype.OnPicked = function(e)
+{
+  this.m_drawToolBase.OnPicked(e);
 }
 
 //
@@ -286,6 +486,8 @@ function ThicknessTool(iconBounds)
     "", "px",
     0, 30
   );
+  this.m_toolCanvas = null;
+  this.m_setting = null;
 }
 
 /// 最初の表示を行う。
@@ -300,6 +502,15 @@ ThicknessTool.prototype.show = function(setting, toolCanvas)
 ThicknessTool.prototype.OnSelected = function(e)
 {
   // console.log("ThicknessTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
+
+  // キャンバス記憶
+  this.m_toolCanvas = e.m_sender.getToolPaletteCanvas();
+
+  // 設定変更追跡のための登録
+  this.m_setting = e.m_sender.getCommonSetting();
+  this.m_setting.addListener(this);
+
   let val = e.m_sender.getCommonSetting().getThickness();
   this.m_slideBar.OnSelected(e, val);
 }
@@ -308,7 +519,10 @@ ThicknessTool.prototype.OnSelected = function(e)
 ThicknessTool.prototype.OnDiselected = function(e)
 {
   // console.log("ThicknessTool::OnDiselected() called. ");
-  /*NOP*/
+
+  // 設定変更追跡のための登録を解除
+  let setting = e.m_sender.getCommonSetting();
+  setting.removeListener(this);
 }
 
 /// 再ポイントされたとき呼ばれる。
@@ -318,8 +532,18 @@ ThicknessTool.prototype.OnPicked = function(e)
   let val = this.m_slideBar.OnPicked(e);
 
   // 共通設定変更
-  let setting = e.m_sender.getCommonSetting();  // Alias
-  setting.setThickness(val);
+  assert(this.m_setting == e.m_sender.getCommonSetting());
+  this.m_setting.setThickness(val);
+}
+
+/// 設定が変化したとき呼ばれる。
+ThicknessTool.prototype.OnSettingChanged = function(setting)
+{
+  if (this.m_toolCanvas != null) {
+    let val = setting.getThickness();
+    let context = this.m_toolCanvas.getContext('2d');
+    this.m_slideBar.drawValue(val, context);
+  }
 }
 
 //
@@ -353,6 +577,7 @@ ColorPalette.prototype.show = function(color, bActive, toolCanvas)
 ColorPalette.prototype.OnSelected = function(e)
 {
   // console.log("ColorPalette::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
 
   // アイコン描画(選択状態)
   let context = e.m_sender.getToolPaletteCanvas().getContext('2d');
@@ -420,6 +645,7 @@ ColorPalette.prototype.OnDrawStart = function(e)
     draw_color_palette(this.m_iconBounds, this.m_color, true, context);
   }
 }
+
 /// 設定が変化したとき呼ばれる。
 ColorPalette.prototype.OnSettingChanged = function(setting)
 {
@@ -440,17 +666,20 @@ function ColorCompoTool(iconBounds)
   this.m_iconBounds = iconBounds;
   this.m_slideBar = null;
   this.m_colorCompoIdx = null;
-  this.m_alphaIdx = null;
   this.m_toolCanvas = null;
+  this.m_objId = null;
 }
+
+// Object IDの生成源
+ColorCompoTool.m_instanceCnt = 0;
 
 /// 最初の表示を行う。
 /// ここで与える引数により、RGBAのどのツールなのかが決まる。
-ColorCompoTool.prototype.show = function(setting, colorCompoIdx, alphaIdx, toolCanvas)
+ColorCompoTool.prototype.show = function(setting, colorCompoIdx, toolCanvas)
 {
   this.m_colorCompoIdx = colorCompoIdx;
-  this.m_alphaIdx = alphaIdx;
   this.m_toolCanvas = null;
+  this.m_objId = "ColorCompoTool_" + colorCompoIdx + "_" + ((ColorCompoTool.m_instanceCnt)++);
 
   // 現在の色を取得する。
   let color = setting.getColor();
@@ -478,7 +707,7 @@ ColorCompoTool.prototype.show = function(setting, colorCompoIdx, alphaIdx, toolC
   case 3:
     viewColor = 'rgb(170,170,170)';
     pfx = 'A';
-    iniVal = setting.getAlpha(alphaIdx);
+    iniVal = setting.getAlpha();
     break;
   default:
     assert(false);
@@ -490,7 +719,7 @@ ColorCompoTool.prototype.show = function(setting, colorCompoIdx, alphaIdx, toolC
   this.m_slideBar = new MicroSlideBar(
     this.m_iconBounds, false,
     viewColor,
-    0, 255, iniVal,
+    ((colorCompoIdx == 3) ? 1 : 0), 255, iniVal,    // A値の下限は1
     pfx, "",
     -1, 255     // 値0でも色つきの線を表示させるため、exValMin=-1とする。
   );
@@ -520,7 +749,7 @@ ColorCompoTool.prototype.getValue = function(setting)
     }
     break;
   case 3:
-    val = setting.getAlpha(this.m_alphaIdx);
+    val = setting.getAlpha();
     break;
   default:
     assert(false);
@@ -546,7 +775,7 @@ ColorCompoTool.prototype.setValue = function(val, setting)
     }
     break;
   case 3:
-    setting.setAlpha(this.m_alphaIdx, val);
+    setting.setAlpha(val);
     break;
   default:
     assert(false);
@@ -558,6 +787,8 @@ ColorCompoTool.prototype.setValue = function(val, setting)
 ColorCompoTool.prototype.OnSelected = function(e)
 {
   // console.log("ColorCompoTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  e.m_sender.getCommonSetting().beginEdit(this.m_objId);
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
   let setting = e.m_sender.getCommonSetting();
   let val = this.getValue(setting);
   this.m_slideBar.OnSelected(e, val);
@@ -567,16 +798,23 @@ ColorCompoTool.prototype.OnSelected = function(e)
 ColorCompoTool.prototype.OnDiselected = function(e)
 {
   // console.log("ColorCompoTool::OnDiselected() called. ");
-  /*NOP*/
+  e.m_sender.getCommonSetting().releaseEdit(this.m_objId);
 }
 
 /// 再ポイントされたとき呼ばれる。
 ColorCompoTool.prototype.OnPicked = function(e)
 {
   // console.log("ColorCompoTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
+  e.m_sender.getCommonSetting().extendEdit(this.m_objId);
   let val = this.m_slideBar.OnPicked(e);
   let setting = e.m_sender.getCommonSetting();
   this.setValue(val, setting);
+}
+
+/// クリック終了またはドラッグ終了時に呼ばれる。
+ColorCompoTool.prototype.OnPointingEnd = function(e)
+{
+  e.m_sender.getCommonSetting().endEdit(this.m_objId);
 }
 
 /// 設定が変更されたとき呼ばれる。
@@ -792,6 +1030,7 @@ MaskTool.prototype.fixMaskImage = function(surface, layer)
 MaskTool.prototype.OnSelected = function(e)
 {
   // console.log("MaskTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + "), txt=" + this.m_faceText);
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
   let toolPalette = e.m_sender;
 
   // マスク対象色取得
@@ -1001,15 +1240,6 @@ LayerTool.prototype.updateSetting = function(setting, e)
       let bLayerVisible = setting.getLayerVisibility(layerNo);
       console.log("bLayerVisible=" + bLayerVisible);
       setting.setLayerVisibility(layerNo, !bLayerVisible);  // レイヤー可視属性変更
-
-      // レイヤー可視属性変更記録(Undo/Redo)
-      // レイヤーツールに対する操作は描画ストロークを待たずに
-      // 即座にキャンバスに反映されるので、
-      // キャンバスのスナップショットを正しく撮るために特別なケアが必要。
-      // (他のツールでは、OnSelected()呼び出し直前に呼ばれる
-      //  History::attatchImage()だけで必要十分なスナップショットが撮られる。)
-      e.m_sender.getHistory().appendVisibilityChange();
-
       break;
     }
   default:
@@ -1048,6 +1278,7 @@ LayerTool.prototype.updateView = function(setting)
 /// ツール選択時呼ばれる。
 LayerTool.prototype.OnSelected = function(e)
 {
+  e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
   this.m_listBox.OnSelected(e);
 
   let setting = e.m_sender.getCommonSetting();

@@ -31,7 +31,14 @@ function getBrowserType()
 function unify_rect(rect)
 {
   if (rect.x == null) {
-    return jsRect(rect.left, rect.top, rect.width, rect.height);
+    // Chromeのときここに来る。
+    // 等倍以外の表示のとき、座標が小数点付きで返されるためMath.ceil()で処置する。
+    return jsRect(
+      Math.ceil(rect.left),
+      Math.ceil(rect.top),
+      Math.ceil(rect.width),
+      Math.ceil(rect.height)
+    );
   } else {
     return rect;
   }
@@ -200,8 +207,9 @@ function remove_from_unique_list(list, elem)
 /// 新しいインスタンスを初期化する。
 function PointManager()
 {
-  // 最後にmousedownまたはtouchstartが起きたオブジェクトのリスト
-  this.m_objOnLastPointStart = [];
+  // 最後にmousedownまたはtouchstartが起きたオブジェクトのリスト(の辞書)
+  // リストを、押下ボタン別に記憶する。
+  this.m_objOnLastPointStart = {};
 
   let bSupportTouch = ('ontouchend' in document);
   if (bSupportTouch) {
@@ -232,7 +240,10 @@ PointManager.prototype.notifyPointStart = function(obj, e)
 {
   // console.log("******* " + e);
   assert(e && (e.type == 'mousedown' || e.type == 'touchstart'));
-  add_to_unique_list(this.m_objOnLastPointStart, obj);
+  if (!(e.button in this.m_objOnLastPointStart)) {
+    this.m_objOnLastPointStart[e.button] = [];
+  }
+  add_to_unique_list(this.m_objOnLastPointStart[e.button], obj);
 }
 
 /// イベントリスナ。
@@ -246,12 +257,12 @@ PointManager.prototype.handleEvent = function(e)
     break;
   case 'mouseup':
   case 'touchend':
-    if (this.m_objOnLastPointStart) {
-      // let mod_e = Object.assign({ }, e);  // 値コピー  // NG。うまく機能しない。
-      let mod_e = e;    // Alias
-      for (let i = 0; i < this.m_objOnLastPointStart.length; ++i) {
-        this.m_objOnLastPointStart[i].handleEvent(mod_e);
+    if (e.button in this.m_objOnLastPointStart) {
+      let listeners = this.m_objOnLastPointStart[e.button];
+      for (let i = 0; i < listeners.length; ++i) {
+        listeners[i].handleEvent(e);
       }
+      this.m_objOnLastPointStart[e.button] = [];
       // (e.clientX, e.clientY)は、HTMLページ左上点を原点とする座標。
       // (e.screenX, e.screenY)は、モニタの左上点を原点とする座標。
       // いずれもHTMLページのスクロール位置とは無関係。
@@ -263,7 +274,6 @@ PointManager.prototype.handleEvent = function(e)
       // （e.clientX - window.pageXOffset, e.clientY - window.pageYOffset)
       // とする。
     }
-    this.m_objOnLastPointStart = [];
     break;
   default:
     /*NOP*/
@@ -418,29 +428,7 @@ KeyStateManager.prototype.dispose = function()
 /// イベントリスナ。
 KeyStateManager.prototype.handleEvent = function(e)
 {
-  switch (e.type) {
-    case 'mousedown':
-    case 'touchstart':
-      if (e.button != 0) {
-        this.m_bRightButtonDown = true;
-      }
-      return;
-    case 'mouseup':
-    case 'touchend':
-      // 161030-1「SHIFT+CTRL+右クリックでスポイトツールを働かせた後、単にクリックしただけでもスポイトツールとして働き続ける。」
-      // の暫定対策。左ボタン以外のボタンのupで特殊キーが全て離されたとみなす。
-      if (this.m_bRightButtonDown) {
-        this.m_bShiftDown = false;
-        this.m_bCtrlDown = false;
-        this.m_bAltDown = false;
-        this.m_bMetaDown = false;
-        this.m_bRightButtonDown = false;
-      }
-      return;
-    default:
-      /*NOP*/
-      break;
-  }
+  // 最新キー押下状態取得
   let key_event = (e || window.event);
   // console.log("key_event=(" + key_event.shiftKey + ", " + key_event.ctrlKey + ")");
   this.m_bShiftDown = (key_event.shiftKey);
@@ -452,6 +440,30 @@ KeyStateManager.prototype.handleEvent = function(e)
   //   + ", this.m_bAltDown=" + this.m_bAltDown
   //   + ", this.m_bMetaDown=" + this.m_bMetaDown
   // );
+
+  switch (e.type) {
+    case 'mousedown':
+    case 'touchstart':
+      if (e.button != 0) {
+        this.m_bRightButtonDown = true;
+      }
+      break;
+    case 'mouseup':
+    case 'touchend':
+      // 161030-1「SHIFT+CTRL+右クリックでスポイトツールを働かせた後、単にクリックしただけでもスポイトツールとして働き続ける。」
+      // の暫定対策。左ボタン以外のボタンのupで特殊キーが全て離されたとみなす。
+      if (this.m_bRightButtonDown) {
+        this.m_bShiftDown = false;
+        this.m_bCtrlDown = false;
+        this.m_bAltDown = false;
+        this.m_bMetaDown = false;
+        this.m_bRightButtonDown = false;
+      }
+      break;
+    default:
+      /*NOP*/
+      break;
+  }
 }
 
 /// 特殊キーの押下状態を取得する。

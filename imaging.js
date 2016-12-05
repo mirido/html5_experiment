@@ -4,12 +4,163 @@
 'use strict';
 
 //
+//  画像データ操作
+//
+
+/// ガイド表示用の半透明 & 色反転画像データを取得する。
+function get_guide_image(src_imgd, dst_imgd)
+{
+  const width = src_imgd.width;
+  const height = src_imgd.height;
+  assert(dst_imgd.width == width && dst_imgd.height == height);
+  let colors = [];
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base = head + px * 4;
+
+      // 色を変換の上で半透明化
+      // 色の変換規則は現状get_cursor_color()の規則と合わせている。
+      if (src_imgd.data[base + 3] != 0) {
+        colors[0] = (0xff ^ src_imgd.data[base + 0]);
+        colors[1] = (0xff ^ src_imgd.data[base + 1]);
+        colors[2] = (0xff ^ src_imgd.data[base + 2]);
+        if ( (colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
+        	|| (colors[0] == 0 && colors[1] == 0 && colors[2] == 0) )
+        {
+          // 白色(デフォルト背景色と同じ)や黒色は避ける。
+          colors[0] = colors[1] = colors[2] = 128;
+        }
+        dst_imgd.data[base + 0] = colors[0];
+        dst_imgd.data[base + 1] = colors[1];
+        dst_imgd.data[base + 2] = colors[2];
+        dst_imgd.data[base + 3] = 128;
+      }
+    }
+  }
+}
+
+/// 左右反転した画像データを取得する。
+function get_mirror_image(src_imgd, dst_imgd)
+{
+  const width = src_imgd.width;
+  const height = src_imgd.height;
+  assert(dst_imgd.width == width && dst_imgd.height == height);
+  let colors = [];
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    let tail = head + 4 * (width - 1);
+    for (let px = 0; px < width; ++px) {
+      let base_src = head + px * 4;
+      let base_dst = tail - px * 4;
+      dst_imgd.data[base_dst + 0] = src_imgd.data[base_src + 0];
+      dst_imgd.data[base_dst + 1] = src_imgd.data[base_src + 1];
+      dst_imgd.data[base_dst + 2] = src_imgd.data[base_src + 2];
+      dst_imgd.data[base_dst + 3] = src_imgd.data[base_src + 3];
+    }
+  }
+}
+
+/// 上下反転した画像データを取得する。
+function get_vert_flip_image(src_imgd, dst_imgd)
+{
+  const width = src_imgd.width;
+  const height = src_imgd.height;
+  assert(dst_imgd.width == width && dst_imgd.height == height);
+  let colors = [];
+  for (let py = 0; py < height; ++py) {
+    let head_src = py * 4 * width;
+    let head_dst = ((height - 1) - py) * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base_src = head_src + px * 4;
+      let base_dst = head_dst + px * 4;
+      dst_imgd.data[base_dst + 0] = src_imgd.data[base_src + 0];
+      dst_imgd.data[base_dst + 1] = src_imgd.data[base_src + 1];
+      dst_imgd.data[base_dst + 2] = src_imgd.data[base_src + 2];
+      dst_imgd.data[base_dst + 3] = src_imgd.data[base_src + 3];
+    }
+  }
+}
+
+/// α値に基づき合成する。(src_imgd × dst_imgd → dst_imgd)
+function blend_image(src_imgd, dst_imgd)
+{
+  const width = src_imgd.width;
+  const height = src_imgd.height;
+  assert(dst_imgd.width == width && dst_imgd.height == height);
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base = head + px * 4;
+
+      // dst_imgdの画素値
+      let R1 = dst_imgd.data[base + 0];
+      let G1 = dst_imgd.data[base + 1];
+      let B1 = dst_imgd.data[base + 2];
+      let A1 = dst_imgd.data[base + 3];
+
+      // src_imgdの画素値
+      let R2 = src_imgd.data[base + 0];
+      let G2 = src_imgd.data[base + 1];
+      let B2 = src_imgd.data[base + 2];
+      let A2 = src_imgd.data[base + 3];
+
+      // 合成
+      // 正規化α値1.0(完全不透明)の背景画像があると仮定して、
+      // 背景画像の前にdst_imgd、src_imgdの順で半透明の壁がある場合の見え方(a)と、
+      // 背景画像の前にdst_imgdとsrc_imgdを合成した1枚の壁がある場合の見え方(b)が同じになるように
+      // dst_imgdとsrc_imgdを合成する。
+      if (A2 == 0) {    // (src_imdgが完全透明)
+        // 上記モデルに従い、dst_imgdの画素値は変更しない。
+        /*NOP*/
+      } else if (A2 == 255) {   // (src_imgdが完全不透明)
+        // 上記モデルに従い、dst_imgdの画素値をsrc_imgdの画素値に置き換える。
+        dst_imgd.data[base + 0] = R2;
+        dst_imgd.data[base + 1] = G2;
+        dst_imgd.data[base + 2] = B2;
+        dst_imgd.data[base + 3] = 255;
+      } else {  // (src_imgdが1～254の範囲内のα値を有する)
+        // 上記モデルに従いsrc_imgdとdst_imgdを合成し、結果をdst_imgdに書く。
+        // 下記joint_fAlphaが、見え方(b)における合成後の壁の正規化α値にあたる。
+        let fAlpha2 = A2 / 255.0;     // 0.0 < fAlpha2 && fAlpha2 < 1.0が保証される。
+        let fAlpha1 = A1 / 255.0;
+        let joint_fAlpha = 1.0 - (1.0 - fAlpha2) * (1.0 - fAlpha1);
+        let a = (1.0 - fAlpha2) * fAlpha1;
+        let b = fAlpha2;
+        dst_imgd.data[base + 0] = Math.floor(((R1 * a) + (R2 * b)) / joint_fAlpha);
+        dst_imgd.data[base + 1] = Math.floor(((G1 * a) + (G2 * b)) / joint_fAlpha);
+        dst_imgd.data[base + 2] = Math.floor(((B1 * a) + (B2 * b)) / joint_fAlpha);
+        dst_imgd.data[base + 3] = Math.floor(255.0 * joint_fAlpha);
+      }
+    }
+  }
+}
+
+/// 指定の画素値で埋める。
+function fill_image(R_cpnt, G_cpnt, B_cpnt, A_cpnt, dst_imgd)
+{
+  const width = dst_imgd.width;
+  const height = dst_imgd.height;
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base = head + px * 4;
+      dst_imgd.data[base + 0] = R_cpnt;
+      dst_imgd.data[base + 1] = G_cpnt;
+      dst_imgd.data[base + 2] = B_cpnt;
+      dst_imgd.data[base + 3] = A_cpnt;
+    }
+  }
+}
+
+//
 //  単一キャンバス操作
 //
 
-/// レイヤーを不透明にする。
-function make_opaque(canvas)
+/// レイヤーをの非透明画素(α値>0)のα値を再設定する。
+function make_opaque(canvas, new_alpha)
 {
+  assert(new_alpha > 0);    // 0で実行すると非可逆になるので…
   const width = canvas.width;
   const height = canvas.height;
 
@@ -23,12 +174,13 @@ function make_opaque(canvas)
     let head = py * 4 * width;
     for (let px = 0; px < width; ++px) {
       let base = head + px * 4;
-      if (imgd.data[base + 3] < 128) {  // (透明度0.5未満)
+      if (imgd.data[base + 3] <= 0) { // (完全透明な画素)
         imgd.data[base + 0] = 0;
         imgd.data[base + 1] = 0;
         imgd.data[base + 2] = 0;
+      } else {    // (完全透明ではない画素)
+        imgd.data[base + 3] = new_alpha;
       }
-      imgd.data[base + 3] = 255;    // α値を255に変更
     }
   }
 
@@ -41,6 +193,38 @@ function erase_single_layer(canvas)
 {
   let ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+/// レイヤーに、合成操作'source-over'で画像データをputする。
+function putImageDataEx(src_imgd, context, sx, sy)
+{
+  const w = src_imgd.width;
+  const h = src_imgd.height;
+
+  // 描画先画像データ取得
+  // 矩形領域(sx, sy, w, h)が画像外にはみ出していてもクリッピングは不要。
+  // HTML5 canvas 2D contextの仕様
+  // https://www.w3.org/TR/2dcontext/
+  // の「14 Pixel manipulation」によると、getImageData()での画像データ主得時、
+  // 画像からはみ出した範囲は「透明な黒」で埋められたデータが返される。
+  let dst_imgd = context.getImageData(sx, sy, w, h);
+
+  // ソース画像データsrc_imgdの不透明画素のみをcanvasのデータに反映
+  for (let py = 0; py < h; ++py) {
+    let head = py * 4 * w;
+    for (let px = 0; px < w; ++px) {
+      let base = head + px * 4;
+      if (src_imgd.data[base + 3] > 0) {
+        dst_imgd.data[base + 0] = src_imgd.data[base + 0];
+        dst_imgd.data[base + 1] = src_imgd.data[base + 1];
+        dst_imgd.data[base + 2] = src_imgd.data[base + 2];
+        dst_imgd.data[base + 3] = src_imgd.data[base + 3];
+      }
+    }
+  }
+
+  // 再描画
+  context.putImageData(dst_imgd, sx, sy);
 }
 
 //
@@ -100,7 +284,7 @@ function get_destinaton_out_image(src_canvas, dst_canvas)
     for (let px = 0; px < width; ++px) {
       let base = head + px * 4;
       let A1 = imgd1.data[base + 3];
-      if (A1 != 0) {
+      if (A1 == 255) {
         imgd2.data[base + 0] = 0;
         imgd2.data[base + 1] = 0;
         imgd2.data[base + 2] = 0;
@@ -145,7 +329,7 @@ function get_mask_image(src_canvas, color, dst_canvas)
       let G1 = imgd1.data[base + 1];
       let B1 = imgd1.data[base + 2];
       let A1 = imgd1.data[base + 3];
-      let bMatched = (A1 != 0 && (R1 == colors[0] && G1 == colors[1] && B1 == colors[2]));
+      let bMatched = (A1 == 255 && (R1 == colors[0] && G1 == colors[1] && B1 == colors[2]));
       if (bMatched) {
         imgd2.data[base + 0] = R1;
         imgd2.data[base + 1] = G1;
@@ -193,7 +377,7 @@ function fix_image_w_mask(src_canvas, mask_canvas, bInv, dst_canvas)
     for (let px = 0; px < width; ++px) {
       let base = head + px * 4;
       let A_mask = imgd_mask.data[base + 3];
-      let bMatched = (A_mask != 0);   // (マスク画素)
+      let bMatched = (A_mask == 255);   // (マスク画素)
       if (bInv) {
         bMatched = !bMatched;
       }

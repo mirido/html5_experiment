@@ -9,13 +9,13 @@ function utest_pre_rendering()
   let py = this.m_lastPoint.y - ha;
 
   let mini_canvas = pre_render_pixel(ha, diameter, 'rgb(255, 0, 0)', true);
-  // make_opaque(mini_canvas);
+  // make_opaque(mini_canvas, 255);
   let ctx = this.m_lastSender.getLayer().getContext('2d');
   ctx.globalAlpha = 1.0;
   ctx.drawImage(mini_canvas, px, py);
 
   mini_canvas = pre_render_pixel(ha, diameter, 'rgb(0, 255, 0)', false);
-  // make_opaque(mini_canvas);
+  // make_opaque(mini_canvas, 255);
   ctx.drawImage(mini_canvas, px, py)
 }
 
@@ -109,7 +109,7 @@ function utest_get_mask_image()
 	let layers = [
 		document.getElementById("canvas_0"),
 		document.getElementById("canvas_1"),
-		document.getElementById("canvas_2")
+		// document.getElementById("canvas_2")
 	];
 	let surface = document.getElementById("surface");
 	let joint_canvas = document.getElementById("joint_canvas");
@@ -153,5 +153,78 @@ function utest_get_mask_image()
     ctx_tg.fillRect(10, 10, 300, 350);
     let imgd = ctx_tg.getImageData(0, 0, 200, 200);
     ctx_tg.putImageData(imgd, 100, 100);
+  }
+}
+
+/// UTEST: ハーフトーン描画のテスト。
+function utest_half_tone()
+{
+  let canvas = document.getElementById("canvas_0");
+  let width = canvas.width;
+  let height = canvas.height;
+  let context = canvas.getContext('2d');
+
+  erase_single_layer(canvas);
+
+  // パターン生成
+  let ha = half_tone_std_ha;
+  let ptnList = gen_halftones(ha);
+  console.log(ptnList);
+
+  // 描画色指定
+  let RGB_cc = get_components_from_RGBx('rgb(255,0,0)');
+
+  let fa = 2 * ha + 1;
+  let cyc = fa - 1;
+  // let sz = 2 * cyc;
+  let sz = 11;
+  let ncolumns = 32;
+
+  let ptn_x = 0;
+  let ptn_y = 0;
+  let py_end = 0;
+  let z_fAlpha = -1;
+  for (let k = 0; k < ptnList.length; ++k) {
+    let ent = ptnList[k];
+    let fAlpha = ent.m_fAlpha;
+    let definition = ent.m_definition;
+    let ptn = ent.m_ptn;
+    console.log("k=" + k + ", fAlpha=" + fAlpha + ", definition=" + definition);
+
+    // 描画先決定
+    if (ptn_x + (sz + 1) <= Math.min(ncolumns * (sz + 1), width)) {
+      py_end = Math.max(py_end, ptn_y + (sz + 1));
+    } else {
+      ptn_x = 0;
+      ptn_y = py_end;
+    }
+    if (ptn_y >= height)
+      break;
+
+    // 描画
+    let imgd = context.createImageData(sz, sz);
+    for (let py = 0; py < sz; ++py) {
+      let head = (4 * sz) * py;
+      let src_head = cyc * (py % cyc);
+      for (let px = 0; px < sz; ++px) {
+        let base = head + 4 * px;
+        let bDot = ptn[src_head + (px % cyc)];
+        if (bDot) {
+          imgd.data[base + 0] = RGB_cc[0];
+          imgd.data[base + 1] = RGB_cc[1];
+          imgd.data[base + 2] = RGB_cc[2];
+          imgd.data[base + 3] = 255;
+        }
+      }
+    }
+    context.putImageData(imgd, ptn_x + 1, ptn_y + 1);
+    context.fillStyle = 'rgb(128,128,128)';
+    if (fAlpha != z_fAlpha) {
+      draw_rect(ptn_x, ptn_y, ptn_x + sz + 1, ptn_y + sz + 1, context);
+      z_fAlpha = fAlpha;
+    }
+
+    // 次へ
+    ptn_x += (sz + 1);
   }
 }

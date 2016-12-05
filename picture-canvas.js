@@ -53,6 +53,12 @@ function VirtualClickEvent(sender, iconBounds)
 	this.m_button = 1;
 }
 
+/// クリックイベントをクリック完了イベントに変更する。(In-place)
+function modify_click_event_to_end_in_place(e)
+{
+	e.m_type = 'mouseup';
+}
+
 //
 //	PictureCanvas
 //
@@ -65,6 +71,7 @@ function PictureCanvas()
 	this.m_allLayers = [
 		document.getElementById("canvas_0"),
 		document.getElementById("canvas_1"),
+		document.getElementById("floating"),
 		document.getElementById("surface"),
 		document.getElementById("overlay"),
 	];
@@ -75,8 +82,11 @@ function PictureCanvas()
 		this.m_allLayers[0],
 		this.m_allLayers[1]
 	];
-	this.m_surface = this.m_allLayers[2];
-	this.m_overlay = this.m_allLayers[3];
+	this.m_floating = this.m_allLayers[2];
+	this.m_surface = this.m_allLayers[3];
+	this.m_overlay = this.m_allLayers[4];
+	this.m_floatingLayerUser = null;
+	this.m_floating.hidden = true;
 
 	// 描画担当ツール
 	// イベントのフックを実現可能なように、複数登録を許す。
@@ -86,7 +96,7 @@ function PictureCanvas()
 	this.m_nTargetLayerNo = this.m_workingLayers.length - 1;		// 描画対象レイヤー
 
 	// ポインタデバイスのドラッグ状態
-	this.m_bDragging = false;
+	this.m_draggingButton = null;
 	this.m_lastEvent = null;
 
 	// イベントハンドラ登録
@@ -114,11 +124,6 @@ function PictureCanvas()
 	// 操作履歴
   // attatchHistory()メソッドで設定する。
   this.m_history = null;    // (Undo/Redo)
-
-	// 操作履歴関連
-	this.m_bPictureChanged = false;			// 描画内容が変更されたか否か(Undo/Redo)
-	this.m_lastVisibilityList = [];			// レイヤーの可視属性(Undo/Redo)
-	this.registerPictureState();
 }
 
 /// イベントリスナ。
@@ -126,6 +131,7 @@ PictureCanvas.prototype.handleEvent = function(e)
 {
 	// console.log("Event: " + e.type);
 	// console.dir(e);
+	// console.log("event=" + e.type + ", button=" + e.button);
 
 	// 描画ツールに引き渡す情報を構成
 	let mod_e = new PointingEvent(this, e);
@@ -137,33 +143,42 @@ PictureCanvas.prototype.handleEvent = function(e)
 	switch (e.type) {
 	case 'mousedown':
 	case 'touchstart':
-		// mouseupやtouchendを確実に捕捉するための登録
-		g_pointManager.notifyPointStart(this, e);
+		if (this.m_draggingButton == null) {		// (非ドラッグ状態)
+			// mouseupやtouchendを確実に捕捉するための登録
+			g_pointManager.notifyPointStart(this, e);
 
-		// 描画開始を通知
-		this.m_bDragging = true;
-		for (let i = 0; i < this.m_drawers.length; ++i) {
-			if (this.m_drawers[i].OnDrawStart) {
-				this.m_drawers[i].OnDrawStart(mod_e);
+			// ドラッグ状態に遷移
+			this.m_draggingButton = e.button;
+
+			// 描画ストローク開始を通知
+			for (let i = 0; i < this.m_drawers.length; ++i) {
+				if (this.m_drawers[i].OnDrawStart) {
+					this.m_drawers[i].OnDrawStart(mod_e);
+				}
 			}
 		}
 		break;
 	case 'mouseup':
 	case 'touchend':
 		// 描画終了を通知
-		if (this.m_bDragging) {
-			for (let i = 0; i < this.m_drawers.length; ++i) {
-				if (this.m_drawers[i].OnDrawEnd) {
-					this.m_drawers[i].OnDrawEnd(mod_e);
+		if (this.m_draggingButton != null) {				// (ドラッグ状態)
+			if (e.button == this.m_draggingButton) {	// (ドラッグ開始したボタンの押下解除イベント)
+				// 描画ストローク終了を通知
+				for (let i = 0; i < this.m_drawers.length; ++i) {
+					if (this.m_drawers[i].OnDrawEnd) {
+						this.m_drawers[i].OnDrawEnd(mod_e);
+					}
 				}
+
+				// ドラッグ状態解除
+				this.m_draggingButton = null;
 			}
 		}
-		this.m_bDragging = false;
 		break;
 	case 'mousemove':
 	case 'touchmove':
 		// ポインタの移動を通知
-		if (this.m_bDragging) {
+		if (this.m_draggingButton != null) {		// (ドラッグ状態)
 			for (let i = 0; i < this.m_drawers.length; ++i) {
 				if (this.m_drawers[i].OnDrawing) {
 					this.m_drawers[i].OnDrawing(mod_e);
@@ -174,6 +189,12 @@ PictureCanvas.prototype.handleEvent = function(e)
 	default:
 		break;
 	}
+}
+
+/// 描画ストローク中か否かを返す。
+PictureCanvas.prototype.isDrawing = function()
+{
+	return (this.m_draggingButton != null);
 }
 
 /// 要素の絶対座標を返す。
@@ -191,7 +212,7 @@ PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 PictureCanvas.prototype.addDrawer = function(drawer)
 {
 	assert(drawer != null);
-	if (this.m_bDragging) {
+	if (this.m_draggingButton != null) {		// (ドラッグ状態)
 		assert(false);
 		return false;
 	}
@@ -202,7 +223,7 @@ PictureCanvas.prototype.addDrawer = function(drawer)
 PictureCanvas.prototype.removeDrawer = function(drawer)
 {
 	assert(drawer != null);
-	if (this.m_bDragging) {
+	if (this.m_draggingButton != null) {		// (ドラッグ状態)
 		assert(false);
 		return false;
 	}
@@ -245,6 +266,18 @@ PictureCanvas.prototype.getCurLayer = function()
 PictureCanvas.prototype.getCurLayerNo = function()
 {
 	return this.m_nTargetLayerNo;
+}
+
+/// カレント描画先レイヤーを取得する。
+/// フローティングレイヤーがあればそちらを返し、
+/// 無ければカレントレイヤーを返す。
+PictureCanvas.prototype.getCurDstLayer = function()
+{
+	if (this.m_floatingLayerUser != null) {
+		return this.m_floating;
+	} else {
+		return this.getCurLayer();
+	}
 }
 
 /// サーフェスを取得する。
@@ -396,6 +429,53 @@ PictureCanvas.prototype.raiseLayerFixRequest = function(nextLayer)
 	}
 }
 
+/// カレントレイヤーにフローティングレイヤーを追加する。
+PictureCanvas.prototype.makeFloatingLayer = function()
+{
+	// フローティングレイヤー作成済か判定
+	let curLayer = this.getCurLayer();
+	if (this.m_floatingLayerUser == null) {
+		this.m_floatingLayerUser = curLayer;
+	} else {
+		assert(curLayer == this.m_floatingLayerUser);		// ここで引っかかったらreleaseFloatingLayer()の呼び忘れ。
+		return;
+	}
+
+	// フローティングレイヤー作成
+	assert(this.m_floating.hidden);
+	let z_idx = parseInt(curLayer.style.zIndex);
+	this.m_floating.style.zIndex = (z_idx + 1).toString(10);
+	this.m_floating.hidden = false;
+	// {	/*UTEST*/
+	// 	let context = this.m_floating.getContext('2d');
+	// 	let w = this.m_floating.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+	//   let h = this.m_floating.height;  // (同上)
+	// 	context.fillStyle = 'rgba(200,0,255,100)';
+	// 	context.fillRect(0, 0, w, h);
+	// }
+}
+
+/// フローティングレイヤーを開放する。
+PictureCanvas.prototype.releaseFloatingLayer = function(/*[opt]*/ bCancel)
+{
+	this.m_floating.hidden = true;
+	if (!bCancel) {
+		// フローティングレイヤー内容をカレントレイヤーに合成する。
+		let curLayer = this.getCurLayer();
+		let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+	  let h = curLayer.height;  // (同上)
+		assert(w == this.m_floating.width && h == this.m_floating.height);
+		let ctx_floating = this.m_floating.getContext('2d');
+		let ctx_current = curLayer.getContext('2d');
+		let imgd_floating = ctx_floating.getImageData(0, 0, w, h);
+		let imgd_current = ctx_current.getImageData(0, 0, w, h);
+		blend_image(imgd_floating, imgd_current);
+		ctx_current.putImageData(imgd_current, 0, 0);
+		erase_single_layer(this.m_floating);
+	}
+	this.m_floatingLayerUser = null;
+}
+
 /// 操作履歴オブジェクトを登録する。(Undo/Redo)
 /// Undo/Redo機能を使用する場合は、ツールやキャンバスに対する最初の操作が行われる前に呼ぶ必要がある。
 /// Undo/Redo機能を使わない場合は一切呼んではならない。
@@ -413,12 +493,11 @@ PictureCanvas.prototype.appendEffect = function(effectObj, configClosure, layerN
 }
 
 /// 操作履歴に点列を追記する。(Undo/Redo)
-PictureCanvas.prototype.appendPoints = function(effectObj, points)
+PictureCanvas.prototype.appendPoints = function(effectObj, points, reproClosure)
 {
 	if (this.m_history == null)
 		return;
-	this.m_bPictureChanged = true;		// 画像が変更されたことを記憶(Undo/Redo)
-	this.m_history.appendPoints(effectObj, points);
+	this.m_history.appendPoints(effectObj, points, reproClosure);
 }
 
 /// 塗り潰し操作を追記する。(Undo/Redo)
@@ -426,7 +505,6 @@ PictureCanvas.prototype.appendPaintOperation = function(point, color, layerNo)
 {
   if (this.m_history == null)
     return;
-	this.m_bPictureChanged = true;		// 画像が変更されたことを記憶(Undo/Redo)
   this.m_history.appendPaintOperation(point, color, layerNo);
 }
 
@@ -439,30 +517,4 @@ PictureCanvas.prototype.recordVisibility = function()
 	for (let i = 0; i < this.m_workingLayers.length; ++i) {
 		this.m_lastVisibilityList[i] = !(this.m_workingLayers[i].hidden);
 	}
-}
-
-/// レイヤーの可視属性が変更されたか否か判定する。(Undo/Redo)
-PictureCanvas.prototype.isVisibilityChanged = function()
-{
-	if (this.m_history == null)
-		return;
-
-	for (let i = 0; i < this.m_workingLayers.length; ++i) {
-		if (this.m_lastVisibilityList[i] != !(this.m_workingLayers[i].hidden))
-			return true;
-	}
-	return false;
-}
-
-/// 画像の状態を記憶する。(Undo/Redo)
-PictureCanvas.prototype.registerPictureState = function()
-{
-	this.recordVisibility();
-	this.m_bPictureChanged = false;
-}
-
-/// 画像の状態に変化があったか否か判定する。(Undo/Redo)
-PictureCanvas.prototype.isPictureStateChanged = function()
-{
-	return (this.m_bPictureChanged || this.isVisibilityChanged());
 }

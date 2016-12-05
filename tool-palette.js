@@ -14,12 +14,27 @@
 // 値の取得は、描画開始イベント受信(OnDrawStart()呼び出し)タイミングで、
 // ツール個別に最新値を取得する。
 
+const ToolType = {
+  TL_Pencil: 0,
+  TL_WaterColor: 1,
+  TL_Eraser: 2,
+  TL_Independent: 98,
+  TL_Standard: 99
+};
+
 /// 新しいインスタンスを初期化する。
 function CommonSetting(nlayers)
 {
+  this.m_toolType = ToolType.TL_Standard;
+
+  // ツール別線幅メモリ
+  this.m_thicknessDic = {};
+  this.m_thicknessDic[ToolType.TL_Pencil] = 1;
+  this.m_thicknessDic[ToolType.TL_Eraser] = 5;
+
   // 設定値
   this.m_color = 'rgb(0, 0, 0)';        // 描画色
-  this.m_alpha = [ 255, 217 ];          // α値
+  this.m_alpha = 255;                   // α値
   this.m_thickness = 1;                 // 線幅
   this.m_curLayerNo = 0;                // カレントレイヤー
   this.m_layerVisibility = [];          // レイヤーの可視属性
@@ -33,6 +48,11 @@ function CommonSetting(nlayers)
 
   // Selection boxとの連動(暫定処置)
   // this.m_thicknessSelector = new ThicknessSelector();
+
+  // イベント発行制御
+  this.m_editingObjs = {};
+  this.m_bEditing = false;
+  this.m_bChanged = false;
 }
 
 /// イベントハンドラを呼び出す。
@@ -54,11 +74,15 @@ CommonSetting.prototype.setColor = function(value) {
     return;
   this.m_color = value;
   this.callListener();
-  g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
+  if (this.m_bEditing) {
+    this.m_bChanged = true;
+  } else {
+    g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
+  }
 }
-CommonSetting.prototype.getAlpha = function(idx) { return this.m_alpha[idx]; }
-CommonSetting.prototype.setAlpha = function(idx, value) {
-  this.m_alpha[idx] = value;
+CommonSetting.prototype.getAlpha = function() { return this.m_alpha; }
+CommonSetting.prototype.setAlpha = function(value) {
+  this.m_alpha = value;
   this.callListener();
 }
 CommonSetting.prototype.getThickness = function() {
@@ -83,17 +107,25 @@ CommonSetting.prototype.setLayerVisibility = function(layerNo, bVisible) {
   if (this.m_layerVisibility[layerNo] == bVisible)
     return;
   this.m_layerVisibility[layerNo] = bVisible;
-  g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
-  g_pictureCanvas.setLayerVisibility(layerNo, bVisible);  // レイヤー可視属性変更
+  if (this.m_bEditing) {
+    this.m_bChanged = true;
+  } else {
+    g_pictureCanvas.raiseLayerFixRequest();   // 作業中レイヤー固定要求
+    g_pictureCanvas.setLayerVisibility(layerNo, bVisible);  // レイヤー可視属性変更
+  }
 }
 CommonSetting.prototype.getCurLayerNo = function() { return this.m_curLayerNo; }
 CommonSetting.prototype.setCurLayerNo = function(layerNo) {
   if (this.m_curLayerNo == layerNo)
     return;
   this.m_curLayerNo = layerNo;
-  let nextLayer = g_pictureCanvas.getLayer(layerNo);
-  g_pictureCanvas.raiseLayerFixRequest(nextLayer);  // 作業中レイヤー固定要求(兼レイヤー変更予告)
-  g_pictureCanvas.changeLayer(layerNo);     // カレントレイヤー変更
+  if (this.m_bEditing) {
+    this.m_bChanged = true;
+  } else {
+    let nextLayer = g_pictureCanvas.getLayer(layerNo);
+    g_pictureCanvas.raiseLayerFixRequest(nextLayer);  // 作業中レイヤー固定要求(兼レイヤー変更予告)
+    g_pictureCanvas.changeLayer(layerNo);     // カレントレイヤー変更
+  }
 }
 
 /// 設定をシステム全体に周知する。
@@ -104,6 +136,10 @@ CommonSetting.prototype.source = function()
   let layerNo = this.m_curLayerNo;
   let nextLayer = g_pictureCanvas.getLayer(layerNo);
   g_pictureCanvas.raiseLayerFixRequest(nextLayer);  // 作業中レイヤー固定要求(兼レイヤー変更予告)
+  for (let i = 0; i < this.m_layerVisibility.length; ++i) {
+    let bVisible = this.m_layerVisibility[i];
+    g_pictureCanvas.setLayerVisibility(i, bVisible);  // レイヤー可視属性変更
+  }
   g_pictureCanvas.changeLayer(layerNo);     // カレントレイヤー変更
 }
 
@@ -117,6 +153,95 @@ CommonSetting.prototype.addListener = function(listener)
 CommonSetting.prototype.removeListener = function(listener)
 {
   remove_from_unique_list(this.m_changeListeners, listener);
+}
+
+/// ツール別設定を切り替える。
+CommonSetting.prototype.selectTool = function(toolType)
+{
+  if (toolType != ToolType.TL_Standard && toolType == this.m_toolType)
+    return;
+
+  // 現在の値をツール別に記憶
+  switch (this.m_toolType) {
+  case ToolType.TL_Pencil:
+  case ToolType.TL_WaterColor:
+  case ToolType.TL_Standard:
+    this.m_thicknessDic[ToolType.TL_Pencil] = this.getThickness();
+    break;
+  case ToolType.TL_Eraser:
+    this.m_thicknessDic[ToolType.TL_Eraser] = 5;
+    break;
+  default:
+    /*NOP*/
+    break;
+  }
+
+  // ツール選択切替
+  this.m_toolType = toolType;
+
+  // 設定切替
+  let thickness, alpha;
+  switch (toolType) {
+  case ToolType.TL_Pencil:
+  case ToolType.TL_Standard:
+    thickness = this.m_thicknessDic[ToolType.TL_Pencil];
+    alpha = 255;
+    break;
+  case ToolType.TL_WaterColor:
+    thickness = this.m_thicknessDic[ToolType.TL_Pencil];
+    alpha = Math.floor(3.0908 * thickness + 243.13);
+    break;
+  case ToolType.TL_Eraser:
+    thickness = this.m_thicknessDic[ToolType.TL_Eraser];
+    alpha = this.getAlpha();
+    break;
+  default:
+    thickness = this.getThickness();
+    alpha = this.getAlpha();
+    break;
+  }
+
+  // 実際に設定
+  this.setThickness(thickness);
+  this.setAlpha(alpha);
+}
+
+/// 設定値の編集を開始する。(編集中はイベント発生無し。)
+CommonSetting.prototype.beginEdit = function(objId)
+{
+  // console.log(this.m_editingObjs);
+  assert(!(objId in this.m_editingObjs));
+  this.extendEdit(objId);
+}
+
+/// 設定値の編集を延長する。(編集中はイベント発生無し。)
+CommonSetting.prototype.extendEdit = function(objId)
+{
+  // console.log(this.m_editingObjs);
+  this.m_editingObjs[objId] = true;
+  this.m_bEditing = true;
+}
+
+/// 設定値の編集を終了する。
+CommonSetting.prototype.endEdit = function(objId)
+{
+  // console.log(this.m_editingObjs);
+  assert(objId in this.m_editingObjs);
+  this.releaseEdit(objId);
+}
+
+/// 設定値の編集を終了する。
+CommonSetting.prototype.releaseEdit = function(objId)
+{
+  // console.log(this.m_editingObjs);
+  delete this.m_editingObjs[objId];
+  if (Object.keys(this.m_editingObjs).length <= 0) {
+    this.m_bEditing = false;
+    if (this.m_bChanged) {
+      this.source();
+      this.m_bChanged = false;
+    }
+  }
 }
 
 //
@@ -142,7 +267,7 @@ function ToolChain(iconBounds)
 }
 
 /// アクティブにする。
-ToolChain.prototype.activate = function(toolPalette, /*[option]*/ targetObj)
+ToolChain.prototype.activate = function(toolPalette, /*[opt]*/ targetObj)
 {
   let iconBounds = this.m_iconBounds;
   let mod_e = new VirtualClickEvent(toolPalette, iconBounds);
@@ -165,7 +290,12 @@ ToolChain.prototype.activate = function(toolPalette, /*[option]*/ targetObj)
     return false;
   }
 
+  // ポインティング開始を通知
   this.OnSelection(mod_e);
+
+  // ポインティング終了を通知
+  modify_click_event_to_end_in_place(mod_e);
+  this.OnPointingEnd(mod_e);
 
   return true;
 }
@@ -273,6 +403,17 @@ ToolChain.prototype.OnSelection = function(e, /*[opt]*/ targetToolNo)
   }
 
   return bHit;
+}
+
+/// クリック後、またはドラッグ後に呼ばれる。
+ToolChain.prototype.OnPointingEnd = function(e)
+{
+  if (this.m_bActive) {
+    let curTool = this.m_tools[this.m_curToolNo];
+    if (curTool.OnPointingEnd != null) {
+      curTool.OnPointingEnd(e);
+    }
+  }
 }
 
 /// ツールを追加する。
@@ -447,15 +588,25 @@ function ToolPalette(pictCanvas)
   // 初期表示
   // addToolHelper()順序とは無関係にツールチェーン内の初期表示を定めるためには、
   // ツールチェーンのactivate()を呼ぶ必要がある。
+  // 原則初期表示において画面にアイコンが現れるツールのみactivate()すれば良いが、
+  // イベントリスナ登録させるためにactivate()しているものもある。(例: 線幅ツール)
   this.m_toolMap[toolChainGroups[0][2]].activate(this);   // 四角ツール(一旦有効化)
   this.m_toolMap[toolChainGroups[0][2]].inactivate(this); // 四角ツール(戻す)
+  this.m_toolMap[toolChainGroups[0][3]].activate(this);   // コピーツール(一旦有効化)
+  this.m_toolMap[toolChainGroups[0][3]].inactivate(this); // コピーツール(戻す)
+  this.m_toolMap[toolChainGroups[0][4]].activate(this);   // 消しペンツール(一旦有効化)
+  this.m_toolMap[toolChainGroups[0][4]].inactivate(this); // 消しペンツール(戻す)
   this.m_toolMap[toolChainGroups[0][0]].activate(this);   // 鉛筆ツール
+  this.m_toolMap[toolChainGroups[1][0]].activate(this);   // 手書きツール
   this.m_toolMap[toolChainGroups[2][0]].activate(this);   // 通常ツール
   this.m_toolMap[toolChainGroups[3][1]].activate(this);   // カラーパレットの黒色
+  this.m_toolMap[toolChainGroups[5][0]].activate(this);   // 線幅
   this.m_selToolChainIdxOf = [];
   this.m_selToolChainIdxOf[0] = toolChainGroups[0][0];    // 独立群[0]の選択ツール
-  this.m_selToolChainIdxOf[2] = toolChainGroups[2][0];    // 独立群[3]の選択ツール
+  this.m_selToolChainIdxOf[1] = toolChainGroups[1][0];    // 独立群[1]の選択ツール
+  this.m_selToolChainIdxOf[2] = toolChainGroups[2][0];    // 独立群[2]の選択ツール
   this.m_selToolChainIdxOf[3] = toolChainGroups[3][1];    // 独立群[3]の選択ツール
+  this.m_selToolChainIdxOf[5] = toolChainGroups[5][0];    // 独立群[3]の選択ツール
 
   // 外部ツール
   this.m_extTool = null;
@@ -506,7 +657,11 @@ ToolPalette.prototype.initToolChain = function()
   addToolHelper(this.m_toolMap[0], 'PencilTool', 0, toolDic);
   addToolHelper(this.m_toolMap[2], 'FillRectTool', 200, toolDic);
   addToolHelper(this.m_toolMap[2], 'LineRectTool', 201, toolDic);
+  addToolHelper(this.m_toolMap[3], 'CopyTool', 300, toolDic);
+  addToolHelper(this.m_toolMap[3], 'MirrorTool', 303, toolDic);
+  addToolHelper(this.m_toolMap[3], 'VertFlipTool', 304, toolDic);
   addToolHelper(this.m_toolMap[4], 'EraseTool', 400, toolDic);
+  addToolHelper(this.m_toolMap[4], 'EraseRectTool', 401, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 600, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 601, toolDic);
   addToolHelper(this.m_toolMap[6], 'MaskTool', 602, toolDic);
@@ -528,7 +683,11 @@ ToolPalette.prototype.initToolChain = function()
   toolDic[0].show(this.m_setting, this.m_palette);        // 鉛筆ツール
   toolDic[200].show(this.m_setting, this.m_palette);      // 四角ツール
   toolDic[201].show(this.m_setting, this.m_palette);      // 線四角ツール
+  toolDic[300].show(this.m_setting, this.m_palette);      // コピーツール
+  toolDic[303].show(this.m_setting, this.m_palette);      // 左右反転ツール
+  toolDic[304].show(this.m_setting, this.m_palette);      // 上下反転ツール
   toolDic[400].show(this.m_setting, this.m_palette);      // 消しペンツール
+  toolDic[401].show(this.m_setting, this.m_palette);      // 消しペンツール
   toolDic[600].show(this.m_setting, 0, this.m_palette);   // 通常ツール
   toolDic[601].show(this.m_setting, 1, this.m_palette);   // マスクツール
   toolDic[602].show(this.m_setting, 2, this.m_palette);   // 逆マスクツール
@@ -539,10 +698,10 @@ ToolPalette.prototype.initToolChain = function()
     let color = colorPaletteDef[i][1];
     toolDic[id].show(color, false, this.m_palette);   // カラーパレット1
   }
-  toolDic[2100].show(this.m_setting, 0, 0, this.m_palette);   // R
-  toolDic[2200].show(this.m_setting, 1, 0, this.m_palette);   // G
-  toolDic[2300].show(this.m_setting, 2, 0, this.m_palette);   // B
-  toolDic[2400].show(this.m_setting, 3, 0, this.m_palette);   // A
+  toolDic[2100].show(this.m_setting, 0, this.m_palette);  // R
+  toolDic[2200].show(this.m_setting, 1, this.m_palette);  // G
+  toolDic[2300].show(this.m_setting, 2, this.m_palette);  // B
+  toolDic[2400].show(this.m_setting, 3, this.m_palette);  // A
   toolDic[2700].show(this.m_setting, this.m_palette);     // レイヤーツール
 
   this.m_layerTool = toolDic[2700];       // (Undo/Redo)
@@ -606,6 +765,12 @@ ToolPalette.prototype.handleEvent = function(e)
 	// console.log("ToolPalette::handleEvent: " + e.type);
 	// console.dir(e);
 
+  // 描画ストローク中のポインティングイベントは無視する。
+  if (this.m_pictCanvas.isDrawing()) {
+    assert(!this.m_bDragging);
+    return;
+  }
+
   // ドラッグ状態管理
   if (!this.m_bDragging) {
     if (e.type == 'mousedown' || e.type == 'touchstart') {
@@ -623,6 +788,8 @@ ToolPalette.prototype.handleEvent = function(e)
     }
   } else {
     if (e.type == 'mouseup' || e.type == 'touchend') {
+      let mod_e = new PointingEvent(this, e);
+      this.m_toolMap[this.m_curToolChainIdx].OnPointingEnd(mod_e);
       this.m_bDragging = false;
     } else {
       // 描画ツールに引き渡す情報を構成
@@ -857,5 +1024,21 @@ ToolPalette.prototype.activateMaskTool = function(expMaskTool, maskColor)
     //   console.log("******* curActiveMaskTool=" + curActiveMaskTool.m_drawCompoIdx + ", expMaskTool=" + expMaskTool.m_drawCompoIdx);
     //   assert(curActiveMaskTool == expMaskTool);
     // }
+  }
+}
+
+/// 操作履歴巻き戻しリスナを追加する。(Undo/Redo)
+ToolPalette.prototype.addHistoryRewindListener = function(listener)
+{
+  if (this.m_history != null) {
+    this.m_history.addHistoryRewindListener(listener);
+  }
+}
+
+/// 操作履歴変更リスナを削除する。(Undo/Redo)
+ToolPalette.prototype.removeHistoryRewindListener = function(listener)
+{
+  if (this.m_history != null) {
+    this.m_history.removeHistoryRewindListener(listener);
   }
 }
