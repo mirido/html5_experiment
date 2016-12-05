@@ -67,6 +67,7 @@ function init_wnd()
 	// utesst_ColorConversion();		// UTEST
 	// utest_canvas_2d_context(g_pictureCanvas.getLayer(0));	// UTEST
 	// utest_get_mask_image();		// UTEST
+	// utest_half_tone();		// UTEST
 
 	// 画像合成
 	let joint_canvas = document.getElementById("joint_canvas");

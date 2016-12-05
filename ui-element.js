@@ -1524,6 +1524,118 @@ Effect_FlipRect.prototype.apply = function(points, context)
 Effect_FlipRect.prototype.getMargin = function() { return 0; }
 
 //
+//  エフェクト7: ハーフトーン
+//
+
+/// ハーフトーンの最大周期
+/// これを超える周期のハーフトーンは透明とみなす。
+const max_halftone_cyc = 256;
+
+/// 新しいインスタンスを取得する。
+function Effect_Halftone()
+{
+  this.m_effectBase = new EffectBase01();
+  this.m_pre_rendered = null;
+  this.m_color = null;
+  this.m_alpha = null;
+  this.m_lastContext = null;
+  this.m_halftone_imgd = null;
+}
+
+/// ハーフトーンパターンを更新する。
+Effect_Halftone.prototype.updateHalftone = function(alpha, context)
+{
+  if (!(context === this.m_lastContext)) {
+    let RGB_cc = get_components_from_RGBx(this.m_color);
+    let ptnGenerator = select_lattice_automatically(this.m_alpha, RGB_cc);
+    this.m_halftone_imgd = ptnGenerator(context);
+    this.m_lastContext = context;
+  }
+}
+
+/// ハーフトーンをplotする関数。
+Effect_Halftone.prototype.plotHalftone = function(px, py, context)
+{
+  assert(this.m_halftone_imgd != null);
+  assert(this.m_lastContext == context);
+  let cyc_h = this.m_halftone_imgd.width;
+  let cyc_v = this.m_halftone_imgd.height;
+}
+
+// Pre-render関数は無し。
+
+/// 実行時render関数(1点用)。
+Effect_Halftone.runtime_renderer1_ex = function(px, py, obj, context)
+{
+  obj.updateHalftone();
+  assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+}
+
+/// 実行時render関数(2点用)。
+Effect_Halftone.runtime_renderer2_ex = function(px1, py1, px2, py2, color, alpha, context)
+{
+  obj.updateHalftone();
+  let r = encode_to_rect(px1, py1, px2, py2);
+  let imgd_src = context.getImageData(r.x, r.y, r.width, r.height);
+  let imgd_dst = context.createImageData(r.width, r.height);
+  if (bVert) {
+    get_vert_flip_image(imgd_src, imgd_dst);
+  } else {
+    get_mirror_image(imgd_src, imgd_dst);
+  }
+  context.putImageData(imgd_dst, r.x, r.y);
+}
+
+/// パラメータを設定する。(クラス固有)
+Effect_Halftone.prototype.setParamCustom = function(color, alpha, diameter)
+{
+  this.m_margin = (diameter > 1) ? Math.ceil(diameter / 2) + 10 : 0;
+  this.m_pre_rendered = pre_render_pixel(this.m_margin, diameter, 'rgb(0,0,0)', true);
+  this.m_color = color;
+  this.m_alpha = alpha;
+
+  // 引数仕様合わせのためのクロージャ生成
+  let obj = this;
+  let runtime_renderer1 = function(px, py, context) {
+    Effect_Halftone.runtime_renderer1_ex(px, py, obj, context);
+  };
+  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+    Effect_Halftone.runtime_renderer2_ex(px1, py1, px2, py2, obj, context);
+  };
+
+  // 描画条件決定
+  this.m_effectBase.setParamEx(
+    0,
+    null,
+    runtime_renderer1,
+    runtime_renderer2,
+    1.0,  // ハーフトーンツールはα値を不透明な点の密度と解釈し、半透明描画しない。
+    false
+  );
+}
+
+/// パラメータを設定する。(クラス固有)
+Effect_Halftone.prototype.setParam = function(setting)
+{
+  let color = setting.getColor();
+  let alpha = setting.getAlpha();
+  let diameter = setting.getThickness();
+  this.setParamCustom(color, alpha, diameter);
+
+  // 再設定のためのクロージャを返す(Undo/Redo)
+  return function(obj) { obj.setParamCustom(color, alpha, diameter); };
+}
+
+/// エフェクトを適用する。
+Effect_Halftone.prototype.apply = function(points, context)
+{
+  this.m_effectBase.apply(points, context);
+}
+
+/// マージンを取得する。
+Effect_Halftone.prototype.getMargin = function() { return this.m_margin; }
+
+//
 //  CursorBase01: 円形や方形等のカーソルの基底クラス
 //
 

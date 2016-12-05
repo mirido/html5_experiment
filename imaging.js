@@ -136,6 +136,23 @@ function blend_image(src_imgd, dst_imgd)
   }
 }
 
+/// 指定の画素値で埋める。
+function fill_image(R_cpnt, G_cpnt, B_cpnt, A_cpnt, dst_imgd)
+{
+  const width = dst_imgd.width;
+  const height = dst_imgd.height;
+  for (let py = 0; py < height; ++py) {
+    let head = py * 4 * width;
+    for (let px = 0; px < width; ++px) {
+      let base = head + px * 4;
+      dst_imgd.data[base + 0] = R_cpnt;
+      dst_imgd.data[base + 1] = G_cpnt;
+      dst_imgd.data[base + 2] = B_cpnt;
+      dst_imgd.data[base + 3] = A_cpnt;
+    }
+  }
+}
+
 //
 //  単一キャンバス操作
 //

@@ -410,3 +410,193 @@ FloodFillState.prototype.fill = function()
 		this.fillLine(point.x, point.y);
 	}
 }
+
+//
+//	網点生成
+//
+
+const half_tone_std_ha = 3;
+
+/// 水平または斜め1行毎のランレングスのヒストグラムを取得する。
+function get_max_run_len_histogram(ptn, cyc, vy, background)
+{
+	let pixelFunc = function(px, py) {
+		assert(px >= 0 && py >= 0);
+		px %= cyc;
+		py %= cyc;
+		let idx = cyc * py + px;
+		return ptn[idx];
+	};
+
+	let histogram = {};
+	for (let py = 0; py < cyc; ++py) {
+		let T = 0;
+		let bChanged = false;
+		let run_val = null;
+		for (let px = 0; ; ++px) {
+			let val = pixelFunc(px, py);
+			if (!bChanged) {		// (変化点発見前)
+				if (run_val == null) {
+					run_val = val;
+				} else if (val != run_val) {		// (変化点発見)
+					T = 1;
+					run_val = val;
+					bChanged = true;
+				} else {
+					if (px >= cyc - 1) {		// (変化点発見の見込み無し)
+						let run_len = cyc;
+						if (run_val == background) {
+							if (!(run_len in histogram)) {
+								histogram[run_len] = 1;
+							} else {
+								++(histogram[run_len]);
+							}
+						}
+						break;
+					}
+				}
+			} else {		// (変化点発見後)
+				let run_len = null;
+				let bInBackground = (run_val == background);
+				if (val == run_val) {
+					if (T < cyc) {
+						++T;
+					} else {
+						run_len = T;
+						run_val = val;
+						T = 1;
+					}
+				} else {
+					run_len = T;
+					run_val = val;
+					T = 1;
+				}
+				if (run_len != null) {
+					if (bInBackground) {
+						if (!(run_len in histogram)) {
+							histogram[run_len] = 1;
+						} else {
+							++(histogram[run_len]);
+						}
+					}
+					if (px > cyc) {		// !bChangedだった間の埋め合わせのため、ここは「>」で正しい。
+						break;
+					}
+				}
+			}
+		}
+	}
+	return histogram;
+}
+
+/// 網点の精細度を取得する。
+function get_halftone_definition(ptn, cyc, fAlpha)
+{
+	// ランレングスのヒストグラム取得
+	let background = (fAlpha > 0.5);
+	let run_len_histo_h0 = get_max_run_len_histogram(ptn, cyc, 0, background);
+
+	// 数値化
+	let definition = 0;
+	assert(!(0 in run_len_histo_h0));
+	for (let i = 1; i <= cyc; ++i) {
+		let m = cyc * Math.floor(cyc / i);
+		definition *= (m + 1);
+		if (i in run_len_histo_h0) {
+			// console.log("run_len=" + i + ": " + run_len_histo_h0[i]);		// UTEST
+			assert(run_len_histo_h0[i] <= m);
+			definition += run_len_histo_h0[i];
+		}
+	}
+	// throw new Error();		// UTEST
+
+	return definition;
+}
+
+/// 網点のリストを生成する。
+function gen_halftones(ha)
+{
+	let nbits = ((ha + 1) * (ha + 2)) / 2;
+	let N = 1 << nbits;
+
+	let fa = 2 * ha + 1;
+	let cyc = fa - 1;
+	let plotFunc = function(px, py, value, buf) {
+		if (py < cyc && px < cyc) {
+			let idx = cyc * py + px;
+			buf[idx] = value;
+		}
+	};
+
+	let ptnList = [];
+	for (let i = 0; i < N; ++i) {
+		// iを種として8方向対称パターンを生成
+		let ptn = [];
+		for (let py = 0; py < cyc; ++py) {
+			for (let px = 0; px < cyc; ++px) {
+				plotFunc(px, py, false, ptn);
+			}
+		}
+		let m = 0x1;
+		for (let py = 0; py <= ha; ++py) {
+			for (let px = 0; px <= py; ++px) {
+				// console.log("*** px=" + px + ", py=" + py);
+				// let i = 0x2ad;		// Test. 市松模様1
+				// let i = 0x152;		// Test. 市松模様2
+				// let i = 0x20d;		// Test. 市松模様2 (run length=5)
+				// let i = 0x3ff;		// Test. (run length=6)
+				// let i = 0x01b;		// Test.
+				// let i = 0x10;		// Test.
+				let bDot = ((i & m) != 0);
+				plotFunc(      px,       py, bDot, ptn);		// (1)
+				plotFunc(cyc - px,       py, bDot, ptn);		// (1)の左右反転
+				plotFunc(      px, cyc - py, bDot, ptn);		// (1)の上下反転
+				plotFunc(cyc - px, cyc - py, bDot, ptn);		// 上記のmix
+				plotFunc(      py,       px, bDot, ptn);		// (2)方向ベクトル(1, 1)に対して反転
+				plotFunc(cyc - py,       px, bDot, ptn);		// (2)の左右反転
+				plotFunc(      py, cyc - px, bDot, ptn);		// (2)の上下反転
+				plotFunc(cyc - py, cyc - px, bDot, ptn);		// 上記のmix
+				m <<= 1;
+			}
+		}
+		assert(m == N);
+		// console.log("*** END");	// UTEST
+
+		// パターンのドット密度を計算
+		let cnt = 0;
+		for (let py = 0; py < cyc; ++py) {
+			for (let px = 0; px < cyc; ++px) {
+				let idx = cyc * py + px;
+				if (ptn[idx]) {
+					++cnt;
+				}
+			}
+		}
+		let fAlpha = cnt / (cyc * cyc);
+		// let fAlpha = Math.floor((255 * cnt) / (cyc * cyc));
+
+		// パターンの精細度を計算
+		let definition = get_halftone_definition(ptn, cyc, fAlpha);
+		// console.log("definition=" + definition);
+
+		// 辞書化
+		ptnList.push({
+			m_fAlpha: fAlpha,
+			m_definition: definition,
+			m_ptn: ptn
+		});
+	}
+
+	// 並べ替え
+	ptnList.sort(function(a, b) {
+		if (a.m_fAlpha != b.m_fAlpha) {
+			return (a.m_fAlpha < b.m_fAlpha) ? -1 : 1;
+		} else if (a.m_definition != b.m_definition) {
+			return (a.m_definition > b.m_definition) ? -1 : 1;
+		} else {
+			return 0;
+		}
+	});
+
+	return ptnList;
+}
