@@ -1,6 +1,162 @@
 // Copyright (c) 2016, mirido
 // All rights reserved.
 
+import {
+	utest_pre_rendering,
+	utest_ImagePatch,
+	utesst_ColorConversion,
+	utest_canvas_2d_context,
+	utest_get_mask_image,
+	utest_half_tone
+} from './_doc/utest.js';
+import {
+	dump_event,
+	assert,
+	dbgv
+} from './dbg-util.js';
+import {
+	get_guide_image,
+	get_mirror_image,
+	get_vert_flip_image,
+	blend_image,
+	fill_image,
+	make_opaque,
+	erase_single_layer,
+	putImageDataEx,
+	erase_canvas,
+	copy_layer,
+	get_destinaton_out_image,
+	get_mask_image,
+	fix_image_w_mask,
+	get_joint_image
+} from './imaging.js';
+import {
+	jsPoint,
+	jsRect,
+	JsPoint,
+	JsRect,
+	decode_rect,
+	encode_to_rect,
+	encode_to_rect_in_place,
+	clip_coords,
+	clip_rect_in_place,
+	clip_rect,
+	get_outbounds,
+	get_common_rect,
+	get_chv_dist,
+	get_mht_dist,
+	rect_includes,
+	rects_have_common
+} from './geometry.js';
+import {
+	pre_render_pixel,
+	pre_render_square,
+	put_point,
+	put_point_1px,
+	draw_line_w_plot_func,
+	draw_line,
+	draw_line_w_runtime_renderer,
+	draw_line_1px,
+	draw_rect,
+	draw_rect_R,
+	draw_circle,
+	FloodFillState,
+	get_max_run_len_histogram,
+	get_halftone_definition,
+	gen_halftones	
+} from './graphics.js';
+// import {
+// 	getBrowserType,
+// 	unify_rect,
+// 	get_getBoundingClientRectWrp,
+// 	conv_page_client_to_wnd_client,
+// 	get_color_as_RGB,
+// 	get_color_as_RGBA,
+// 	get_components_from_RGBx,
+// 	get_cursor_color,
+// 	add_to_unique_list,
+// 	remove_from_unique_list,
+// 	PointManager,
+// 	register_pointer_event_handler,
+// 	change_selection,
+// 	ThicknessSelector,
+// 	KeyStateManager,
+// 	draw_icon_face,
+// 	draw_icon_face_ex,
+// 	draw_icon_face_wrp,
+// 	draw_icon_ex,
+// 	draw_icon_wrp,
+// 	draw_color_palette,
+// 	MicroSlideBar,
+// 	ListBox
+// } from './ui-util.js';
+import {
+	ImagePatch,
+	DrawerBase,
+	NullDrawOp,
+	NullEffect,
+	NullCursor,
+	DrawOp_FreeHand,
+	DrawOp_Rectangle,
+	DrawOp_RectCapture,
+	DrawOp_BoundingRect,
+	EffectBase01,
+	Effect_Pencil,
+	Effect_Eraser,
+	Effect_PencilRect,
+	Effect_RectPaste,
+	Effect_RectEraser,
+	Effect_FlipRect,
+	Effect_Halftone,
+	CursorBase01,
+	Cursor_Circle,
+	Cursor_Square,
+	History,
+	UndoButton,
+	RedoButton
+} from './ui-element.js';
+import {
+	PointingEvent,
+	PointingEventClone,
+	VirtualClickEvent,
+	modify_click_event_to_end_in_place,
+	PictureCanvas
+} from './picture-canvas.js';
+import {
+	DrawToolBase,
+	PencilTool,
+	FillRectTool,
+	LineRectTool,
+	CopyTool,
+	MirrorTool,
+	VertFlipTool,
+	EraseTool,
+	EraseRectTool,
+	ThicknessTool,
+	ColorPalette,
+	ColorCompoTool,
+	MaskTool,
+	get_layer_no,
+	PaintTool,
+	LayerTool
+} from './oebi-tool.js';
+import {
+	CommonSetting,
+	ToolChain,
+	addToolHelper,
+	ToolPalette
+} from './tool-palette.js';
+
+import {
+	g_pointManager,
+	g_keyStateManager,
+	g_pictureCanvas,
+	g_toolPalette,
+	g_paintTool,
+	g_history,
+	g_UndoButton
+  } from './index.js';
+  
 'use strict';
 
 //
@@ -9,7 +165,7 @@
 
 /// ブラウザを判定する。下記から借用。
 /// http://etc9.hatenablog.com/entry/20110927/1317140891
-function getBrowserType()
+export function getBrowserType()
 {
   let userAgent = window.navigator.userAgent.toLowerCase();
   if (userAgent.indexOf('opera') != -1) {
@@ -28,7 +184,7 @@ function getBrowserType()
 }
 
 /// getBoundingClientRect()が返す矩形の環境依存の違いを吸収するwrapper。
-function unify_rect(rect)
+export function unify_rect(rect)
 {
   if (rect.x == null) {
     // Chromeのときここに来る。
@@ -45,7 +201,7 @@ function unify_rect(rect)
 }
 
 /// getBoundingClientRect()のブラウザ依存性を吸収するwrapper(関数)を返す関数。
-function get_getBoundingClientRectWrp()
+export function get_getBoundingClientRectWrp()
 {
   let browserType = getBrowserType();
   console.log("browserType=" + browserType);
@@ -107,7 +263,7 @@ function get_getBoundingClientRectWrp()
 const getBoundingClientRectWrp = get_getBoundingClientRectWrp();
 
 /// HTMLページのクライアント座標系をウィンドウのクライアント座標系に変換する。
-function conv_page_client_to_wnd_client(point)
+export function conv_page_client_to_wnd_client(point)
 {
   return jsPoint(point.x - window.pageXOffset, point.y - window.pageYOffset);
 }
@@ -117,21 +273,21 @@ function conv_page_client_to_wnd_client(point)
 //
 
 /// コンポーネント値からRGB色表現を取得する。
-function get_color_as_RGB(colors)
+export function get_color_as_RGB(colors)
 {
   let color = 'rgb(' + colors[0] + ',' + colors[1] + ',' + colors[2] + ')';
   return color;
 }
 
 /// コンポーネント値からRGBA色表現を取得する。
-function get_color_as_RGBA(colors)
+export function get_color_as_RGBA(colors)
 {
   let color = 'rgba(' + colors[0] + ',' + colors[1] + ',' + colors[2] + ',' + colors[3] + ')';
   return color;
 }
 
 /// RGBまたはRGBAをコンポーネントに分解する。
-function get_components_from_RGBx(color)
+export function get_components_from_RGBx(color)
 {
   let colors = [];
   if (color.match(/^#/)) {
@@ -149,7 +305,7 @@ function get_components_from_RGBx(color)
 }
 
 /// カーソルの色を取得する。
-function get_cursor_color(color)
+export function get_cursor_color(color)
 {
   let colors = get_components_from_RGBx(color);
   colors[0] ^= 0xff;
@@ -167,7 +323,7 @@ function get_cursor_color(color)
 
 /// 要素をリストに追加する。追加順は保たれる。
 /// ただし、既存項目と重複する要素の登録は失敗する。
-function add_to_unique_list(list, elem)
+export function add_to_unique_list(list, elem)
 {
   // 登録済みでないか確認
 	for (let i = 0; i < list.length; ++i) {
@@ -182,7 +338,7 @@ function add_to_unique_list(list, elem)
 }
 
 /// 要素をリストから削除する。
-function remove_from_unique_list(list, elem)
+export function remove_from_unique_list(list, elem)
 {
   // 検索
 	for (let i = 0; i < list.length; ++i) {
@@ -205,7 +361,7 @@ function remove_from_unique_list(list, elem)
 // http://www.dotapon.sakura.ne.jp/blog/?p=496
 
 /// 新しいインスタンスを初期化する。
-function PointManager()
+export function PointManager()
 {
   // 最後にmousedownまたはtouchstartが起きたオブジェクトのリスト(の辞書)
   // リストを、押下ボタン別に記憶する。
@@ -300,7 +456,7 @@ const g_mouse_pointer_events = [
 
 /// マウスやタッチスクリーン等のポインタ系イベントを一括登録する。
 /// codeObjはhandleEvent()メソッドを有する前提。
-function register_pointer_event_handler(docObj, codeObj)
+export function register_pointer_event_handler(docObj, codeObj)
 {
   let bSupportTouch = ('ontouchend' in document);
   let pointer_events
@@ -317,7 +473,7 @@ function register_pointer_event_handler(docObj, codeObj)
 //
 
 /// Selection boxの選択項目をプログラムから変更する。
-function change_selection(selector, exp_value)
+export function change_selection(selector, exp_value)
 {
   let selection = selector.getElementsByTagName('option');
   for (let i = 0; i < selection.length; ++i) {
@@ -334,7 +490,7 @@ function change_selection(selector, exp_value)
 //
 
 /// 新しいインスタンスを初期化する。
-function ThicknessSelector()
+export function ThicknessSelector()
 {
   // DOMオブジェクト取得
   this.m_thick10Selector = document.getElementById("selThickness10");
@@ -394,7 +550,7 @@ const SpKey = {
 };
 
 /// 新しいインスタンスを初期化する。
-function KeyStateManager()
+export function KeyStateManager()
 {
   // 特殊キー押下状態
   this.m_bShiftDown = false;
@@ -490,7 +646,7 @@ KeyStateManager.prototype.getSpKeyState = function()
 //
 
 /// アイコンを描画する。
-function draw_icon_face(iconBounds, colors, context)
+export function draw_icon_face(iconBounds, colors, context)
 {
   let sx = iconBounds.x;
   let sy = iconBounds.y;
@@ -536,14 +692,14 @@ const textColor = 'rgb(90,87,129)';
 const textCharWidth = 12;
 
 /// アイコンを描画する。
-function draw_icon_face_ex(iconBounds, bActive, context)
+export function draw_icon_face_ex(iconBounds, bActive, context)
 {
   let colors = (bActive) ? activeIconColors : inactiveIconColors;
   draw_icon_face(iconBounds, colors, context);
 }
 
 /// アイコンを描画する。
-function draw_icon_face_wrp(iconBounds, bActive, e)
+export function draw_icon_face_wrp(iconBounds, bActive, e)
 {
   let tool_canvas = e.m_sender.getToolPaletteCanvas();
   let context = tool_canvas.getContext('2d');
@@ -551,7 +707,7 @@ function draw_icon_face_wrp(iconBounds, bActive, e)
 }
 
 /// アイコンを描画する。
-function draw_icon_ex(iconBounds, text, iconGraphicFunc, bActive, context)
+export function draw_icon_ex(iconBounds, text, iconGraphicFunc, bActive, context)
 {
   // ボタン面描画
   draw_icon_face_ex(iconBounds, bActive, context);
@@ -572,7 +728,7 @@ function draw_icon_ex(iconBounds, text, iconGraphicFunc, bActive, context)
 }
 
 /// アイコンを描画する。
-function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e)
+export function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e)
 {
   let tool_canvas = e.m_sender.getToolPaletteCanvas();
   let context = tool_canvas.getContext('2d');
@@ -584,7 +740,7 @@ function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e)
 //
 
 /// カラーパレットを描画する。
-function draw_color_palette(iconBounds, color, bActive, context)
+export function draw_color_palette(iconBounds, color, bActive, context)
 {
   let color_src = (bActive) ? activeIconColors : inactiveIconColors;
   // let mod_colors = Object.assign([], color_src); -- NG. IEは非サポート。
@@ -602,7 +758,7 @@ function draw_color_palette(iconBounds, color, bActive, context)
 //
 
 /// 新しいインスタンスを初期化する。
-function MicroSlideBar(
+export function MicroSlideBar(
   iconBounds,         // [in]  描画領域
   bVert,              // [in]  垂直バーか否か(true: 垂直, false: 水平)
   color,              // [in]  値を示すバーの色
@@ -798,7 +954,7 @@ MicroSlideBar.prototype.OnPicked = function(e)
 // 描画内容(テキストとか、斜線とか)は利用元が描く。
 
 /// 新しいインスタンスを初期化する。
-function ListBox(iconBounds, depth)
+export function ListBox(iconBounds, depth)
 {
   this.m_iconBounds = iconBounds;
 

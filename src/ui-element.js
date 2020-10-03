@@ -1,6 +1,162 @@
 // Copyright (c) 2016, mirido
 // All rights reserved.
 
+import {
+  utest_pre_rendering,
+  utest_ImagePatch,
+  utesst_ColorConversion,
+  utest_canvas_2d_context,
+  utest_get_mask_image,
+  utest_half_tone
+} from './_doc/utest.js';
+import {
+  dump_event,
+  assert,
+  dbgv
+} from './dbg-util.js';
+import {
+  get_guide_image,
+  get_mirror_image,
+  get_vert_flip_image,
+  blend_image,
+  fill_image,
+  make_opaque,
+  erase_single_layer,
+  putImageDataEx,
+  erase_canvas,
+  copy_layer,
+  get_destinaton_out_image,
+  get_mask_image,
+  fix_image_w_mask,
+  get_joint_image
+} from './imaging.js';
+import {
+  jsPoint,
+  jsRect,
+  JsPoint,
+  JsRect,
+  decode_rect,
+  encode_to_rect,
+  encode_to_rect_in_place,
+  clip_coords,
+  clip_rect_in_place,
+  clip_rect,
+  get_outbounds,
+  get_common_rect,
+  get_chv_dist,
+  get_mht_dist,
+  rect_includes,
+  rects_have_common
+} from './geometry.js';
+import {
+  pre_render_pixel,
+  pre_render_square,
+  put_point,
+  put_point_1px,
+  draw_line_w_plot_func,
+  draw_line,
+  draw_line_w_runtime_renderer,
+  draw_line_1px,
+  draw_rect,
+  draw_rect_R,
+  draw_circle,
+  FloodFillState,
+  get_max_run_len_histogram,
+  get_halftone_definition,
+  gen_halftones
+} from './graphics.js';
+import {
+  getBrowserType,
+  unify_rect,
+  get_getBoundingClientRectWrp,
+  conv_page_client_to_wnd_client,
+  get_color_as_RGB,
+  get_color_as_RGBA,
+  get_components_from_RGBx,
+  get_cursor_color,
+  add_to_unique_list,
+  remove_from_unique_list,
+  PointManager,
+  register_pointer_event_handler,
+  change_selection,
+  ThicknessSelector,
+  KeyStateManager,
+  draw_icon_face,
+  draw_icon_face_ex,
+  draw_icon_face_wrp,
+  draw_icon_ex,
+  draw_icon_wrp,
+  draw_color_palette,
+  MicroSlideBar,
+  ListBox
+} from './ui-util.js';
+// import {
+// 	ImagePatch,
+// 	DrawerBase,
+// 	NullDrawOp,
+// 	NullEffect,
+// 	NullCursor,
+// 	DrawOp_FreeHand,
+// 	DrawOp_Rectangle,
+// 	DrawOp_RectCapture,
+// 	DrawOp_BoundingRect,
+// 	EffectBase01,
+// 	Effect_Pencil,
+// 	Effect_Eraser,
+// 	Effect_PencilRect,
+// 	Effect_RectPaste,
+// 	Effect_RectEraser,
+// 	Effect_FlipRect,
+// 	Effect_Halftone,
+// 	CursorBase01,
+// 	Cursor_Circle,
+// 	Cursor_Square,
+// 	History,
+// 	UndoButton,
+// 	RedoButton
+// } from './ui-element.js';
+import {
+  PointingEvent,
+  PointingEventClone,
+  VirtualClickEvent,
+  modify_click_event_to_end_in_place,
+  PictureCanvas
+} from './picture-canvas.js';
+import {
+  DrawToolBase,
+  PencilTool,
+  FillRectTool,
+  LineRectTool,
+  CopyTool,
+  MirrorTool,
+  VertFlipTool,
+  EraseTool,
+  EraseRectTool,
+  ThicknessTool,
+  ColorPalette,
+  ColorCompoTool,
+  MaskTool,
+  get_layer_no,
+  PaintTool,
+  LayerTool
+} from './oebi-tool.js';
+import {
+  CommonSetting,
+  ToolChain,
+  addToolHelper,
+  ToolPalette
+} from './tool-palette.js';
+
+import {
+  g_pointManager,
+  g_keyStateManager,
+  g_pictureCanvas,
+  g_toolPalette,
+  g_paintTool,
+  g_history,
+  g_UndoButton
+} from './index.js';
+
 'use strict';
 
 //
@@ -8,8 +164,7 @@
 //
 
 /// 画像のパッチを表す。
-function ImagePatch(src_ctx, src_width, src_height, points, margin)
-{
+export function ImagePatch(src_ctx, src_width, src_height, points, margin) {
   this.m_imageData = null;
   this.m_bounds = null;
   this.m_abs_dirty = null;
@@ -43,8 +198,7 @@ function ImagePatch(src_ctx, src_width, src_height, points, margin)
 /// 画像を復元する。
 /// dst_ctxは、構築時にsrc_width、src_heightで与えた大きさ以上の
 /// キャンバスのコンテキストと想定。
-ImagePatch.prototype.restore = function(dst_ctx)
-{
+ImagePatch.prototype.restore = function (dst_ctx) {
   if (this.m_imageData == null)
     return;
 
@@ -54,8 +208,7 @@ ImagePatch.prototype.restore = function(dst_ctx)
 
 /// 画像を配置する。
 /// dst_ctxと構築時に与えたsrc_ctxの関係は任意。
-ImagePatch.prototype.put = function(cx, cy, dst_ctx, dst_width, dst_height)
-{
+ImagePatch.prototype.put = function (cx, cy, dst_ctx, dst_width, dst_height) {
   if (this.m_imageData == null)
     return;
 
@@ -92,8 +245,7 @@ ImagePatch.prototype.put = function(cx, cy, dst_ctx, dst_width, dst_height)
 //
 
 /// 新しいインスタンスを初期化する。
-function DrawerBase(drawOp, effect, cursor)
-{
+export function DrawerBase(drawOp, effect, cursor) {
   // 関連オブジェクト
   this.m_drawOp = drawOp;
   this.m_effect = effect;
@@ -118,33 +270,31 @@ function DrawerBase(drawOp, effect, cursor)
 }
 
 /// エフェクトオブジェクトに応じた内部の設定を行う。
-DrawerBase.prototype.rfshSetting = function()
-{
+DrawerBase.prototype.rfshSetting = function () {
   // レイヤー取得関数
   if (this.m_effect.getMasterLayer != null) {
     let effectObj = this.m_effect;
-    this.m_masterLayerGetter = function(e) { return effectObj.getMasterLayer(e); };
+    this.m_masterLayerGetter = function (e) { return effectObj.getMasterLayer(e); };
   } else {
-    this.m_masterLayerGetter = function(e) { return e.m_sender.getCurLayer(e); };
+    this.m_masterLayerGetter = function (e) { return e.m_sender.getCurLayer(e); };
   }
   if (this.m_effect.closeStroke != null) {
     let effectObj = this.m_effect;
-    this.m_strokeFixer = function(e) { return effectObj.closeStroke(e); };
+    this.m_strokeFixer = function (e) { return effectObj.closeStroke(e); };
   } else {
-    this.m_strokeFixer = function(e) { /*NOP*/ };
+    this.m_strokeFixer = function (e) { /*NOP*/ };
   }
   if (this.m_drawOp.getAltLayer != null) {
     this.m_altLayerGetter = this.m_drawOp.getAltLayer;
-    this.m_altContextGetter = function(layer) { return layer.getContext('2d'); };
+    this.m_altContextGetter = function (layer) { return layer.getContext('2d'); };
   } else {
-    this.m_altLayerGetter = function(e) { return null; };
-    this.m_altContextGetter = function(layer) { return null; };
+    this.m_altLayerGetter = function (e) { return null; };
+    this.m_altContextGetter = function (layer) { return null; };
   }
 }
 
 /// 描画した領域の画像を復元する。
-DrawerBase.prototype.restoreImagePatch = function(context, alt_ctx)
-{
+DrawerBase.prototype.restoreImagePatch = function (context, alt_ctx) {
   // 領域復元
   if (this.m_imagePatch != null) {
     this.m_imagePatch.restore(context);
@@ -157,8 +307,7 @@ DrawerBase.prototype.restoreImagePatch = function(context, alt_ctx)
 }
 
 /// 描画ストローク開始時に呼ばれる。
-DrawerBase.prototype.OnDrawStart = function(e)
-{
+DrawerBase.prototype.OnDrawStart = function (e) {
   let curLayer = this.m_masterLayerGetter(e);
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
@@ -203,8 +352,7 @@ DrawerBase.prototype.OnDrawStart = function(e)
 }
 
 /// 描画ストローク中に随時呼ばれる。
-DrawerBase.prototype.OnDrawing = function(e)
-{
+DrawerBase.prototype.OnDrawing = function (e) {
   let curLayer = this.m_masterLayerGetter(e);
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
@@ -232,12 +380,12 @@ DrawerBase.prototype.OnDrawing = function(e)
   // 描画内容確定 or ガイド表示
   let bFixed = this.m_drawOp.testOnDrawing(e, this.m_points, context);
   if (bFixed) {
-  	// レイヤー上の画素確定
+    // レイヤー上の画素確定
     let reproClosure = this.m_effect.apply(this.m_points, context);
     e.m_sender.appendPoints(this.m_effect, this.m_points, reproClosure);   // 点列追記(Undo/Redo)
     this.m_points.splice(0, this.m_points.length - 1);  // 末尾以外を削除
   } else {
-  	// ガイド表示
+    // ガイド表示
     this.m_imagePatch = new ImagePatch(context, w, h, this.m_points, margin);
     if (alt_ctx != null) {
       this.m_altImagePatch = new ImagePatch(alt_ctx, w, h, this.m_points, margin);
@@ -250,8 +398,7 @@ DrawerBase.prototype.OnDrawing = function(e)
 }
 
 /// 描画ストローク終了時に呼ばれる。
-DrawerBase.prototype.OnDrawEnd = function(e)
-{
+DrawerBase.prototype.OnDrawEnd = function (e) {
   let curLayer = this.m_masterLayerGetter(e);
   let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = curLayer.height;  // (同上)
@@ -345,8 +492,7 @@ DrawerBase.prototype.OnDrawEnd = function(e)
 }
 
 /// OnDrawEnd()以降に描画したガイドを消す。
-DrawerBase.prototype.restoreImageOnDrawEnd = function()
-{
+DrawerBase.prototype.restoreImageOnDrawEnd = function () {
   if (this.m_lastLayer != null) {
     let context = this.m_lastLayer.getContext('2d');
     context.putImageData(this.m_lastImageData, 0, 0);
@@ -364,94 +510,91 @@ DrawerBase.prototype.restoreImageOnDrawEnd = function()
 //
 
 /// 新しいインスタンスを初期化する。
-function NullDrawOp() { }
+export function NullDrawOp() { }
 
 /// 描画ストローク開始時の画素固定判断を行う。
-NullDrawOp.prototype.testOnDrawStart = function(e, points, context) { return false; }
+NullDrawOp.prototype.testOnDrawStart = function (e, points, context) { return false; }
 
 /// 描画ストローク中の画素固定判断を行う。
-NullDrawOp.prototype.testOnDrawing = function(e, points, context) { return false; }
+NullDrawOp.prototype.testOnDrawing = function (e, points, context) { return false; }
 
 /// 描画ストローク終了時の画素固定判断を行う。
-NullDrawOp.prototype.testOnDrawEnd = function(e, points, context) { return false; }
+NullDrawOp.prototype.testOnDrawEnd = function (e, points, context) { return false; }
 
 /// 描画ストローク開始時ガイド表示処理。
-NullDrawOp.prototype.guideOnDrawStart = function(e, points, context) { }
+NullDrawOp.prototype.guideOnDrawStart = function (e, points, context) { }
 
 /// 描画ストローク中ガイド表示処理。
-NullDrawOp.prototype.guideOnDrawing = function(e, points, context) { }
+NullDrawOp.prototype.guideOnDrawing = function (e, points, context) { }
 
 /// 描画ストローク終了時ガイド表示処理。(Optional)
 // NullDrawOp.prototype.guideOnDrawEnd = function(e, points, context) { }
 
 /// マージンを取得する。
-NullDrawOp.prototype.getMargin = function() { return 0; }
+NullDrawOp.prototype.getMargin = function () { return 0; }
 
 //
 //  エフェクト0: NullEffect
 //
 
 /// 新しいインスタンスを取得する。
-function NullEffect() { }
+export function NullEffect() { }
 
 /// エフェクトを適用する。
 /// setParam()が返すクロージャ、apply()呼び出し前画像、引き続き与えられる点列points
 /// の3点で描画結果が一意に定まるエフェクトについては戻り値voidまたはnullを返す。
 /// そうでないエフェクトについては、(obj, points, layer)から描画結果を復元する
 /// クロージャ(描画復元クロージャ)を返す約束とする。
-NullEffect.prototype.apply = function(points, context) { }
+NullEffect.prototype.apply = function (points, context) { }
 
 /// マージンを取得する。
-NullEffect.prototype.getMargin = function() { return 0; }
+NullEffect.prototype.getMargin = function () { return 0; }
 
 /// パラメータ設定のためのplace holder。
-NullEffect.prototype.setParam = function(setting) { return function(obj) { /*NOP*/ }; }
+NullEffect.prototype.setParam = function (setting) { return function (obj) { /*NOP*/ }; }
 
 /// 画素定着対象レイヤーを取得する。(Optional)
 /// 画素定着先レイヤーがカレントレイヤーなら定義不要。
-NullEffect.prototype.getMasterLayer = function(e) { return e.m_sender.getCurLayer(); }
+NullEffect.prototype.getMasterLayer = function (e) { return e.m_sender.getCurLayer(); }
 
 /// 描画ストロークを完結させる。(Optional)
 /// getMasterLayer()で指定したレイヤーの画素を、
 /// キャンバスの最終描画結果用レイヤー(カレントレイヤー等)に対して対し
 /// 1ストローク分まとめて定着させる。
-NullEffect.prototype.closeStroke = function(e) { /*NOP*/ }
+NullEffect.prototype.closeStroke = function (e) { /*NOP*/ }
 
 //
 //  カーソル0: NullCursor
 //
 
 /// 新しいインスタンスを取得する。
-function NullCursor() { }
+export function NullCursor() { }
 
 /// カーソルを描画する。
-NullCursor.prototype.put = function(e, cur_pt, context) { }
+NullCursor.prototype.put = function (e, cur_pt, context) { }
 
 /// カーソルをクリアする。
-NullCursor.prototype.clear = function(context) { }
+NullCursor.prototype.clear = function (context) { }
 
 /// パラメータ設定のためのplace holder。
-NullCursor.prototype.setParam = function(setting) { }
+NullCursor.prototype.setParam = function (setting) { }
 
 //
 //  描画オペレーター1: 手書き
 //
 
 /// 新しいインスタンスを初期化する。
-function DrawOp_FreeHand()
-{
+export function DrawOp_FreeHand() {
   this.m_bLineMode = false;
 }
 
 /// 描画ストローク開始時の画素固定判断を行う。
-DrawOp_FreeHand.prototype.testOnDrawStart = function(e, points, context)
-{
+DrawOp_FreeHand.prototype.testOnDrawStart = function (e, points, context) {
   return this.testOnDrawing(e, points, context);
 }
 
 /// 描画ストローク中の画素固定判断を行う。
-DrawOp_FreeHand.prototype.testOnDrawing = function(e, points, context)
-{
+DrawOp_FreeHand.prototype.testOnDrawing = function (e, points, context) {
   // console.log("testOnDrawing: e.m_spKey=" + e.m_spKey);
 
   if (this.m_bLineMode) {   // (直線ガイドモード)
@@ -480,20 +623,17 @@ DrawOp_FreeHand.prototype.testOnDrawing = function(e, points, context)
 }
 
 /// 描画ストローク終了時の画素固定判断を行う。
-DrawOp_FreeHand.prototype.testOnDrawEnd = function(e, points, context)
-{
+DrawOp_FreeHand.prototype.testOnDrawEnd = function (e, points, context) {
   return true;
 }
 
 /// 描画ストローク開始時ガイド表示処理。
-DrawOp_FreeHand.prototype.guideOnDrawStart = function(e, points, context)
-{
+DrawOp_FreeHand.prototype.guideOnDrawStart = function (e, points, context) {
   this.guideOnDrawing(e, points, context);
 }
 
 /// 描画ストローク中ガイド表示処理。
-DrawOp_FreeHand.prototype.guideOnDrawing = function(e, points, context)
-{
+DrawOp_FreeHand.prototype.guideOnDrawing = function (e, points, context) {
   // console.log("guideOnDrawing() called.");
   if (points.length >= 2) {
     let pt1 = points[0];
@@ -512,28 +652,25 @@ DrawOp_FreeHand.prototype.guideOnDrawing = function(e, points, context)
 // DrawOp_FreeHand.prototype.guideOnDrawEnd = function(e, points, context)
 
 /// マージンを取得する。
-DrawOp_FreeHand.prototype.getMargin = function() { return 0; }
+DrawOp_FreeHand.prototype.getMargin = function () { return 0; }
 
 //
 //  描画オペレータ2: 矩形領域指定(直線, 線四角, 四角 etc.)
 //
 
 /// 新しいインスタンスを初期化する。
-function DrawOp_Rectangle(setting, bFilled)
-{
+export function DrawOp_Rectangle(setting, bFilled) {
   this.m_bFilled = bFilled;
   this.m_setting = setting;
 }
 
 /// 描画ストローク開始時の画素固定判断を行う。
-DrawOp_Rectangle.prototype.testOnDrawStart = function(e, points, context)
-{
+DrawOp_Rectangle.prototype.testOnDrawStart = function (e, points, context) {
   return false;
 }
 
 /// 描画ストローク中の画素固定判断を行う。
-DrawOp_Rectangle.prototype.testOnDrawing = function(e, points, context)
-{
+DrawOp_Rectangle.prototype.testOnDrawing = function (e, points, context) {
   if (points.length > 2) {
     points.splice(1, points.length - 2);  // 先頭と末尾以外を削除
     return false;
@@ -541,8 +678,7 @@ DrawOp_Rectangle.prototype.testOnDrawing = function(e, points, context)
 }
 
 /// 描画ストローク終了時の画素固定判断を行う。
-DrawOp_Rectangle.prototype.testOnDrawEnd = function(e, points, context)
-{
+DrawOp_Rectangle.prototype.testOnDrawEnd = function (e, points, context) {
   if (points.length > 2) {
     points.splice(1, points.length - 2);  // 先頭と末尾以外を削除
   }
@@ -550,14 +686,12 @@ DrawOp_Rectangle.prototype.testOnDrawEnd = function(e, points, context)
 }
 
 /// 描画ストローク開始時ガイド表示処理。
-DrawOp_Rectangle.prototype.guideOnDrawStart = function(e, points, context)
-{
+DrawOp_Rectangle.prototype.guideOnDrawStart = function (e, points, context) {
   this.guideOnDrawing(e, points, context);
 }
 
 /// 描画ストローク中ガイド表示処理。
-DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
-{
+DrawOp_Rectangle.prototype.guideOnDrawing = function (e, points, context) {
   if (points.length >= 2) {
     let alt_ctx = e.m_sender.getOverlay().getContext('2d');
 
@@ -596,11 +730,10 @@ DrawOp_Rectangle.prototype.guideOnDrawing = function(e, points, context)
 // DrawOp_Rectangle.prototype.guideOnDrawEnd = function(e, points, context)
 
 /// マージンを取得する。
-DrawOp_Rectangle.prototype.getMargin = function() { return 0; }
+DrawOp_Rectangle.prototype.getMargin = function () { return 0; }
 
 /// 代替描画先レイヤーを指定する。(Optional)
-DrawOp_Rectangle.prototype.getAltLayer = function(e)
-{
+DrawOp_Rectangle.prototype.getAltLayer = function (e) {
   return e.m_sender.getOverlay();
 }
 
@@ -610,8 +743,7 @@ DrawOp_Rectangle.prototype.getAltLayer = function(e)
 //
 
 /// 新しいインスタンスを初期化する。
-function DrawOp_RectCapture(setting, /*[opt]*/ yankFunc)
-{
+export function DrawOp_RectCapture(setting, /*[opt]*/ yankFunc) {
   this.m_setting = setting;
   this.m_drawOpForGuide = new DrawOp_Rectangle(setting, false);
 
@@ -619,7 +751,7 @@ function DrawOp_RectCapture(setting, /*[opt]*/ yankFunc)
   if (yankFunc == null) {
     // デフォルトのyank関数
     // 指定レイヤーlayerの矩形領域rect内の画像をそのまま返す。
-    yankFunc = function(layer, rect) {
+    yankFunc = function (layer, rect) {
       let context = layer.getContext('2d');
       let imgd = context.getImageData(rect.x, rect.y, rect.width, rect.height);
       return {
@@ -640,8 +772,7 @@ function DrawOp_RectCapture(setting, /*[opt]*/ yankFunc)
 }
 
 /// ペーストモードの点列変換。
-DrawOp_RectCapture.prototype.convPointsToPasteArea = function(points)
-{
+DrawOp_RectCapture.prototype.convPointsToPasteArea = function (points) {
   // 最新クリック座標のみ取得
   let pt0 = points[points.length - 1];  // 末尾要素記憶
 
@@ -665,8 +796,7 @@ DrawOp_RectCapture.prototype.convPointsToPasteArea = function(points)
 }
 
 /// ペーストモードのガイド表示を行う。
-DrawOp_RectCapture.prototype.drawPasteModeGuide = function(e, points, context)
-{
+DrawOp_RectCapture.prototype.drawPasteModeGuide = function (e, points, context) {
   assert(points.length == 2);   // convPointsToPasteArea()による処理済pointsが前提。
   let alt_ctx = e.m_sender.getOverlay().getContext('2d');
 
@@ -693,8 +823,7 @@ DrawOp_RectCapture.prototype.drawPasteModeGuide = function(e, points, context)
 }
 
 /// 描画ストローク開始時の画素固定判断を行う。
-DrawOp_RectCapture.prototype.testOnDrawStart = function(e, points, context)
-{
+DrawOp_RectCapture.prototype.testOnDrawStart = function (e, points, context) {
   if (this.m_yankData == null) {   // (コピーモード)
     return this.m_drawOpForGuide.testOnDrawStart(e, points, context);
   } else {    // (ペーストモード)
@@ -711,8 +840,7 @@ DrawOp_RectCapture.prototype.testOnDrawStart = function(e, points, context)
 }
 
 /// 描画ストローク中の画素固定判断を行う。
-DrawOp_RectCapture.prototype.testOnDrawing = function(e, points, context)
-{
+DrawOp_RectCapture.prototype.testOnDrawing = function (e, points, context) {
   if (this.m_yankData == null) {    // (コピーモード)
     return this.m_drawOpForGuide.testOnDrawing(e, points, context);
   } else {    // (ペーストモード)
@@ -724,8 +852,7 @@ DrawOp_RectCapture.prototype.testOnDrawing = function(e, points, context)
 }
 
 /// 描画ストローク終了時の画素固定判断を行う。
-DrawOp_RectCapture.prototype.testOnDrawEnd = function(e, points, context)
-{
+DrawOp_RectCapture.prototype.testOnDrawEnd = function (e, points, context) {
   if (this.m_yankData == null) {   // (コピーモード)
     // 矩形ガイド表示委譲先に後始末の機会を与える。
     this.m_drawOpForGuide.testOnDrawEnd(e, points, context);
@@ -752,8 +879,7 @@ DrawOp_RectCapture.prototype.testOnDrawEnd = function(e, points, context)
 }
 
 /// 描画ストローク開始時ガイド表示処理。
-DrawOp_RectCapture.prototype.guideOnDrawStart = function(e, points, context)
-{
+DrawOp_RectCapture.prototype.guideOnDrawStart = function (e, points, context) {
   if (this.m_yankData == null) {    // (コピーモード)
     this.m_drawOpForGuide.guideOnDrawStart(e, points, context);
   } else {    // (ペーストモード)
@@ -762,8 +888,7 @@ DrawOp_RectCapture.prototype.guideOnDrawStart = function(e, points, context)
 }
 
 /// 描画ストローク中ガイド表示処理。
-DrawOp_RectCapture.prototype.guideOnDrawing = function(e, points, context)
-{
+DrawOp_RectCapture.prototype.guideOnDrawing = function (e, points, context) {
   if (this.m_yankData == null) {    // (コピーモード)
     this.m_drawOpForGuide.guideOnDrawing(e, points, context);
   } else {    // (ペーストモード)
@@ -772,8 +897,7 @@ DrawOp_RectCapture.prototype.guideOnDrawing = function(e, points, context)
 }
 
 /// 描画ストローク終了時ガイド表示処理。
-DrawOp_RectCapture.prototype.guideOnDrawEnd = function(e, points, context)
-{
+DrawOp_RectCapture.prototype.guideOnDrawEnd = function (e, points, context) {
   if (this.m_yankData == null) {    // (コピーモード)
     // 矩形ガイド表示委譲先に後始末の機会を与える。
     if (this.m_drawOpForGuide.guideOnDrawEnd != null) {
@@ -813,34 +937,29 @@ DrawOp_RectCapture.prototype.guideOnDrawEnd = function(e, points, context)
 }
 
 /// マージンを取得する。
-DrawOp_RectCapture.prototype.getMargin = function()
-{
+DrawOp_RectCapture.prototype.getMargin = function () {
   return 0;
 }
 
 /// 代替描画先レイヤーを指定する。(Optional)
-DrawOp_RectCapture.prototype.getAltLayer = function(e)
-{
+DrawOp_RectCapture.prototype.getAltLayer = function (e) {
   return e.m_sender.getOverlay();
 }
 
 /// コピーモードに戻る。(クラス固有)
-DrawOp_RectCapture.prototype.resetCapture = function()
-{
+DrawOp_RectCapture.prototype.resetCapture = function () {
   this.m_yankData = null;
   this.m_pasteHandlePoint = null;
   this.m_pasteGuideImgd = null;
 }
 
 /// 画像データを取得する。(クラス固有)
-DrawOp_RectCapture.prototype.getYankData = function()
-{
+DrawOp_RectCapture.prototype.getYankData = function () {
   return this.m_yankData;
 }
 
 /// 次のモードに遷移する。(クラス固有)
-DrawOp_RectCapture.prototype.gotoNext = function()
-{
+DrawOp_RectCapture.prototype.gotoNext = function () {
   if ((this.m_lastSpKeyState & SpKey.KY_SHIFT) != 0) {    // (SHIFTキー押下)
     // コピーデータを保持したまま現在のモードを維持する。
     // ただし、ペーストハンドルは取り直す。
@@ -850,7 +969,7 @@ DrawOp_RectCapture.prototype.gotoNext = function()
     // 一応動くが超Ad-hocなコードなので注意。
     // 現状のconvPointsToPasteArea()とdrawPasteModeGuide()の内部の詳細に
     // 大きく依存している。
-    let points = [ jsRect(0, 0) ];
+    let points = [jsRect(0, 0)];
     this.convPointsToPasteArea(points);
     let dymmy_e = { m_sender: g_pictureCanvas };
     this.drawPasteModeGuide(dymmy_e, points, null);
@@ -865,27 +984,23 @@ DrawOp_RectCapture.prototype.gotoNext = function()
 //
 
 /// 新しいインスタンスを初期化する。
-function DrawOp_BoundingRect(setting)
-{
+export function DrawOp_BoundingRect(setting) {
   this.m_setting = setting;
   this.m_drawOpForGuide = new DrawOp_Rectangle(setting, false);
 }
 
 /// 描画ストローク開始時の画素固定判断を行う。
-DrawOp_BoundingRect.prototype.testOnDrawStart = function(e, points, context)
-{
+DrawOp_BoundingRect.prototype.testOnDrawStart = function (e, points, context) {
   return this.m_drawOpForGuide.testOnDrawStart(e, points, context);
 }
 
 /// 描画ストローク中の画素固定判断を行う。
-DrawOp_BoundingRect.prototype.testOnDrawing = function(e, points, context)
-{
+DrawOp_BoundingRect.prototype.testOnDrawing = function (e, points, context) {
   return this.m_drawOpForGuide.testOnDrawing(e, points, context);
 }
 
 /// 描画ストローク終了時の画素固定判断を行う。
-DrawOp_BoundingRect.prototype.testOnDrawEnd = function(e, points, context)
-{
+DrawOp_BoundingRect.prototype.testOnDrawEnd = function (e, points, context) {
   // 矩形ガイド表示委譲先に後始末の機会を与える。
   this.m_drawOpForGuide.testOnDrawEnd(e, points, context);
 
@@ -895,26 +1010,22 @@ DrawOp_BoundingRect.prototype.testOnDrawEnd = function(e, points, context)
 }
 
 /// 描画ストローク開始時ガイド表示処理。
-DrawOp_BoundingRect.prototype.guideOnDrawStart = function(e, points, context)
-{
+DrawOp_BoundingRect.prototype.guideOnDrawStart = function (e, points, context) {
   this.m_drawOpForGuide.guideOnDrawStart(e, points, context);
 }
 
 /// 描画ストローク中ガイド表示処理。
-DrawOp_BoundingRect.prototype.guideOnDrawing = function(e, points, context)
-{
+DrawOp_BoundingRect.prototype.guideOnDrawing = function (e, points, context) {
   this.m_drawOpForGuide.guideOnDrawing(e, points, context);
 }
 
 /// マージンを取得する。
-DrawOp_BoundingRect.prototype.getMargin = function()
-{
+DrawOp_BoundingRect.prototype.getMargin = function () {
   return 0;
 }
 
 /// 代替描画先レイヤーを指定する。(Optional)
-DrawOp_BoundingRect.prototype.getAltLayer = function(e)
-{
+DrawOp_BoundingRect.prototype.getAltLayer = function (e) {
   return e.m_sender.getOverlay();
 }
 
@@ -926,21 +1037,19 @@ DrawOp_BoundingRect.prototype.getAltLayer = function(e)
 // 将来水彩等にも使えるようにしている(つもり)。
 
 /// 新しいインスタンスを取得する。
-function EffectBase01()
-{
+export function EffectBase01() {
   this.setParamEx(null, null, null, null, null);
 }
 
 /// パラメータを設定する。(クラス固有)
-EffectBase01.prototype.setParamEx = function(
+EffectBase01.prototype.setParamEx = function (
   ha,                   // [in] Pre-rendering配置オフセット
   pre_rendered,         // [in] Pre-rendering結果
   runtime_renderer1,    // [in] 実行時render関数(1点用)
   runtime_renderer2,    // [in] 実行時render関数(2点用)
   fGlobalAlpha,         // [in] α値([0, 1]で与えるので注意!)
   bCompositeWithCopy    // [in] Pre-rendering結果をcopyする。(描画先との合成無し)
-)
-{
+) {
   this.m_ha = ha;
   this.m_pre_rendered = pre_rendered;
   this.m_runtime_renderer1 = runtime_renderer1;
@@ -951,7 +1060,7 @@ EffectBase01.prototype.setParamEx = function(
     let w = pre_rendered.width;
     let h = pre_rendered.height;
     let src_imgd = ctx.getImageData(0, 0, w, h);
-    this.m_plotFunc = function(x, y, context) {
+    this.m_plotFunc = function (x, y, context) {
       putImageDataEx(src_imgd, context, x - ha, y - ha);
     };
   } else {
@@ -960,8 +1069,7 @@ EffectBase01.prototype.setParamEx = function(
 }
 
 /// エフェクトを適用する。
-EffectBase01.prototype.apply = function(points, context)
-{
+EffectBase01.prototype.apply = function (points, context) {
   let reproClosure;
   if (points.length == 1) {
     let pt = points[0];
@@ -1012,15 +1120,13 @@ EffectBase01.prototype.apply = function(points, context)
 //
 
 /// 新しいインスタンスを取得する。
-function Effect_Pencil()
-{
+export function Effect_Pencil() {
   this.m_effectBase = new EffectBase01();
   this.m_margin = null;
 }
 
 /// Pre-render関数。
-Effect_Pencil.pre_renderer = function(ha, diameter, color, alpha)
-{
+Effect_Pencil.pre_renderer = function (ha, diameter, color, alpha) {
   console.log("color=" + color);
   if (diameter > 1) {
     let mini_canvas = pre_render_pixel(ha, diameter, color, true);
@@ -1034,8 +1140,7 @@ Effect_Pencil.pre_renderer = function(ha, diameter, color, alpha)
 }
 
 /// 実行時render関数(1点用)。
-Effect_Pencil.runtime_renderer1_ex = function(px, py, diameter, color, context)
-{
+Effect_Pencil.runtime_renderer1_ex = function (px, py, diameter, color, context) {
   // console.log("Effect_Pencil.runtime_renderer1() called.");
   assert(diameter == 1);    // 1 px描画時のみ呼ばれるはず。
   context.fillStyle = color;
@@ -1043,8 +1148,7 @@ Effect_Pencil.runtime_renderer1_ex = function(px, py, diameter, color, context)
 }
 
 /// 実行時render関数(2点用)。
-Effect_Pencil.runtime_renderer2_ex = function(px1, py1, px2, py2, diameter, color, context)
-{
+Effect_Pencil.runtime_renderer2_ex = function (px1, py1, px2, py2, diameter, color, context) {
   // console.log("Effect_Pencil.runtime_renderer2() called.");
   assert(diameter == 1);    // 1 px描画時のみ呼ばれるはず。
   context.fillStyle = color;
@@ -1052,16 +1156,15 @@ Effect_Pencil.runtime_renderer2_ex = function(px1, py1, px2, py2, diameter, colo
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_Pencil.prototype.setParamCustom = function(diameter, color, alpha)
-{
+Effect_Pencil.prototype.setParamCustom = function (diameter, color, alpha) {
   // マージン決定
   this.m_margin = (diameter > 1) ? Math.ceil(diameter / 2) + 10 : 0;
 
   // 引数仕様合わせのためのクロージャ生成
-  let runtime_renderer1 = function(px, py, context) {
+  let runtime_renderer1 = function (px, py, context) {
     Effect_Pencil.runtime_renderer1_ex(px, py, diameter, color, context);
   };
-  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+  let runtime_renderer2 = function (px1, py1, px2, py2, context) {
     draw_line_1px(px1, py1, px2, py2, context);
     Effect_Pencil.runtime_renderer2_ex(px1, py1, px2, py2, diameter, color, context);
   };
@@ -1072,7 +1175,7 @@ Effect_Pencil.prototype.setParamCustom = function(diameter, color, alpha)
   // Pre-rendering
   // 「やり直し」高速化のため、必要なとき以外前回のpre-rendering結果を使う。
   let ha = this.m_margin;
-  let PRParams = [ ha, diameter, color, alpha ];
+  let PRParams = [ha, diameter, color, alpha];
   let bPRChanged = false;
   if (this.m_prevPRParams == null) {
     this.m_prevPRParams = PRParams;
@@ -1102,28 +1205,26 @@ Effect_Pencil.prototype.setParamCustom = function(diameter, color, alpha)
 }
 
 /// パラメータを設定する。
-Effect_Pencil.prototype.setParam = function(setting)
-{
+Effect_Pencil.prototype.setParam = function (setting) {
   let diameter = setting.getThickness();
   let color = setting.getColor();
   let alpha = setting.getAlpha();
   this.setParamCustom(diameter, color, alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(diameter, color, alpha); };
+  return function (obj) { obj.setParamCustom(diameter, color, alpha); };
 }
 
 /// エフェクトを適用する。
-Effect_Pencil.prototype.apply = function(points, context)
-{
+Effect_Pencil.prototype.apply = function (points, context) {
   this.m_effectBase.apply(points, context);
 }
 
 /// マージンを取得する。
-Effect_Pencil.prototype.getMargin = function() { return this.m_margin; }
+Effect_Pencil.prototype.getMargin = function () { return this.m_margin; }
 
 /// 画素定着対象レイヤーを取得する。(Optional)
-Effect_Pencil.prototype.getMasterLayer = function(e) {
+Effect_Pencil.prototype.getMasterLayer = function (e) {
   if (this.m_bMakeFloatingLayer) {
     e.m_sender.makeFloatingLayer();
   }
@@ -1131,8 +1232,7 @@ Effect_Pencil.prototype.getMasterLayer = function(e) {
 }
 
 /// 描画ストロークを完結させる。(Optional)
-Effect_Pencil.prototype.closeStroke = function(e)
-{
+Effect_Pencil.prototype.closeStroke = function (e) {
   e.m_sender.releaseFloatingLayer();
 }
 
@@ -1141,8 +1241,7 @@ Effect_Pencil.prototype.closeStroke = function(e)
 //
 
 /// 新しいインスタンスを取得する。
-function Effect_Eraser(diameter, color)
-{
+export function Effect_Eraser(diameter, color) {
   this.m_effectBase = new EffectBase01();
   this.m_margin = null;
 }
@@ -1150,35 +1249,32 @@ function Effect_Eraser(diameter, color)
 // Pre-render関数は無し。
 
 /// 実行時render関数(1点用)。
-Effect_Eraser.runtime_renderer1_ex = function(px, py, diameter, context)
-{
+Effect_Eraser.runtime_renderer1_ex = function (px, py, diameter, context) {
   let radius = diameter / 2;
-	let sx = Math.ceil(px - radius);
+  let sx = Math.ceil(px - radius);
   let sy = Math.ceil(py - radius);
-	let lx = Math.floor(px + radius);
-	let d = lx - sx + 1;
-	context.clearRect(sx, sy, d, d);
+  let lx = Math.floor(px + radius);
+  let d = lx - sx + 1;
+  context.clearRect(sx, sy, d, d);
 }
 
 /// 実行時render関数(2点用)。
-Effect_Eraser.runtime_renderer2_ex = function(px1, py1, px2, py2, runtime_renderer1, context)
-{
+Effect_Eraser.runtime_renderer2_ex = function (px1, py1, px2, py2, runtime_renderer1, context) {
   // console.log("runtime_renderer2() called.");
   // console.dir(runtime_renderer1);
   draw_line_w_runtime_renderer(px1, py1, px2, py2, runtime_renderer1, context);
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_Eraser.prototype.setParamCustom = function(diameter, alpha)
-{
+Effect_Eraser.prototype.setParamCustom = function (diameter, alpha) {
   // マージン決定
   this.m_margin = (diameter > 1) ? Math.ceil((1.5 * diameter) / 2) : 0;
 
   // 引数仕様合わせのためのクロージャ生成
-  let runtime_renderer1 = function(px, py, context) {
+  let runtime_renderer1 = function (px, py, context) {
     Effect_Eraser.runtime_renderer1_ex(px, py, diameter, context);
   };
-  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+  let runtime_renderer2 = function (px1, py1, px2, py2, context) {
     Effect_Eraser.runtime_renderer2_ex(px1, py1, px2, py2, runtime_renderer1, context);
   };
   // console.dir(runtime_renderer1);
@@ -1197,32 +1293,29 @@ Effect_Eraser.prototype.setParamCustom = function(diameter, alpha)
 }
 
 /// パラメータを設定する。
-Effect_Eraser.prototype.setParam = function(setting)
-{
+Effect_Eraser.prototype.setParam = function (setting) {
   let diameter = setting.getThickness();
   let alpha = setting.getAlpha();
   this.setParamCustom(diameter, alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(diameter, alpha); };
+  return function (obj) { obj.setParamCustom(diameter, alpha); };
 }
 
 /// エフェクトを適用する。
-Effect_Eraser.prototype.apply = function(points, context)
-{
+Effect_Eraser.prototype.apply = function (points, context) {
   this.m_effectBase.apply(points, context);
 }
 
 /// マージンを取得する。
-Effect_Eraser.prototype.getMargin = function() { return this.m_margin; }
+Effect_Eraser.prototype.getMargin = function () { return this.m_margin; }
 
 //
 //  エフェクト3: 鉛筆による線四角 or 四角
 //
 
 /// 新しいインスタンスを取得する。
-function Effect_PencilRect(bFilled)
-{
+export function Effect_PencilRect(bFilled) {
   this.m_effectBase = new EffectBase01();
   this.m_bFilled = bFilled;
 }
@@ -1230,14 +1323,12 @@ function Effect_PencilRect(bFilled)
 // Pre-render関数は無し。
 
 /// 実行時render関数(1点用)。
-Effect_PencilRect.runtime_renderer1_ex = function(px, py, color, context)
-{
+Effect_PencilRect.runtime_renderer1_ex = function (px, py, color, context) {
   assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
 }
 
 /// 実行時render関数(2点用)。
-Effect_PencilRect.runtime_renderer2_ex = function(px1, py1, px2, py2, color, bFilled, context)
-{
+Effect_PencilRect.runtime_renderer2_ex = function (px1, py1, px2, py2, color, bFilled, context) {
   let r = encode_to_rect(px1, py1, px2, py2);
 
   context.fillStyle = color;
@@ -1249,14 +1340,13 @@ Effect_PencilRect.runtime_renderer2_ex = function(px1, py1, px2, py2, color, bFi
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_PencilRect.prototype.setParamCustom = function(color, alpha)
-{
+Effect_PencilRect.prototype.setParamCustom = function (color, alpha) {
   // 引数仕様合わせのためのクロージャ生成
-  let runtime_renderer1 = function(px, py, context) {
+  let runtime_renderer1 = function (px, py, context) {
     Effect_PencilRect.runtime_renderer1_ex(px, py, color, context);
   };
   let bFilled = this.m_bFilled;
-  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+  let runtime_renderer2 = function (px1, py1, px2, py2, context) {
     Effect_PencilRect.runtime_renderer2_ex(px1, py1, px2, py2, color, bFilled, context);
   };
 
@@ -1272,32 +1362,29 @@ Effect_PencilRect.prototype.setParamCustom = function(color, alpha)
 }
 
 /// パラメータを設定する。
-Effect_PencilRect.prototype.setParam = function(setting)
-{
+Effect_PencilRect.prototype.setParam = function (setting) {
   let color = setting.getColor();
   let alpha = setting.getAlpha();
   this.setParamCustom(color, alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(color, alpha); };
+  return function (obj) { obj.setParamCustom(color, alpha); };
 }
 
 /// エフェクトを適用する。
-Effect_PencilRect.prototype.apply = function(points, context)
-{
+Effect_PencilRect.prototype.apply = function (points, context) {
   this.m_effectBase.apply(points, context);
 }
 
 /// マージンを取得する。
-Effect_PencilRect.prototype.getMargin = function() { return 0; }
+Effect_PencilRect.prototype.getMargin = function () { return 0; }
 
 //
 //  エフェクト4: 矩形領域ペースト
 //
 
 /// 新しいインスタンスを取得する。
-function Effect_RectPaste(copyAndPasteOp)
-{
+export function Effect_RectPaste(copyAndPasteOp) {
   this.m_effectBase = new EffectBase01();
   this.m_copyAndPasteOp = copyAndPasteOp;   // 実行時rendering時に裏で手を握る相手
 }
@@ -1305,14 +1392,12 @@ function Effect_RectPaste(copyAndPasteOp)
 // Pre-render関数は無し。
 
 /// 実行時render関数(1点用)。
-Effect_RectPaste.runtime_renderer1_ex = function(px, py, color, context)
-{
+Effect_RectPaste.runtime_renderer1_ex = function (px, py, color, context) {
   assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
 }
 
 /// 実行時render関数(2点用)。
-Effect_RectPaste.runtime_renderer2_ex = function(px1, py1, px2, py2, obj, context)
-{
+Effect_RectPaste.runtime_renderer2_ex = function (px1, py1, px2, py2, obj, context) {
   let r = encode_to_rect(px1, py1, px2, py2);
 
   // コピーデータのpaste
@@ -1325,7 +1410,7 @@ Effect_RectPaste.runtime_renderer2_ex = function(px1, py1, px2, py2, obj, contex
     putImageDataEx(imgd, context, px1, py1);
 
     // 描画再現クロージャ生成
-    reproClosure = function(obj, points, layer) {
+    reproClosure = function (obj, points, layer) {
       let repro_ctx = layer.getContext('2d');
       putImageDataEx(imgd, repro_ctx, px1, py1);
     };
@@ -1340,14 +1425,13 @@ Effect_RectPaste.runtime_renderer2_ex = function(px1, py1, px2, py2, obj, contex
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_RectPaste.prototype.setParamCustom = function(color, alpha)
-{
+Effect_RectPaste.prototype.setParamCustom = function (color, alpha) {
   // 引数仕様合わせのためのクロージャ生成
-  let runtime_renderer1 = function(px, py, context) {
+  let runtime_renderer1 = function (px, py, context) {
     Effect_RectPaste.runtime_renderer1_ex(px, py, color, context);
   };
   let thisObj = this;     // 束縛変数
-  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+  let runtime_renderer2 = function (px1, py1, px2, py2, context) {
     return Effect_RectPaste.runtime_renderer2_ex(px1, py1, px2, py2, thisObj, context);
   };
 
@@ -1363,58 +1447,52 @@ Effect_RectPaste.prototype.setParamCustom = function(color, alpha)
 }
 
 /// パラメータを設定する。
-Effect_RectPaste.prototype.setParam = function(setting)
-{
+Effect_RectPaste.prototype.setParam = function (setting) {
   let color = setting.getColor();
   let alpha = setting.getAlpha();
   this.setParamCustom(color, alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(color, alpha); };
+  return function (obj) { obj.setParamCustom(color, alpha); };
 }
 
 /// エフェクトを適用する。
-Effect_RectPaste.prototype.apply = function(points, context)
-{
+Effect_RectPaste.prototype.apply = function (points, context) {
   return this.m_effectBase.apply(points, context);
 }
 
 /// マージンを取得する。
-Effect_RectPaste.prototype.getMargin = function() { return 0; }
+Effect_RectPaste.prototype.getMargin = function () { return 0; }
 
 //
 //  エフェクト5: 消し四角
 //
 
 /// 新しいインスタンスを取得する。
-function Effect_RectEraser()
-{
+export function Effect_RectEraser() {
   this.m_effectBase = new EffectBase01();
 }
 
 // Pre-render関数は無し。
 
 /// 実行時render関数(1点用)。
-Effect_RectEraser.runtime_renderer1_ex = function(px, py, context)
-{
+Effect_RectEraser.runtime_renderer1_ex = function (px, py, context) {
   assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
 }
 
 /// 実行時render関数(2点用)。
-Effect_RectEraser.runtime_renderer2_ex = function(px1, py1, px2, py2, context)
-{
+Effect_RectEraser.runtime_renderer2_ex = function (px1, py1, px2, py2, context) {
   let r = encode_to_rect(px1, py1, px2, py2);
   context.clearRect(r.x, r.y, r.width, r.height);
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_RectEraser.prototype.setParamCustom = function(alpha)
-{
+Effect_RectEraser.prototype.setParamCustom = function (alpha) {
   // 引数仕様合わせのためのクロージャ生成
-  let runtime_renderer1 = function(px, py, context) {
+  let runtime_renderer1 = function (px, py, context) {
     Effect_RectEraser.runtime_renderer1_ex(px, py, context);
   };
-  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+  let runtime_renderer2 = function (px1, py1, px2, py2, context) {
     Effect_RectEraser.runtime_renderer2_ex(px1, py1, px2, py2, context);
   };
 
@@ -1430,31 +1508,28 @@ Effect_RectEraser.prototype.setParamCustom = function(alpha)
 }
 
 /// パラメータを設定する。
-Effect_RectEraser.prototype.setParam = function(setting)
-{
+Effect_RectEraser.prototype.setParam = function (setting) {
   let alpha = setting.getAlpha();
   this.setParamCustom(alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(alpha); };
+  return function (obj) { obj.setParamCustom(alpha); };
 }
 
 /// エフェクトを適用する。
-Effect_RectEraser.prototype.apply = function(points, context)
-{
+Effect_RectEraser.prototype.apply = function (points, context) {
   this.m_effectBase.apply(points, context);
 }
 
 /// マージンを取得する。
-Effect_RectEraser.prototype.getMargin = function() { return 0; }
+Effect_RectEraser.prototype.getMargin = function () { return 0; }
 
 //
 //  エフェクト6: 上下 or 左右反転
 //
 
 /// 新しいインスタンスを取得する。
-function Effect_FlipRect(bVert)
-{
+export function Effect_FlipRect(bVert) {
   this.m_bVert = bVert;
   this.m_effectBase = new EffectBase01();
 }
@@ -1462,14 +1537,12 @@ function Effect_FlipRect(bVert)
 // Pre-render関数は無し。
 
 /// 実行時render関数(1点用)。
-Effect_FlipRect.runtime_renderer1_ex = function(px, py, context)
-{
+Effect_FlipRect.runtime_renderer1_ex = function (px, py, context) {
   assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
 }
 
 /// 実行時render関数(2点用)。
-Effect_FlipRect.runtime_renderer2_ex = function(px1, py1, px2, py2, bVert, context)
-{
+Effect_FlipRect.runtime_renderer2_ex = function (px1, py1, px2, py2, bVert, context) {
   let r = encode_to_rect(px1, py1, px2, py2);
   let imgd_src = context.getImageData(r.x, r.y, r.width, r.height);
   let imgd_dst = context.createImageData(r.width, r.height);
@@ -1482,14 +1555,13 @@ Effect_FlipRect.runtime_renderer2_ex = function(px1, py1, px2, py2, bVert, conte
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_FlipRect.prototype.setParamCustom = function(alpha)
-{
+Effect_FlipRect.prototype.setParamCustom = function (alpha) {
   // 引数仕様合わせのためのクロージャ生成
-  let runtime_renderer1 = function(px, py, context) {
+  let runtime_renderer1 = function (px, py, context) {
     Effect_FlipRect.runtime_renderer1_ex(px, py, context);
   };
   let bVert = this.m_bVert;   // 束縛変数
-  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+  let runtime_renderer2 = function (px1, py1, px2, py2, context) {
     Effect_FlipRect.runtime_renderer2_ex(px1, py1, px2, py2, bVert, context);
   };
 
@@ -1505,23 +1577,21 @@ Effect_FlipRect.prototype.setParamCustom = function(alpha)
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_FlipRect.prototype.setParam = function(setting)
-{
+Effect_FlipRect.prototype.setParam = function (setting) {
   let alpha = setting.getAlpha();
   this.setParamCustom(alpha);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(alpha); };
+  return function (obj) { obj.setParamCustom(alpha); };
 }
 
 /// エフェクトを適用する。
-Effect_FlipRect.prototype.apply = function(points, context)
-{
+Effect_FlipRect.prototype.apply = function (points, context) {
   this.m_effectBase.apply(points, context);
 }
 
 /// マージンを取得する。
-Effect_FlipRect.prototype.getMargin = function() { return 0; }
+Effect_FlipRect.prototype.getMargin = function () { return 0; }
 
 //
 //  エフェクト7: ハーフトーン
@@ -1532,8 +1602,7 @@ Effect_FlipRect.prototype.getMargin = function() { return 0; }
 const max_halftone_cyc = 256;
 
 /// 新しいインスタンスを取得する。
-function Effect_Halftone()
-{
+export function Effect_Halftone() {
   this.m_effectBase = new EffectBase01();
   this.m_pre_rendered = null;
   this.m_color = null;
@@ -1543,8 +1612,7 @@ function Effect_Halftone()
 }
 
 /// ハーフトーンパターンを更新する。
-Effect_Halftone.prototype.updateHalftone = function(alpha, context)
-{
+Effect_Halftone.prototype.updateHalftone = function (alpha, context) {
   if (!(context === this.m_lastContext)) {
     let RGB_cc = get_components_from_RGBx(this.m_color);
     let ptnGenerator = select_lattice_automatically(this.m_alpha, RGB_cc);
@@ -1554,8 +1622,7 @@ Effect_Halftone.prototype.updateHalftone = function(alpha, context)
 }
 
 /// ハーフトーンをplotする関数。
-Effect_Halftone.prototype.plotHalftone = function(px, py, context)
-{
+Effect_Halftone.prototype.plotHalftone = function (px, py, context) {
   assert(this.m_halftone_imgd != null);
   assert(this.m_lastContext == context);
   let cyc_h = this.m_halftone_imgd.width;
@@ -1565,15 +1632,13 @@ Effect_Halftone.prototype.plotHalftone = function(px, py, context)
 // Pre-render関数は無し。
 
 /// 実行時render関数(1点用)。
-Effect_Halftone.runtime_renderer1_ex = function(px, py, obj, context)
-{
+Effect_Halftone.runtime_renderer1_ex = function (px, py, obj, context) {
   obj.updateHalftone();
   assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
 }
 
 /// 実行時render関数(2点用)。
-Effect_Halftone.runtime_renderer2_ex = function(px1, py1, px2, py2, color, alpha, context)
-{
+Effect_Halftone.runtime_renderer2_ex = function (px1, py1, px2, py2, color, alpha, context) {
   obj.updateHalftone();
   let r = encode_to_rect(px1, py1, px2, py2);
   let imgd_src = context.getImageData(r.x, r.y, r.width, r.height);
@@ -1587,8 +1652,7 @@ Effect_Halftone.runtime_renderer2_ex = function(px1, py1, px2, py2, color, alpha
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_Halftone.prototype.setParamCustom = function(color, alpha, diameter)
-{
+Effect_Halftone.prototype.setParamCustom = function (color, alpha, diameter) {
   this.m_margin = (diameter > 1) ? Math.ceil(diameter / 2) + 10 : 0;
   this.m_pre_rendered = pre_render_pixel(this.m_margin, diameter, 'rgb(0,0,0)', true);
   this.m_color = color;
@@ -1596,10 +1660,10 @@ Effect_Halftone.prototype.setParamCustom = function(color, alpha, diameter)
 
   // 引数仕様合わせのためのクロージャ生成
   let obj = this;
-  let runtime_renderer1 = function(px, py, context) {
+  let runtime_renderer1 = function (px, py, context) {
     Effect_Halftone.runtime_renderer1_ex(px, py, obj, context);
   };
-  let runtime_renderer2 = function(px1, py1, px2, py2, context) {
+  let runtime_renderer2 = function (px1, py1, px2, py2, context) {
     Effect_Halftone.runtime_renderer2_ex(px1, py1, px2, py2, obj, context);
   };
 
@@ -1615,33 +1679,30 @@ Effect_Halftone.prototype.setParamCustom = function(color, alpha, diameter)
 }
 
 /// パラメータを設定する。(クラス固有)
-Effect_Halftone.prototype.setParam = function(setting)
-{
+Effect_Halftone.prototype.setParam = function (setting) {
   let color = setting.getColor();
   let alpha = setting.getAlpha();
   let diameter = setting.getThickness();
   this.setParamCustom(color, alpha, diameter);
 
   // 再設定のためのクロージャを返す(Undo/Redo)
-  return function(obj) { obj.setParamCustom(color, alpha, diameter); };
+  return function (obj) { obj.setParamCustom(color, alpha, diameter); };
 }
 
 /// エフェクトを適用する。
-Effect_Halftone.prototype.apply = function(points, context)
-{
+Effect_Halftone.prototype.apply = function (points, context) {
   this.m_effectBase.apply(points, context);
 }
 
 /// マージンを取得する。
-Effect_Halftone.prototype.getMargin = function() { return this.m_margin; }
+Effect_Halftone.prototype.getMargin = function () { return this.m_margin; }
 
 //
 //  CursorBase01: 円形や方形等のカーソルの基底クラス
 //
 
 /// 新しいインスタンスを取得する。
-function CursorBase01(diameter, pixel_pre_renderer)
-{
+export function CursorBase01(diameter, pixel_pre_renderer) {
   this.m_pre_renderer = pixel_pre_renderer;
 
   if (diameter == null) { diameter = 1; }
@@ -1649,8 +1710,7 @@ function CursorBase01(diameter, pixel_pre_renderer)
 }
 
 /// パラメータを設定する。(クラス固有)
-CursorBase01.prototype.setParamCustom = function(diameter, color, pixel_pre_renderer)
-{
+CursorBase01.prototype.setParamCustom = function (diameter, color, pixel_pre_renderer) {
   const margin = Math.ceil(diameter / 2);
   color = get_cursor_color(color);
 
@@ -1667,23 +1727,21 @@ CursorBase01.prototype.setParamCustom = function(diameter, color, pixel_pre_rend
 }
 
 /// パラメータを設定する。
-CursorBase01.prototype.setParam = function(setting)
-{
+CursorBase01.prototype.setParam = function (setting) {
   let diameter = setting.getThickness();
   let color = setting.getColor();
   this.setParamCustom(diameter, color, this.m_pre_renderer);
 }
 
 /// カーソルを描画する。
-CursorBase01.prototype.put = function(e, cur_pt, context)
-{
+CursorBase01.prototype.put = function (e, cur_pt, context) {
   let layer = e.m_sender.getOverlay();
   let w = layer.width;    // clientWidthやclientHeightは、非表示化時に0になる@FireFox
   let h = layer.height;   // (同上)
   // console.log("layer: w=" + layer.width + ", h=" + layer.height);
 
   context.globalCompositeOperation = 'xor';
-  this.m_imagePatch = new ImagePatch(context, w, h, [ cur_pt ], this.m_ha);
+  this.m_imagePatch = new ImagePatch(context, w, h, [cur_pt], this.m_ha);
   if (this.m_pre_rendered) {
     put_point(cur_pt.x, cur_pt.y, this.m_ha, this.m_pre_rendered, context);
   } else {
@@ -1694,8 +1752,7 @@ CursorBase01.prototype.put = function(e, cur_pt, context)
 }
 
 /// カーソルをクリアする。
-CursorBase01.prototype.clear = function(context)
-{
+CursorBase01.prototype.clear = function (context) {
   if (this.m_imagePatch) {
     this.m_imagePatch.restore(context);
   }
@@ -1707,26 +1764,22 @@ CursorBase01.prototype.clear = function(context)
 //
 
 /// 新しいインスタンスを取得する。
-function Cursor_Circle(diameter)
-{
+export function Cursor_Circle(diameter) {
   this.m_cursorBase = new CursorBase01(diameter, pre_render_pixel);
 }
 
 /// パラメータを設定する。
-Cursor_Circle.prototype.setParam = function(setting)
-{
+Cursor_Circle.prototype.setParam = function (setting) {
   this.m_cursorBase.setParam(setting);
 }
 
 /// カーソルを描画する。
-Cursor_Circle.prototype.put = function(e, cur_pt, context)
-{
+Cursor_Circle.prototype.put = function (e, cur_pt, context) {
   this.m_cursorBase.put(e, cur_pt, context);
 }
 
 /// カーソルをクリアする。
-Cursor_Circle.prototype.clear = function(context)
-{
+Cursor_Circle.prototype.clear = function (context) {
   this.m_cursorBase.clear(context);
 }
 
@@ -1735,26 +1788,22 @@ Cursor_Circle.prototype.clear = function(context)
 //
 
 /// 新しいインスタンスを取得する。
-function Cursor_Square(diameter)
-{
+export function Cursor_Square(diameter) {
   this.m_cursorBase = new CursorBase01(diameter, pre_render_square);
 }
 
 /// パラメータを設定する。(クラス固有)
-Cursor_Square.prototype.setParam = function(setting)
-{
+Cursor_Square.prototype.setParam = function (setting) {
   this.m_cursorBase.setParam(setting);
 }
 
 /// カーソルを描画する。
-Cursor_Square.prototype.put = function(e, cur_pt, context)
-{
+Cursor_Square.prototype.put = function (e, cur_pt, context) {
   this.m_cursorBase.put(e, cur_pt, context);
 }
 
 /// カーソルをクリアする。
-Cursor_Square.prototype.clear = function(context)
-{
+Cursor_Square.prototype.clear = function (context) {
   this.m_cursorBase.clear(context);
 }
 
@@ -1769,21 +1818,20 @@ const OebiEventType = {
 };
 
 /// 新しいインスタンスを初期化する。
-function History(toolPalette, pictCanvas)
-{
+export function History(toolPalette, pictCanvas) {
   // 関連オブジェクト
   this.m_toolPalette = toolPalette;
   this.m_pictCanvas = pictCanvas;
 
   // 履歴メモリ
-	this.m_eventHistory = [];
+  this.m_eventHistory = [];
 
   // 画像添付エントリの辞書
   this.m_imageLog = {};
 
   // 履歴カーソル
   // 次にイベントを追記すべき場所を示す。
-	this.m_historyCursor = 0;
+  this.m_historyCursor = 0;
 
   // イベント追記制御
   this.m_bDealing = false;
@@ -1793,20 +1841,17 @@ function History(toolPalette, pictCanvas)
 }
 
 /// 空か否かを返す。
-History.prototype.empty = function()
-{
+History.prototype.empty = function () {
   return !(this.m_eventHistory.length > 0);
 }
 
 /// 操作履歴の長さ(イベント数)を返す。
-History.prototype.getLength = function()
-{
-	return this.m_eventHistory.length;
+History.prototype.getLength = function () {
+  return this.m_eventHistory.length;
 }
 
 /// 操作履歴のカーソル位置を返す。
-History.prototype.getCursorIdx = function()
-{
+History.prototype.getCursorIdx = function () {
   // appendEffect()他、履歴カーソルを進めるメソッドを呼んだ直後は、
   // 当メソッドの戻り値と、getLength()メソッドの戻り値は一致する。
   // wayBackTo()メソッドを呼ぶと、引数に与えたidxに対し、
@@ -1816,8 +1861,7 @@ History.prototype.getCursorIdx = function()
 
 /// 履歴カーソル位置に対する直近過去の添付画像と
 /// 現キャンバスとの間に可視属性に違いがあるか否か判定する。
-History.prototype.isVisibilityChanged = function()
-{
+History.prototype.isVisibilityChanged = function () {
   // 履歴先頭は常に違い無しとみなす。
   if (this.m_historyCursor <= 0)
     return false;
@@ -1830,7 +1874,7 @@ History.prototype.isVisibilityChanged = function()
   // 可視属性を現キャンバスと比較
   let pictureInfo = this.m_imageLog[restorePointIdx];
   let nlayers = this.m_pictCanvas.getNumLayers();
-	for (let i = 0; i < nlayers; ++i) {
+  for (let i = 0; i < nlayers; ++i) {
     let v1 = pictureInfo.m_visibilityList[i];
     let v2 = this.m_pictCanvas.getLayerVisibility(i);
     if (v1 != v2)
@@ -1842,18 +1886,16 @@ History.prototype.isVisibilityChanged = function()
 
 /// エフェクト内容を追記する。
 /// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
-History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
-{
+History.prototype.appendEffect = function (effectObj, configClosure, layerNo) {
   if (this.m_bDealing)
     return;
 
   // 履歴カーソル以降を削除
   if (this.m_historyCursor > 0) {
     let prevHistEnt = this.m_eventHistory[this.m_historyCursor - 1];
-    if (   prevHistEnt[0] == OebiEventType.Normal
-        && prevHistEnt[4].length <= 0
-        && prevHistEnt[7] == null )
-    {
+    if (prevHistEnt[0] == OebiEventType.Normal
+      && prevHistEnt[4].length <= 0
+      && prevHistEnt[7] == null) {
       // 空のイベントなので削除
       --(this.m_historyCursor);
     }
@@ -1878,19 +1920,18 @@ History.prototype.appendEffect = function(effectObj, configClosure, layerNo)
   let maskColor = this.m_toolPalette.getCommonSetting().getMaskColor();
   histEnt.push(maskColor);              // マスク色
   histEnt.push(null);                   // 描画再現クロージャ
-	this.m_eventHistory.push(histEnt);
+  this.m_eventHistory.push(histEnt);
   console.log(this.m_imageLog);
 
   // 履歴カーソル修正
   // (インクリメントと同じ)
-	this.m_historyCursor = this.m_eventHistory.length;
+  this.m_historyCursor = this.m_eventHistory.length;
 }
 
 /// 履歴カーソルの一つ前のエントリに点列を追記する。
 /// reproClosure == nullなら、当メソッド呼び出しでは履歴カーソルは動かない。
 /// reproClosure != nullのとき、履歴カーソルが1エントリ進む。
-History.prototype.appendPoints = function(effectObj, points, reproClosure)
-{
+History.prototype.appendPoints = function (effectObj, points, reproClosure) {
   if (this.m_bDealing)
     return;
   console.log("History::appendPoints() called. Cursor=" + (this.m_historyCursor - 1));
@@ -1921,8 +1962,7 @@ History.prototype.appendPoints = function(effectObj, points, reproClosure)
 
 /// 塗り潰し操作を追記する。
 /// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
-History.prototype.appendPaintOperation = function(point, color, layerNo)
-{
+History.prototype.appendPaintOperation = function (point, color, layerNo) {
   if (this.m_bDealing)
     return;
 
@@ -1950,13 +1990,12 @@ History.prototype.appendPaintOperation = function(point, color, layerNo)
 
   // 履歴カーソル修正
   // (インクリメントと同じ)
-	this.m_historyCursor = this.m_eventHistory.length;
+  this.m_historyCursor = this.m_eventHistory.length;
 }
 
 /// 操作履歴の先端にレイヤー可視属性変更を追記する。
 /// 当メソッドの呼び出しで、履歴カーソルが1エントリ進む。
-History.prototype.appendVisibilityChange = function()
-{
+History.prototype.appendVisibilityChange = function () {
   // 操作履歴の先端のみで呼ばれるはず。
   // 仮に操作履歴の途中でレイヤー可視属性を追記すると、
   // 追記箇所にもともといた履歴エントリが上書きされ、redo不能になるのでNG。
@@ -1981,7 +2020,7 @@ History.prototype.appendVisibilityChange = function()
 
   // 履歴カーソル修正
   // (インクリメントと同じ)
-	this.m_historyCursor = this.m_eventHistory.length;
+  this.m_historyCursor = this.m_eventHistory.length;
 
   // 最新スナップショットを最新カーソル位置に添付
   this.m_imageLog[this.m_historyCursor] = lastSnapshot;
@@ -1997,8 +2036,7 @@ History.prototype.appendVisibilityChange = function()
 }
 
 /// 画像情報オブジェクトを生成する。
-History.genPictureInfo = function(imgdList, visibilityList)
-{
+History.genPictureInfo = function (imgdList, visibilityList) {
   return {
     m_imageDataList: imgdList,
     m_visibilityList: visibilityList
@@ -2007,54 +2045,52 @@ History.genPictureInfo = function(imgdList, visibilityList)
 
 /// 履歴カーソルが指すエントリに対し、画像添付を予約する。
 /// 当メソッド呼び出しでは履歴カーソルは変化しない。
-History.prototype.attatchImage = function()
-{
+History.prototype.attatchImage = function () {
   if (this.m_bDealing)
     return;
-	console.log("History::attatchImage() called. Cursor=" + this.m_historyCursor);
+  console.log("History::attatchImage() called. Cursor=" + this.m_historyCursor);
 
   // 作業中レイヤーを固定
   this.m_pictCanvas.raiseLayerFixRequest();
 
-	// レイヤーの画像データと可視属性取得
-	let imgdList = [];
-	let visibilityList = [];
+  // レイヤーの画像データと可視属性取得
+  let imgdList = [];
+  let visibilityList = [];
   let nlayers = this.m_pictCanvas.getNumLayers();
-	for (let i = 0; i < nlayers; ++i) {
+  for (let i = 0; i < nlayers; ++i) {
     let layer = this.m_pictCanvas.getLayer(i);
-		let w = layer.width;
-		let h = layer.height;
-		let ctx = layer.getContext('2d');
-		imgdList[i] = ctx.getImageData(0, 0, w, h);
-		visibilityList[i] = this.m_pictCanvas.getLayerVisibility(i);
-	}
+    let w = layer.width;
+    let h = layer.height;
+    let ctx = layer.getContext('2d');
+    imgdList[i] = ctx.getImageData(0, 0, w, h);
+    visibilityList[i] = this.m_pictCanvas.getLayerVisibility(i);
+  }
   let pictureInfo = History.genPictureInfo(imgdList, visibilityList);
 
-	// 画像添付予約
+  // 画像添付予約
   this.m_imageLog[this.m_historyCursor] = pictureInfo;
   console.log("History::attatchImage(): Reserved to cursor " + this.m_historyCursor + ".");
   console.log(visibilityList);
 }
 
 /// 指定エントリの画像を復元する。
-History.prototype.restoreImage = function(idx, pictureCanvas)
-{
+History.prototype.restoreImage = function (idx, pictureCanvas) {
   if (!(idx in this.m_imageLog))
     return false;     // 画像無しエントリならfalseを返す。
   console.log("History::restoreImage(): Restoreing cursor " + idx + "...");
 
-	// レイヤーの画像と可視属性を復元
+  // レイヤーの画像と可視属性を復元
   let pictureInfo = this.m_imageLog[idx];
   let nlayers = pictureCanvas.getNumLayers();
-	for (let i = 0; i < nlayers; ++i) {
-		let imgd = pictureInfo.m_imageDataList[i];
+  for (let i = 0; i < nlayers; ++i) {
+    let imgd = pictureInfo.m_imageDataList[i];
     let layer = pictureCanvas.getLayer(i);
     assert(imgd.width == layer.width && imgd.height == layer.height);
-		let ctx = layer.getContext('2d');
-		ctx.putImageData(imgd, 0, 0);
+    let ctx = layer.getContext('2d');
+    ctx.putImageData(imgd, 0, 0);
     let v = pictureInfo.m_visibilityList[i];
     pictureCanvas.setLayerVisibility(i, v);
-	}
+  }
 
   // レイヤー可視属性をレイヤーツールに反映
   this.m_toolPalette.setLayerVisibilityEx(pictureInfo.m_visibilityList);
@@ -2063,31 +2099,29 @@ History.prototype.restoreImage = function(idx, pictureCanvas)
   // サーフェス上の画像と内部状態を破棄し、復元画像で作り直す。
   this.m_toolPalette.invalidateMaskTools();
 
-	return true;
+  return true;
 }
 
 /// 添付画像付き(またや予約中)履歴エントリのindexを昇順で返す。
-History.prototype.getImageHavingIndices = function()
-{
+History.prototype.getImageHavingIndices = function () {
   let keys = Object.keys(this.m_imageLog);
   let indices = [];
   for (let i = 0; i < keys.length; ++i) {
     indices.push(parseInt(keys[i]));
   }
-  indices.sort(function(a, b) { return a - b; });
+  indices.sort(function (a, b) { return a - b; });
   return indices;
 }
 
 /// イベントをリセットする。
-History.prototype.resetEvent = function(resetPointIdx)
-{
-	if (resetPointIdx >= this.m_eventHistory.length)
-		return false;
+History.prototype.resetEvent = function (resetPointIdx) {
+  if (resetPointIdx >= this.m_eventHistory.length)
+    return false;
 
-	// [resetPointIdx]以降のイベントエントリを削除
-	let deleteCount = this.m_eventHistory.length - resetPointIdx;
-	this.m_eventHistory.splice(resetPointIdx, deleteCount);
-	this.m_historyCursor = resetPointIdx;
+  // [resetPointIdx]以降のイベントエントリを削除
+  let deleteCount = this.m_eventHistory.length - resetPointIdx;
+  this.m_eventHistory.splice(resetPointIdx, deleteCount);
+  this.m_historyCursor = resetPointIdx;
 
   // [resetPointIdx]より後の添付画像を削除
   // [resetPointIdx]への画像添付予約はそのままとする。
@@ -2098,12 +2132,11 @@ History.prototype.resetEvent = function(resetPointIdx)
     }
   }
 
-	return true;
+  return true;
 }
 
 /// 指定indexに対し、現在または直近過去の(未来ではない)画像付きエントリのindexを返す。
-History.prototype.getImageHavingIdxBefore = function(idx)
-{
+History.prototype.getImageHavingIdxBefore = function (idx) {
   // [0..idx]の範囲で逆順でループを回すのではなく
   // History::getImageHavingEventIndices()を呼ぶのは、
   // (idx == this.m_eventHistory.length)のときがあるため。
@@ -2122,8 +2155,7 @@ History.prototype.getImageHavingIdxBefore = function(idx)
 /// 履歴を指定位置に戻す。
 /// 履歴エントリの先頭から[idx-1]までの内容を復元する。
 /// ただし、[idx]が画像付きエントリの場合は当該画像を直接描画する。
-History.prototype.wayBackTo_Core = function(idx)
-{
+History.prototype.wayBackTo_Core = function (idx) {
   // 未来でない直近の画像付きエントリ取得
   let restorePointIdx = this.getImageHavingIdxBefore(idx);
   assert(restorePointIdx != null);    // [0]が必ず画像付きのため、nullにはならないはず。
@@ -2141,8 +2173,7 @@ History.prototype.wayBackTo_Core = function(idx)
 }
 
 /// 差分計算して画像を更新する。
-History.prototype.wayBackTo_Sub = function(idx)
-{
+History.prototype.wayBackTo_Sub = function (idx) {
   // 描画準備
   let histEnt = this.m_eventHistory[idx];
   let k = 0;
@@ -2202,12 +2233,10 @@ History.prototype.wayBackTo_Sub = function(idx)
 }
 
 /// 履歴を指定位置に戻す。
-History.prototype.wayBackTo = function(idx)
-{
+History.prototype.wayBackTo = function (idx) {
   // 履歴の先端からの巻き戻しの処理
-  if (  this.m_historyCursor == this.m_eventHistory.length
-     && idx < this.m_historyCursor  )
-  {
+  if (this.m_historyCursor == this.m_eventHistory.length
+    && idx < this.m_historyCursor) {
     // Redoで可視属性が復元されるように追記
     if (this.isVisibilityChanged()) {   // (可視属性変化有り)
       this.appendVisibilityChange();
@@ -2225,20 +2254,17 @@ History.prototype.wayBackTo = function(idx)
 }
 
 /// 操作履歴巻き戻しリスナを追加する。
-History.prototype.addHistoryRewindListener = function(listener)
-{
+History.prototype.addHistoryRewindListener = function (listener) {
   add_to_unique_list(this.m_historyRewindListeners, listener);
 }
 
 /// 操作履歴変更リスナを削除する。
-History.prototype.removeHistoryRewindListener = function(listener)
-{
+History.prototype.removeHistoryRewindListener = function (listener) {
   remove_from_unique_list(this.m_historyRewindListeners, listener);
 }
 
 /// 操作履歴変更をリスナに通知する。
-History.prototype.raiseHistoryRewindNotification = function()
-{
+History.prototype.raiseHistoryRewindNotification = function () {
   for (let i = 0; i < this.m_historyRewindListeners.length; ++i) {
     this.m_historyRewindListeners[i].OnHistoryRewind(this);
   }
@@ -2249,19 +2275,17 @@ History.prototype.raiseHistoryRewindNotification = function()
 //
 
 /// 新しいインスタンスを初期化する。
-function UndoButton(history)
-{
+export function UndoButton(history) {
   this.m_history = history;
   this.m_undoButton = document.getElementById('undo');
   let undoButton = this;    // 束縛変数
-  this.m_undoButton.onclick = function() {
+  this.m_undoButton.onclick = function () {
     undoButton.OnClicked();
   }
 }
 
 /// 「元に戻す」ボタンがクリックされたとき呼ばれる。
-UndoButton.prototype.OnClicked = function()
-{
+UndoButton.prototype.OnClicked = function () {
   let curIdx = this.m_history.getCursorIdx();
   if (curIdx > 0) {
     --curIdx;
@@ -2275,19 +2299,17 @@ UndoButton.prototype.OnClicked = function()
 //
 
 /// 新しいインスタンスを初期化する。
-function RedoButton(history)
-{
+export function RedoButton(history) {
   this.m_history = history;
   this.m_redoButton = document.getElementById('redo');
   let redoButton = this;    // 束縛変数
-  this.m_redoButton.onclick = function() {
+  this.m_redoButton.onclick = function () {
     redoButton.OnClicked();
   }
 }
 
 /// 「やり直し」ボタンがクリックされたとき呼ばれる。
-RedoButton.prototype.OnClicked = function()
-{
+RedoButton.prototype.OnClicked = function () {
   let curIdx = this.m_history.getCursorIdx();
   if (curIdx < this.m_history.getLength()) {
     ++curIdx;

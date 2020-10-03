@@ -1,6 +1,162 @@
 // Copyright (c) 2016, mirido
 // All rights reserved.
 
+import {
+	utest_pre_rendering,
+	utest_ImagePatch,
+	utesst_ColorConversion,
+	utest_canvas_2d_context,
+	utest_get_mask_image,
+	utest_half_tone
+} from './_doc/utest.js';
+import {
+	dump_event,
+	assert,
+	dbgv
+} from './dbg-util.js';
+import {
+	get_guide_image,
+	get_mirror_image,
+	get_vert_flip_image,
+	blend_image,
+	fill_image,
+	make_opaque,
+	erase_single_layer,
+	putImageDataEx,
+	erase_canvas,
+	copy_layer,
+	get_destinaton_out_image,
+	get_mask_image,
+	fix_image_w_mask,
+	get_joint_image
+} from './imaging.js';
+import {
+	jsPoint,
+	jsRect,
+	JsPoint,
+	JsRect,
+	decode_rect,
+	encode_to_rect,
+	encode_to_rect_in_place,
+	clip_coords,
+	clip_rect_in_place,
+	clip_rect,
+	get_outbounds,
+	get_common_rect,
+	get_chv_dist,
+	get_mht_dist,
+	rect_includes,
+	rects_have_common
+} from './geometry.js';
+// import {
+// 	pre_render_pixel,
+// 	pre_render_square,
+// 	put_point,
+// 	put_point_1px,
+// 	draw_line_w_plot_func,
+// 	draw_line,
+// 	draw_line_w_runtime_renderer,
+// 	draw_line_1px,
+// 	draw_rect,
+// 	draw_rect_R,
+// 	draw_circle,
+// 	FloodFillState,
+// 	get_max_run_len_histogram,
+// 	get_halftone_definition,
+// 	gen_halftones	
+// } from './graphics.js';
+import {
+	getBrowserType,
+	unify_rect,
+	get_getBoundingClientRectWrp,
+	conv_page_client_to_wnd_client,
+	get_color_as_RGB,
+	get_color_as_RGBA,
+	get_components_from_RGBx,
+	get_cursor_color,
+	add_to_unique_list,
+	remove_from_unique_list,
+	PointManager,
+	register_pointer_event_handler,
+	change_selection,
+	ThicknessSelector,
+	KeyStateManager,
+	draw_icon_face,
+	draw_icon_face_ex,
+	draw_icon_face_wrp,
+	draw_icon_ex,
+	draw_icon_wrp,
+	draw_color_palette,
+	MicroSlideBar,
+	ListBox
+} from './ui-util.js';
+import {
+	ImagePatch,
+	DrawerBase,
+	NullDrawOp,
+	NullEffect,
+	NullCursor,
+	DrawOp_FreeHand,
+	DrawOp_Rectangle,
+	DrawOp_RectCapture,
+	DrawOp_BoundingRect,
+	EffectBase01,
+	Effect_Pencil,
+	Effect_Eraser,
+	Effect_PencilRect,
+	Effect_RectPaste,
+	Effect_RectEraser,
+	Effect_FlipRect,
+	Effect_Halftone,
+	CursorBase01,
+	Cursor_Circle,
+	Cursor_Square,
+	History,
+	UndoButton,
+	RedoButton
+} from './ui-element.js';
+import {
+	PointingEvent,
+	PointingEventClone,
+	VirtualClickEvent,
+	modify_click_event_to_end_in_place,
+	PictureCanvas
+} from './picture-canvas.js';
+import {
+	DrawToolBase,
+	PencilTool,
+	FillRectTool,
+	LineRectTool,
+	CopyTool,
+	MirrorTool,
+	VertFlipTool,
+	EraseTool,
+	EraseRectTool,
+	ThicknessTool,
+	ColorPalette,
+	ColorCompoTool,
+	MaskTool,
+	get_layer_no,
+	PaintTool,
+	LayerTool
+} from './oebi-tool.js';
+import {
+	CommonSetting,
+	ToolChain,
+	addToolHelper,
+	ToolPalette
+} from './tool-palette.js';
+
+import {
+	g_pointManager,
+	g_keyStateManager,
+	g_pictureCanvas,
+	g_toolPalette,
+	g_paintTool,
+	g_history,
+	g_UndoButton
+} from './index.js';
+
 'use strict'
 
 //
@@ -10,8 +166,7 @@
 /// 大きさを持った画素をプリレンダリングする。
 /// diameterが画素の大きさにあたる。
 /// 通常はha = Math.ceil(diameter / 2 + マージン)とする。
-function pre_render_pixel(ha, diameter, color, bFilled)
-{
+export function pre_render_pixel(ha, diameter, color, bFilled) {
 	// pre-rendering用キャンバス生成
 	let mini_canvas = document.createElement('canvas');
 	mini_canvas.width = 2 * ha + 1;
@@ -33,8 +188,7 @@ function pre_render_pixel(ha, diameter, color, bFilled)
 /// 大きさを持った正方形をプリレンダリングする。
 /// diameterが画素の大きさ(矩形の幅)にあたる。
 /// 通常はha = Math.ceil(diameter / 2 + マージン)とする。
-function pre_render_square(ha, diameter, color, bFilled)
-{
+export function pre_render_square(ha, diameter, color, bFilled) {
 	// pre-rendering用キャンバス生成
 	let mini_canvas = document.createElement('canvas');
 	mini_canvas.width = 2 * ha + 1;
@@ -65,20 +219,17 @@ function pre_render_square(ha, diameter, color, bFilled)
 //
 
 /// 点を打つ。
-function put_point(px, py, ha, pre_rendered, context)
-{
+export function put_point(px, py, ha, pre_rendered, context) {
 	context.drawImage(pre_rendered, px - ha, py - ha);
 }
 
 /// 1 pxの点を打つ。
-function put_point_1px(px, py, context)
-{
+export function put_point_1px(px, py, context) {
 	context.fillRect(px, py, 1, 1);
 }
 
 /// プレゼンハムのアルゴリズムで直線を描画する。(Plot関数指定)
-function draw_line_w_plot_func(x0, y0, x1, y1, plotFunc, context)
-{
+export function draw_line_w_plot_func(x0, y0, x1, y1, plotFunc, context) {
 	var tmp;
 
 	var bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
@@ -123,23 +274,20 @@ function draw_line_w_plot_func(x0, y0, x1, y1, plotFunc, context)
 }
 
 /// 直線を描画する。(Pre-rendering前提)
-function draw_line(x0, y0, x1, y1, ha, pre_rendered, context)
-{
-	let plotFunc = function(x, y, context) {
+export function draw_line(x0, y0, x1, y1, ha, pre_rendered, context) {
+	let plotFunc = function (x, y, context) {
 		context.drawImage(pre_rendered, x - ha, y - ha);
 	};
 	draw_line_w_plot_func(x0, y0, x1, y1, plotFunc, context);
 }
 
 /// 直線を描画する。(実行時render指定)
-function draw_line_w_runtime_renderer(x0, y0, x1, y1, run_time_renderer, context)
-{
+export function draw_line_w_runtime_renderer(x0, y0, x1, y1, run_time_renderer, context) {
 	draw_line_w_plot_func(x0, y0, x1, y1, run_time_renderer, context);
 }
 
 /// プレゼンハムのアルゴリズムで1画素幅の直線を描画する。
-function draw_line_1px(x0, y0, x1, y1, context)
-{
+export function draw_line_1px(x0, y0, x1, y1, context) {
 	var tmp;
 
 	var bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
@@ -184,8 +332,7 @@ function draw_line_1px(x0, y0, x1, y1, context)
 }
 
 /// 塗り潰し無しの矩形を描画する。
-function draw_rect(x0, y0, x1, y1, context)
-{
+export function draw_rect(x0, y0, x1, y1, context) {
 	// console.log("draw_rect: (" + x0 + ", " + y0 + ")-(" + x1 + ", " + y1 + ")");
 	draw_line_1px(x0, y0, x1, y0, context);
 	if (y0 < y1) {
@@ -204,8 +351,7 @@ function draw_rect(x0, y0, x1, y1, context)
 }
 
 /// 塗り潰し無しの矩形を描画する。
-function draw_rect_R(rect, context)
-{
+export function draw_rect_R(rect, context) {
 	draw_rect(
 		rect.x, rect.y,
 		rect.x + rect.width - 1, rect.y + rect.height - 1,
@@ -215,8 +361,7 @@ function draw_rect_R(rect, context)
 
 /// 円を描画する。
 /// 低速なので呼び出し頻度を極力下げること。
-function draw_circle(cx, cy, radius, context, bFilled)
-{
+export function draw_circle(cx, cy, radius, context, bFilled) {
 	if (radius <= 0.5) {
 		context.fillRect(Math.floor(cx), Math.floor(cy), 1, 1);
 		return;
@@ -276,8 +421,7 @@ function draw_circle(cx, cy, radius, context, bFilled)
 //
 
 /// 新しいインスタンスを初期化する。
-function FloodFillState(canvas, px, py, color)
-{
+export function FloodFillState(canvas, px, py, color) {
 	this.m_canvas = canvas;
 	this.m_context = canvas.getContext('2d');
 	this.m_context.fillStyle = color;		// α=255と仮定
@@ -315,8 +459,7 @@ function FloodFillState(canvas, px, py, color)
 }
 
 /// 境界に達したか否か判定する。
-FloodFillState.prototype.isBorder = function(px, imgd)
-{
+FloodFillState.prototype.isBorder = function (px, imgd) {
 	if (imgd == null)
 		return true;
 	let base = 4 * px;
@@ -335,8 +478,7 @@ FloodFillState.prototype.isBorder = function(px, imgd)
 }
 
 /// 1ライン塗り潰す。
-FloodFillState.prototype.fillLine = function(px, py)
-{
+FloodFillState.prototype.fillLine = function (px, py) {
 	// 画像上端/下端に達していないか確認
 	if (py < 0 || py >= this.m_canvas.height)
 		return;
@@ -355,7 +497,7 @@ FloodFillState.prototype.fillLine = function(px, py)
 
 	// 直上の画素データ取得
 	let imgd_up = (py > 0)
-	 	? this.m_context.getImageData(0, py - 1, this.m_canvas.width, 1)
+		? this.m_context.getImageData(0, py - 1, this.m_canvas.width, 1)
 		: null;
 
 	// 直下の画素データ取得
@@ -401,8 +543,7 @@ FloodFillState.prototype.fillLine = function(px, py)
 }
 
 /// 1ライン塗り潰す。
-FloodFillState.prototype.fill = function()
-{
+FloodFillState.prototype.fill = function () {
 	console.log("stack_size=" + this.m_stack.length);
 	while (this.m_stack.length > 0) {
 		let point = this.m_stack.pop();
@@ -418,9 +559,8 @@ FloodFillState.prototype.fill = function()
 const half_tone_std_ha = 3;
 
 /// 水平または斜め1行毎のランレングスのヒストグラムを取得する。
-function get_max_run_len_histogram(ptn, cyc, vy, background)
-{
-	let pixelFunc = function(px, py) {
+export function get_max_run_len_histogram(ptn, cyc, vy, background) {
+	let pixelFunc = function (px, py) {
 		assert(px >= 0 && py >= 0);
 		px %= cyc;
 		py %= cyc;
@@ -490,8 +630,7 @@ function get_max_run_len_histogram(ptn, cyc, vy, background)
 }
 
 /// 網点の精細度を取得する。
-function get_halftone_definition(ptn, cyc, fAlpha)
-{
+export function get_halftone_definition(ptn, cyc, fAlpha) {
 	// ランレングスのヒストグラム取得
 	let background = (fAlpha > 0.5);
 	let run_len_histo_h0 = get_max_run_len_histogram(ptn, cyc, 0, background);
@@ -514,14 +653,13 @@ function get_halftone_definition(ptn, cyc, fAlpha)
 }
 
 /// 網点のリストを生成する。
-function gen_halftones(ha)
-{
+export function gen_halftones(ha) {
 	let nbits = ((ha + 1) * (ha + 2)) / 2;
 	let N = 1 << nbits;
 
 	let fa = 2 * ha + 1;
 	let cyc = fa - 1;
-	let plotFunc = function(px, py, value, buf) {
+	let plotFunc = function (px, py, value, buf) {
 		if (py < cyc && px < cyc) {
 			let idx = cyc * py + px;
 			buf[idx] = value;
@@ -548,13 +686,13 @@ function gen_halftones(ha)
 				// let i = 0x01b;		// Test.
 				// let i = 0x10;		// Test.
 				let bDot = ((i & m) != 0);
-				plotFunc(      px,       py, bDot, ptn);		// (1)
-				plotFunc(cyc - px,       py, bDot, ptn);		// (1)の左右反転
-				plotFunc(      px, cyc - py, bDot, ptn);		// (1)の上下反転
+				plotFunc(px, py, bDot, ptn);		// (1)
+				plotFunc(cyc - px, py, bDot, ptn);		// (1)の左右反転
+				plotFunc(px, cyc - py, bDot, ptn);		// (1)の上下反転
 				plotFunc(cyc - px, cyc - py, bDot, ptn);		// 上記のmix
-				plotFunc(      py,       px, bDot, ptn);		// (2)方向ベクトル(1, 1)に対して反転
-				plotFunc(cyc - py,       px, bDot, ptn);		// (2)の左右反転
-				plotFunc(      py, cyc - px, bDot, ptn);		// (2)の上下反転
+				plotFunc(py, px, bDot, ptn);		// (2)方向ベクトル(1, 1)に対して反転
+				plotFunc(cyc - py, px, bDot, ptn);		// (2)の左右反転
+				plotFunc(py, cyc - px, bDot, ptn);		// (2)の上下反転
 				plotFunc(cyc - py, cyc - px, bDot, ptn);		// 上記のmix
 				m <<= 1;
 			}
@@ -588,7 +726,7 @@ function gen_halftones(ha)
 	}
 
 	// 並べ替え
-	ptnList.sort(function(a, b) {
+	ptnList.sort(function (a, b) {
 		if (a.m_fAlpha != b.m_fAlpha) {
 			return (a.m_fAlpha < b.m_fAlpha) ? -1 : 1;
 		} else if (a.m_definition != b.m_definition) {

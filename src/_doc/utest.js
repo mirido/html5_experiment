@@ -1,7 +1,7 @@
 'use strict';
 
 /// UTEST: プリレンダリング実験。
-function utest_pre_rendering()
+export function utest_pre_rendering()
 {
   let diameter = 19;
   let ha = 32;
@@ -20,7 +20,7 @@ function utest_pre_rendering()
 }
 
 /// UTEST: ImagePatchのテスト。
-function utest_ImagePatch()
+export function utest_ImagePatch()
 {
   let layer1 = g_pictureCanvas.getLayer(0);
   let layer2 = g_pictureCanvas.getLayer(1);
@@ -68,7 +68,7 @@ function utest_ImagePatch()
 }
 
 /// UTEST: 色表現の変換
-function utesst_ColorConversion()
+export function utesst_ColorConversion()
 {
   let colors1 = get_components_from_RGBx("#123456");
 	console.dir(colors1);
@@ -83,7 +83,7 @@ function utesst_ColorConversion()
 }
 
 /// UTEST: Canvas 2D Contextの実験
-function utest_canvas_2d_context(canvas)
+export function utest_canvas_2d_context(canvas)
 {
   {
     let ctx1 = canvas.getContext('2d');
@@ -102,7 +102,7 @@ function utest_canvas_2d_context(canvas)
 }
 
 /// UTEST: マスク機能のための基礎関数のテスト。
-function utest_get_mask_image()
+export function utest_get_mask_image()
 {
   console.log("utestmask_image() called.");
   let view_port = document.getElementById("viewport");
@@ -157,7 +157,7 @@ function utest_get_mask_image()
 }
 
 /// UTEST: ハーフトーン描画のテスト。
-function utest_half_tone()
+export function utest_half_tone()
 {
   let canvas = document.getElementById("canvas_0");
   let width = canvas.width;

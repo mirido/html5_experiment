@@ -1,6 +1,162 @@
 // Copyright (c) 2016, mirido
 // All rights reserved.
 
+import {
+  utest_pre_rendering,
+  utest_ImagePatch,
+  utesst_ColorConversion,
+  utest_canvas_2d_context,
+  utest_get_mask_image,
+  utest_half_tone
+} from './_doc/utest.js';
+import {
+  dump_event,
+  assert,
+  dbgv
+} from './dbg-util.js';
+// import {
+// 	get_guide_image,
+// 	get_mirror_image,
+// 	get_vert_flip_image,
+// 	blend_image,
+// 	fill_image,
+// 	make_opaque,
+// 	erase_single_layer,
+// 	putImageDataEx,
+// 	erase_canvas,
+// 	copy_layer,
+// 	get_destinaton_out_image,
+// 	get_mask_image,
+// 	fix_image_w_mask,
+// 	get_joint_image
+// } from './imaging.js';
+import {
+  jsPoint,
+  jsRect,
+  JsPoint,
+  JsRect,
+  decode_rect,
+  encode_to_rect,
+  encode_to_rect_in_place,
+  clip_coords,
+  clip_rect_in_place,
+  clip_rect,
+  get_outbounds,
+  get_common_rect,
+  get_chv_dist,
+  get_mht_dist,
+  rect_includes,
+  rects_have_common
+} from './geometry.js';
+import {
+  pre_render_pixel,
+  pre_render_square,
+  put_point,
+  put_point_1px,
+  draw_line_w_plot_func,
+  draw_line,
+  draw_line_w_runtime_renderer,
+  draw_line_1px,
+  draw_rect,
+  draw_rect_R,
+  draw_circle,
+  FloodFillState,
+  get_max_run_len_histogram,
+  get_halftone_definition,
+  gen_halftones
+} from './graphics.js';
+import {
+  getBrowserType,
+  unify_rect,
+  get_getBoundingClientRectWrp,
+  conv_page_client_to_wnd_client,
+  get_color_as_RGB,
+  get_color_as_RGBA,
+  get_components_from_RGBx,
+  get_cursor_color,
+  add_to_unique_list,
+  remove_from_unique_list,
+  PointManager,
+  register_pointer_event_handler,
+  change_selection,
+  ThicknessSelector,
+  KeyStateManager,
+  draw_icon_face,
+  draw_icon_face_ex,
+  draw_icon_face_wrp,
+  draw_icon_ex,
+  draw_icon_wrp,
+  draw_color_palette,
+  MicroSlideBar,
+  ListBox
+} from './ui-util.js';
+import {
+  ImagePatch,
+  DrawerBase,
+  NullDrawOp,
+  NullEffect,
+  NullCursor,
+  DrawOp_FreeHand,
+  DrawOp_Rectangle,
+  DrawOp_RectCapture,
+  DrawOp_BoundingRect,
+  EffectBase01,
+  Effect_Pencil,
+  Effect_Eraser,
+  Effect_PencilRect,
+  Effect_RectPaste,
+  Effect_RectEraser,
+  Effect_FlipRect,
+  Effect_Halftone,
+  CursorBase01,
+  Cursor_Circle,
+  Cursor_Square,
+  History,
+  UndoButton,
+  RedoButton
+} from './ui-element.js';
+import {
+  PointingEvent,
+  PointingEventClone,
+  VirtualClickEvent,
+  modify_click_event_to_end_in_place,
+  PictureCanvas
+} from './picture-canvas.js';
+import {
+  DrawToolBase,
+  PencilTool,
+  FillRectTool,
+  LineRectTool,
+  CopyTool,
+  MirrorTool,
+  VertFlipTool,
+  EraseTool,
+  EraseRectTool,
+  ThicknessTool,
+  ColorPalette,
+  ColorCompoTool,
+  MaskTool,
+  get_layer_no,
+  PaintTool,
+  LayerTool
+} from './oebi-tool.js';
+import {
+  CommonSetting,
+  ToolChain,
+  addToolHelper,
+  ToolPalette
+} from './tool-palette.js';
+
+import {
+  g_pointManager,
+  g_keyStateManager,
+  g_pictureCanvas,
+  g_toolPalette,
+  g_paintTool,
+  g_history,
+  g_UndoButton
+} from './index.js';
+
 'use strict';
 
 //
@@ -8,8 +164,7 @@
 //
 
 /// ガイド表示用の半透明 & 色反転画像データを取得する。
-function get_guide_image(src_imgd, dst_imgd)
-{
+export function get_guide_image(src_imgd, dst_imgd) {
   const width = src_imgd.width;
   const height = src_imgd.height;
   assert(dst_imgd.width == width && dst_imgd.height == height);
@@ -25,9 +180,8 @@ function get_guide_image(src_imgd, dst_imgd)
         colors[0] = (0xff ^ src_imgd.data[base + 0]);
         colors[1] = (0xff ^ src_imgd.data[base + 1]);
         colors[2] = (0xff ^ src_imgd.data[base + 2]);
-        if ( (colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
-        	|| (colors[0] == 0 && colors[1] == 0 && colors[2] == 0) )
-        {
+        if ((colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
+          || (colors[0] == 0 && colors[1] == 0 && colors[2] == 0)) {
           // 白色(デフォルト背景色と同じ)や黒色は避ける。
           colors[0] = colors[1] = colors[2] = 128;
         }
@@ -41,8 +195,7 @@ function get_guide_image(src_imgd, dst_imgd)
 }
 
 /// 左右反転した画像データを取得する。
-function get_mirror_image(src_imgd, dst_imgd)
-{
+export function get_mirror_image(src_imgd, dst_imgd) {
   const width = src_imgd.width;
   const height = src_imgd.height;
   assert(dst_imgd.width == width && dst_imgd.height == height);
@@ -62,8 +215,7 @@ function get_mirror_image(src_imgd, dst_imgd)
 }
 
 /// 上下反転した画像データを取得する。
-function get_vert_flip_image(src_imgd, dst_imgd)
-{
+export function get_vert_flip_image(src_imgd, dst_imgd) {
   const width = src_imgd.width;
   const height = src_imgd.height;
   assert(dst_imgd.width == width && dst_imgd.height == height);
@@ -83,8 +235,7 @@ function get_vert_flip_image(src_imgd, dst_imgd)
 }
 
 /// α値に基づき合成する。(src_imgd × dst_imgd → dst_imgd)
-function blend_image(src_imgd, dst_imgd)
-{
+export function blend_image(src_imgd, dst_imgd) {
   const width = src_imgd.width;
   const height = src_imgd.height;
   assert(dst_imgd.width == width && dst_imgd.height == height);
@@ -137,8 +288,7 @@ function blend_image(src_imgd, dst_imgd)
 }
 
 /// 指定の画素値で埋める。
-function fill_image(R_cpnt, G_cpnt, B_cpnt, A_cpnt, dst_imgd)
-{
+export function fill_image(R_cpnt, G_cpnt, B_cpnt, A_cpnt, dst_imgd) {
   const width = dst_imgd.width;
   const height = dst_imgd.height;
   for (let py = 0; py < height; ++py) {
@@ -158,8 +308,7 @@ function fill_image(R_cpnt, G_cpnt, B_cpnt, A_cpnt, dst_imgd)
 //
 
 /// レイヤーをの非透明画素(α値>0)のα値を再設定する。
-function make_opaque(canvas, new_alpha)
-{
+export function make_opaque(canvas, new_alpha) {
   assert(new_alpha > 0);    // 0で実行すると非可逆になるので…
   const width = canvas.width;
   const height = canvas.height;
@@ -189,15 +338,13 @@ function make_opaque(canvas, new_alpha)
 }
 
 /// レイヤー1枚を透明にする。
-function erase_single_layer(canvas)
-{
+export function erase_single_layer(canvas) {
   let ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 /// レイヤーに、合成操作'source-over'で画像データをputする。
-function putImageDataEx(src_imgd, context, sx, sy)
-{
+export function putImageDataEx(src_imgd, context, sx, sy) {
   const w = src_imgd.width;
   const h = src_imgd.height;
 
@@ -232,10 +379,9 @@ function putImageDataEx(src_imgd, context, sx, sy)
 //
 
 /// キャンバスを全消去する。
-function erase_canvas(
+export function erase_canvas(
   layers      // : canvas[]; [ref] レイヤー ([0]が最も奥と想定)
-)
-{
+) {
   for (let i = 0; i < layers.length; ++i) {
     let ctx = layers[i].getContext('2d');
     ctx.clearRect(0, 0, layers[i].width, layers[i].height);
@@ -243,8 +389,7 @@ function erase_canvas(
 }
 
 /// レイヤーをコピーする。
-function copy_layer(src_canvas, dst_canvas)
-{
+export function copy_layer(src_canvas, dst_canvas) {
   const width = src_canvas.width;
   const height = src_canvas.height;
 
@@ -263,8 +408,7 @@ function copy_layer(src_canvas, dst_canvas)
 /// src_canvasの不透明画素に対応する
 /// dst_canvasの画素を透明化する。
 /// (context.globalCompositeOperation = 'destination_out'と同じ。)
-function get_destinaton_out_image(src_canvas, dst_canvas)
-{
+export function get_destinaton_out_image(src_canvas, dst_canvas) {
   const width = src_canvas.width;
   const height = src_canvas.height;
 
@@ -299,8 +443,7 @@ function get_destinaton_out_image(src_canvas, dst_canvas)
 
 /// 指定色のみの画像(または指定色以外の画像)を作る。
 /// src_canvasとdst_canvasは同一サイズが前提。
-function get_mask_image(src_canvas, color, dst_canvas)
-{
+export function get_mask_image(src_canvas, color, dst_canvas) {
   const width = src_canvas.width;
   const height = src_canvas.height;
   // 下記を行うとdst_canvasの画像が消えてしまう。
@@ -352,8 +495,7 @@ function get_mask_image(src_canvas, color, dst_canvas)
 /// マスク画像(または逆マスク画像)に従い
 /// dst_canvasに定着させる。
 /// src_canvas、マスク画像、dst_canvasは同一サイズが前提。
-function fix_image_w_mask(src_canvas, mask_canvas, bInv, dst_canvas)
-{
+export function fix_image_w_mask(src_canvas, mask_canvas, bInv, dst_canvas) {
   const width = src_canvas.width;
   const height = src_canvas.height;
 
@@ -399,11 +541,10 @@ function fix_image_w_mask(src_canvas, mask_canvas, bInv, dst_canvas)
 }
 
 /// レイヤーの合成画像を取得する。
-function get_joint_image(
+export function get_joint_image(
   layers,       // : canvas[];  [in]  レイヤー([0]が最も奥と想定)
   dst_canvas    // : canvas;    [out] canvas: 合成画像出力先キャンバス
-)
-{
+) {
   const n = layers.length;
 
   // 描画先準備

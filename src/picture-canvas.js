@@ -1,7 +1,163 @@
 // Copyright (c) 2016, mirido
 // All rights reserved.
 
-﻿'use strict';
+import {
+	utest_pre_rendering,
+	utest_ImagePatch,
+	utesst_ColorConversion,
+	utest_canvas_2d_context,
+	utest_get_mask_image,
+	utest_half_tone
+} from './_doc/utest.js';
+import {
+	dump_event,
+	assert,
+	dbgv
+} from './dbg-util.js';
+import {
+	get_guide_image,
+	get_mirror_image,
+	get_vert_flip_image,
+	blend_image,
+	fill_image,
+	make_opaque,
+	erase_single_layer,
+	putImageDataEx,
+	erase_canvas,
+	copy_layer,
+	get_destinaton_out_image,
+	get_mask_image,
+	fix_image_w_mask,
+	get_joint_image
+} from './imaging.js';
+import {
+	jsPoint,
+	jsRect,
+	JsPoint,
+	JsRect,
+	decode_rect,
+	encode_to_rect,
+	encode_to_rect_in_place,
+	clip_coords,
+	clip_rect_in_place,
+	clip_rect,
+	get_outbounds,
+	get_common_rect,
+	get_chv_dist,
+	get_mht_dist,
+	rect_includes,
+	rects_have_common
+} from './geometry.js';
+import {
+	pre_render_pixel,
+	pre_render_square,
+	put_point,
+	put_point_1px,
+	draw_line_w_plot_func,
+	draw_line,
+	draw_line_w_runtime_renderer,
+	draw_line_1px,
+	draw_rect,
+	draw_rect_R,
+	draw_circle,
+	FloodFillState,
+	get_max_run_len_histogram,
+	get_halftone_definition,
+	gen_halftones
+} from './graphics.js';
+import {
+	getBrowserType,
+	unify_rect,
+	get_getBoundingClientRectWrp,
+	conv_page_client_to_wnd_client,
+	get_color_as_RGB,
+	get_color_as_RGBA,
+	get_components_from_RGBx,
+	get_cursor_color,
+	add_to_unique_list,
+	remove_from_unique_list,
+	PointManager,
+	register_pointer_event_handler,
+	change_selection,
+	ThicknessSelector,
+	KeyStateManager,
+	draw_icon_face,
+	draw_icon_face_ex,
+	draw_icon_face_wrp,
+	draw_icon_ex,
+	draw_icon_wrp,
+	draw_color_palette,
+	MicroSlideBar,
+	ListBox
+} from './ui-util.js';
+import {
+	ImagePatch,
+	DrawerBase,
+	NullDrawOp,
+	NullEffect,
+	NullCursor,
+	DrawOp_FreeHand,
+	DrawOp_Rectangle,
+	DrawOp_RectCapture,
+	DrawOp_BoundingRect,
+	EffectBase01,
+	Effect_Pencil,
+	Effect_Eraser,
+	Effect_PencilRect,
+	Effect_RectPaste,
+	Effect_RectEraser,
+	Effect_FlipRect,
+	Effect_Halftone,
+	CursorBase01,
+	Cursor_Circle,
+	Cursor_Square,
+	History,
+	UndoButton,
+	RedoButton
+} from './ui-element.js';
+// import {
+// 	PointingEvent,
+// 	PointingEventClone,
+// 	VirtualClickEvent,
+// 	modify_click_event_to_end_in_place,
+// 	PictureCanvas
+// } from './picture-canvas.js';
+import {
+	DrawToolBase,
+	PencilTool,
+	FillRectTool,
+	LineRectTool,
+	CopyTool,
+	MirrorTool,
+	VertFlipTool,
+	EraseTool,
+	EraseRectTool,
+	ThicknessTool,
+	ColorPalette,
+	ColorCompoTool,
+	MaskTool,
+	get_layer_no,
+	PaintTool,
+	LayerTool
+} from './oebi-tool.js';
+import {
+	CommonSetting,
+	ToolChain,
+	addToolHelper,
+	ToolPalette
+} from './tool-palette.js';
+
+import {
+	g_pointManager,
+	g_keyStateManager,
+	g_pictureCanvas,
+	g_toolPalette,
+	g_paintTool,
+	g_history,
+	g_UndoButton
+} from './index.js';
+
+'use strict';
 
 //
 //	PointingEvent
@@ -11,8 +167,7 @@
 // ポインティングイベントを表す。
 
 /// 新しいインスタンスを初期化する。
-function PointingEvent(sender, e)
-{
+export function PointingEvent(sender, e) {
 	this.m_sender = sender;
 	let bounds = sender.getBoundingDrawAreaRect();
 	this.m_point = jsPoint(
@@ -25,8 +180,7 @@ function PointingEvent(sender, e)
 }
 
 /// クローンを返す。
-function PointingEventClone(e)
-{
+export function PointingEventClone(e) {
 	this.m_sender = e.m_sender;
 	this.m_point = jsPoint(e.m_point.x, e.m_point.y);
 	this.m_spKey = e.m_spKey;
@@ -35,8 +189,7 @@ function PointingEventClone(e)
 };
 
 /// クリックイベントを合成する。
-function VirtualClickEvent(sender, iconBounds)
-{
+export function VirtualClickEvent(sender, iconBounds) {
 	this.m_sender = sender;
 	let bounds = sender.getBoundingDrawAreaRect();
 	let cx, cy;
@@ -54,8 +207,7 @@ function VirtualClickEvent(sender, iconBounds)
 }
 
 /// クリックイベントをクリック完了イベントに変更する。(In-place)
-function modify_click_event_to_end_in_place(e)
-{
+export function modify_click_event_to_end_in_place(e) {
 	e.m_type = 'mouseup';
 }
 
@@ -64,8 +216,7 @@ function modify_click_event_to_end_in_place(e)
 //
 
 /// 新しいインスタンスを初期化する。
-function PictureCanvas()
-{
+export function PictureCanvas() {
 	// DOMオブジェクト取得
 	this.m_view_port = document.getElementById("viewport");
 	this.m_allLayers = [
@@ -104,9 +255,9 @@ function PictureCanvas()
 
 	// コンテキストメニュー無効化
 	// http://tmlife.net/programming/javascript/javascript-right-click.html
-	let avoid_context_menu = function(e) { e.preventDefault(); e.stopPropagation(); }
+	let avoid_context_menu = function (e) { e.preventDefault(); e.stopPropagation(); }
 	for (let i = 0; i < this.m_allLayers.length; ++i) {
-	  this.m_allLayers[i].addEventListener("contextmenu", avoid_context_menu, false);
+		this.m_allLayers[i].addEventListener("contextmenu", avoid_context_menu, false);
 	}
 	this.m_view_port.addEventListener("contextmenu", avoid_context_menu, false);
 
@@ -122,13 +273,12 @@ function PictureCanvas()
 	this.m_layerFixListeners = [];
 
 	// 操作履歴
-  // attatchHistory()メソッドで設定する。
-  this.m_history = null;    // (Undo/Redo)
+	// attatchHistory()メソッドで設定する。
+	this.m_history = null;    // (Undo/Redo)
 }
 
 /// イベントリスナ。
-PictureCanvas.prototype.handleEvent = function(e)
-{
+PictureCanvas.prototype.handleEvent = function (e) {
 	// console.log("Event: " + e.type);
 	// console.dir(e);
 	// console.log("event=" + e.type + ", button=" + e.button);
@@ -141,65 +291,63 @@ PictureCanvas.prototype.handleEvent = function(e)
 
 	// イベント別処理
 	switch (e.type) {
-	case 'mousedown':
-	case 'touchstart':
-		if (this.m_draggingButton == null) {		// (非ドラッグ状態)
-			// mouseupやtouchendを確実に捕捉するための登録
-			g_pointManager.notifyPointStart(this, e);
+		case 'mousedown':
+		case 'touchstart':
+			if (this.m_draggingButton == null) {		// (非ドラッグ状態)
+				// mouseupやtouchendを確実に捕捉するための登録
+				g_pointManager.notifyPointStart(this, e);
 
-			// ドラッグ状態に遷移
-			this.m_draggingButton = e.button;
+				// ドラッグ状態に遷移
+				this.m_draggingButton = e.button;
 
-			// 描画ストローク開始を通知
-			for (let i = 0; i < this.m_drawers.length; ++i) {
-				if (this.m_drawers[i].OnDrawStart) {
-					this.m_drawers[i].OnDrawStart(mod_e);
-				}
-			}
-		}
-		break;
-	case 'mouseup':
-	case 'touchend':
-		// 描画終了を通知
-		if (this.m_draggingButton != null) {				// (ドラッグ状態)
-			if (e.button == this.m_draggingButton) {	// (ドラッグ開始したボタンの押下解除イベント)
-				// 描画ストローク終了を通知
+				// 描画ストローク開始を通知
 				for (let i = 0; i < this.m_drawers.length; ++i) {
-					if (this.m_drawers[i].OnDrawEnd) {
-						this.m_drawers[i].OnDrawEnd(mod_e);
+					if (this.m_drawers[i].OnDrawStart) {
+						this.m_drawers[i].OnDrawStart(mod_e);
 					}
 				}
-
-				// ドラッグ状態解除
-				this.m_draggingButton = null;
 			}
-		}
-		break;
-	case 'mousemove':
-	case 'touchmove':
-		// ポインタの移動を通知
-		if (this.m_draggingButton != null) {		// (ドラッグ状態)
-			for (let i = 0; i < this.m_drawers.length; ++i) {
-				if (this.m_drawers[i].OnDrawing) {
-					this.m_drawers[i].OnDrawing(mod_e);
+			break;
+		case 'mouseup':
+		case 'touchend':
+			// 描画終了を通知
+			if (this.m_draggingButton != null) {				// (ドラッグ状態)
+				if (e.button == this.m_draggingButton) {	// (ドラッグ開始したボタンの押下解除イベント)
+					// 描画ストローク終了を通知
+					for (let i = 0; i < this.m_drawers.length; ++i) {
+						if (this.m_drawers[i].OnDrawEnd) {
+							this.m_drawers[i].OnDrawEnd(mod_e);
+						}
+					}
+
+					// ドラッグ状態解除
+					this.m_draggingButton = null;
 				}
 			}
-		}
-		break;
-	default:
-		break;
+			break;
+		case 'mousemove':
+		case 'touchmove':
+			// ポインタの移動を通知
+			if (this.m_draggingButton != null) {		// (ドラッグ状態)
+				for (let i = 0; i < this.m_drawers.length; ++i) {
+					if (this.m_drawers[i].OnDrawing) {
+						this.m_drawers[i].OnDrawing(mod_e);
+					}
+				}
+			}
+			break;
+		default:
+			break;
 	}
 }
 
 /// 描画ストローク中か否かを返す。
-PictureCanvas.prototype.isDrawing = function()
-{
+PictureCanvas.prototype.isDrawing = function () {
 	return (this.m_draggingButton != null);
 }
 
 /// 要素の絶対座標を返す。
-PictureCanvas.prototype.getBoundingDrawAreaRect = function()
-{
+PictureCanvas.prototype.getBoundingDrawAreaRect = function () {
 	let bounds = getBoundingClientRectWrp(this.m_surface);	// hiddenでは有り得ないレイヤーを指定する。
 	return bounds;
 }
@@ -209,8 +357,7 @@ PictureCanvas.prototype.getBoundingDrawAreaRect = function()
 /// その場合、描画イベント発生時に描画イベントハンドラが追加順で呼ばれる。
 /// 同一の描画ツールの複数追加はできない。(2回目以降の追加を無視する。)
 /// イベント通知先ツールから呼ばれる想定。
-PictureCanvas.prototype.addDrawer = function(drawer)
-{
+PictureCanvas.prototype.addDrawer = function (drawer) {
 	assert(drawer != null);
 	if (this.m_draggingButton != null) {		// (ドラッグ状態)
 		assert(false);
@@ -220,8 +367,7 @@ PictureCanvas.prototype.addDrawer = function(drawer)
 }
 
 /// 指定した描画ツールを削除する。
-PictureCanvas.prototype.removeDrawer = function(drawer)
-{
+PictureCanvas.prototype.removeDrawer = function (drawer) {
 	assert(drawer != null);
 	if (this.m_draggingButton != null) {		// (ドラッグ状態)
 		assert(false);
@@ -231,21 +377,18 @@ PictureCanvas.prototype.removeDrawer = function(drawer)
 }
 
 /// レイヤー数を取得する。
-PictureCanvas.prototype.getNumLayers = function()
-{
+PictureCanvas.prototype.getNumLayers = function () {
 	return this.m_workingLayers.length;
 }
 
 /// レイヤーを取得する。
-PictureCanvas.prototype.getLayer = function(layerNo)
-{
+PictureCanvas.prototype.getLayer = function (layerNo) {
 	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
 	return this.m_workingLayers[layerNo];
 }
 
 /// カレントレイヤーを変更する。
-PictureCanvas.prototype.changeLayer = function(layerNo)
-{
+PictureCanvas.prototype.changeLayer = function (layerNo) {
 	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
 	// this.raiseLayerFixRequest(this.m_workingLayers[layerNo]);	// イベント最適化
 	this.m_nTargetLayerNo = layerNo;
@@ -257,22 +400,19 @@ PictureCanvas.prototype.changeLayer = function(layerNo)
 }
 
 /// カレントレイヤーを取得する。
-PictureCanvas.prototype.getCurLayer = function()
-{
+PictureCanvas.prototype.getCurLayer = function () {
 	return this.m_workingLayers[this.m_nTargetLayerNo];
 }
 
 /// カレントレイヤー番号を返す。
-PictureCanvas.prototype.getCurLayerNo = function()
-{
+PictureCanvas.prototype.getCurLayerNo = function () {
 	return this.m_nTargetLayerNo;
 }
 
 /// カレント描画先レイヤーを取得する。
 /// フローティングレイヤーがあればそちらを返し、
 /// 無ければカレントレイヤーを返す。
-PictureCanvas.prototype.getCurDstLayer = function()
-{
+PictureCanvas.prototype.getCurDstLayer = function () {
 	if (this.m_floatingLayerUser != null) {
 		return this.m_floating;
 	} else {
@@ -281,49 +421,42 @@ PictureCanvas.prototype.getCurDstLayer = function()
 }
 
 /// サーフェスを取得する。
-PictureCanvas.prototype.getSurface = function()
-{
+PictureCanvas.prototype.getSurface = function () {
 	// console.log("this.m_surface: w=" + this.m_surface.width + ", h=" + this.m_surface.height);
 	return this.m_surface;
 }
 
 /// オーバレイを取得する。
-PictureCanvas.prototype.getOverlay = function()
-{
+PictureCanvas.prototype.getOverlay = function () {
 	return this.m_overlay;
 }
 
 /// レイヤーの可視属性を取得する。
-PictureCanvas.prototype.getLayerVisibility = function(layerNo)
-{
+PictureCanvas.prototype.getLayerVisibility = function (layerNo) {
 	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
 	return !this.m_workingLayers[layerNo].hidden;
 }
 
 /// レイヤーの可視属性を設定する。
-PictureCanvas.prototype.setLayerVisibility = function(layerNo, bVisible)
-{
+PictureCanvas.prototype.setLayerVisibility = function (layerNo, bVisible) {
 	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
 	this.m_workingLayers[layerNo].hidden = !bVisible;
 }
 
 /// キャンバスを全クリアする。
 /// サーフェス等も含め、全レイヤーをクリアする。
-PictureCanvas.prototype.eraseCanvas = function()
-{
+PictureCanvas.prototype.eraseCanvas = function () {
 	erase_canvas(this.m_allLayers);
 }
 
 /// 描画レイヤーおよび背景を合成する。
 /// サーフェス等、効果のためのレイヤーは含まない。
-PictureCanvas.prototype.getJointImage = function(dstCanvas)
-{
+PictureCanvas.prototype.getJointImage = function (dstCanvas) {
 	get_joint_image(this.m_workingLayers, dstCanvas);
 }
 
 /// View portをキャンバスにfitさせる。
-PictureCanvas.prototype.fitCanvas = function()
-{
+PictureCanvas.prototype.fitCanvas = function () {
 	const width_margin = 100;
 	const height_margin = 50;
 	const layer_margin_horz = 5;
@@ -398,24 +531,21 @@ PictureCanvas.prototype.fitCanvas = function()
 }
 
 /// レイヤー固定要求リスナを追加する。
-PictureCanvas.prototype.addLayerFixListener = function(listener)
-{
+PictureCanvas.prototype.addLayerFixListener = function (listener) {
 	// console.log("PictureCanvas::addLayerFixListener() called.")
 	assert(listener != null);
 	return add_to_unique_list(this.m_layerFixListeners, listener);
 }
 
 /// レイヤー固定要求リスナを削除する。
-PictureCanvas.prototype.removeLayerFixListener = function(listener)
-{
+PictureCanvas.prototype.removeLayerFixListener = function (listener) {
 	// console.log("PictureCanvas::removeLayerFixListener() called.")
 	assert(listener != null);
 	return remove_from_unique_list(this.m_layerFixListeners, listener);
 }
 
 /// レイヤー固定要求を発生させる。
-PictureCanvas.prototype.raiseLayerFixRequest = function(nextLayer)
-{
+PictureCanvas.prototype.raiseLayerFixRequest = function (nextLayer) {
 	// console.log("PictureCanvas::raiseLayerFixRequest() called. n=" + this.m_layerFixListeners.length);
 	if (nextLayer == null) {
 		nextLayer = this.m_workingLayers[this.m_nTargetLayerNo];
@@ -430,8 +560,7 @@ PictureCanvas.prototype.raiseLayerFixRequest = function(nextLayer)
 }
 
 /// カレントレイヤーにフローティングレイヤーを追加する。
-PictureCanvas.prototype.makeFloatingLayer = function()
-{
+PictureCanvas.prototype.makeFloatingLayer = function () {
 	// フローティングレイヤー作成済か判定
 	let curLayer = this.getCurLayer();
 	if (this.m_floatingLayerUser == null) {
@@ -456,14 +585,13 @@ PictureCanvas.prototype.makeFloatingLayer = function()
 }
 
 /// フローティングレイヤーを開放する。
-PictureCanvas.prototype.releaseFloatingLayer = function(/*[opt]*/ bCancel)
-{
+PictureCanvas.prototype.releaseFloatingLayer = function (/*[opt]*/ bCancel) {
 	this.m_floating.hidden = true;
 	if (!bCancel) {
 		// フローティングレイヤー内容をカレントレイヤーに合成する。
 		let curLayer = this.getCurLayer();
 		let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
-	  let h = curLayer.height;  // (同上)
+		let h = curLayer.height;  // (同上)
 		assert(w == this.m_floating.width && h == this.m_floating.height);
 		let ctx_floating = this.m_floating.getContext('2d');
 		let ctx_current = curLayer.getContext('2d');
@@ -479,38 +607,33 @@ PictureCanvas.prototype.releaseFloatingLayer = function(/*[opt]*/ bCancel)
 /// 操作履歴オブジェクトを登録する。(Undo/Redo)
 /// Undo/Redo機能を使用する場合は、ツールやキャンバスに対する最初の操作が行われる前に呼ぶ必要がある。
 /// Undo/Redo機能を使わない場合は一切呼んではならない。
-PictureCanvas.prototype.attatchHistory = function(history)
-{
-  this.m_history = history;
+PictureCanvas.prototype.attatchHistory = function (history) {
+	this.m_history = history;
 }
 
 /// 操作履歴にエフェクト内容を追記する。(Undo/Redo)
-PictureCanvas.prototype.appendEffect = function(effectObj, configClosure, layerNo)
-{
+PictureCanvas.prototype.appendEffect = function (effectObj, configClosure, layerNo) {
 	if (this.m_history == null)
 		return;
 	this.m_history.appendEffect(effectObj, configClosure, layerNo);
 }
 
 /// 操作履歴に点列を追記する。(Undo/Redo)
-PictureCanvas.prototype.appendPoints = function(effectObj, points, reproClosure)
-{
+PictureCanvas.prototype.appendPoints = function (effectObj, points, reproClosure) {
 	if (this.m_history == null)
 		return;
 	this.m_history.appendPoints(effectObj, points, reproClosure);
 }
 
 /// 塗り潰し操作を追記する。(Undo/Redo)
-PictureCanvas.prototype.appendPaintOperation = function(point, color, layerNo)
-{
-  if (this.m_history == null)
-    return;
-  this.m_history.appendPaintOperation(point, color, layerNo);
+PictureCanvas.prototype.appendPaintOperation = function (point, color, layerNo) {
+	if (this.m_history == null)
+		return;
+	this.m_history.appendPaintOperation(point, color, layerNo);
 }
 
 /// レイヤー可視属性を記憶する。(Undo/Redo)
-PictureCanvas.prototype.recordVisibility = function()
-{
+PictureCanvas.prototype.recordVisibility = function () {
 	if (this.m_history == null)
 		return;
 
