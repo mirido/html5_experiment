@@ -68,7 +68,7 @@ import {
 import {
   getBrowserType,
   unify_rect,
-  get_getBoundingClientRectWrp,
+  getBoundingClientRectWrp,
   conv_page_client_to_wnd_client,
   get_color_as_RGB,
   get_color_as_RGBA,
@@ -80,8 +80,14 @@ import {
   register_pointer_event_handler,
   change_selection,
   ThicknessSelector,
+  SpKey,
   KeyStateManager,
   draw_icon_face,
+  borderColor,
+  activeIconColors,
+  inactiveIconColors,
+  textColor,
+  textCharWidth,
   draw_icon_face_ex,
   draw_icon_face_wrp,
   draw_icon_ex,
@@ -138,9 +144,11 @@ import {
   MaskTool,
   get_layer_no,
   PaintTool,
-  LayerTool
+  LayerTool,
+  generateTool
 } from './oebi-tool.js';
 // import {
+//  ToolType,
 // 	CommonSetting,
 // 	ToolChain,
 // 	addToolHelper,
@@ -170,7 +178,7 @@ import {
 // 値の取得は、描画開始イベント受信(OnDrawStart()呼び出し)タイミングで、
 // ツール個別に最新値を取得する。
 
-const ToolType = {
+export const ToolType = {
   TL_Pencil: 0,
   TL_WaterColor: 1,
   TL_Eraser: 2,
@@ -659,16 +667,20 @@ const exclusiveToolChainGroupIndices = [
 export function addToolHelper(toolChain, toolName, toolId, toolDic) {
   let iconBounds = toolChain.getIconBounds();
   const uri = "./oebi-tool.js";
-  const cmd
-    // = "import(\"" + uri + "\").then((module) => {});";
-    = "async function call() {"
-    + "  await import(\"" + uri + "\").then((module) => {"
-    + "    const toolObj = new module." + toolName + "(iconBounds);"
-    + "    toolChain.addTool(toolObj);"
-    + "    toolDic[toolId] = toolObj;"
-    + "  });"
-    + "}; call();";
-  eval(cmd);
+  // Cross origin in JavaScript import moduleの禁止に伴い
+  // 以下のようなeval()で実行するcmd内でのimportは禁止になった模様。
+  // （file:ではnGで、https:が必要？)
+  // const cmd
+  //   = "async function call() {"
+  //   + "  await import(\"" + uri + "\").then((module) => {"
+  //   + "    const toolObj = new module." + toolName + "(iconBounds);"
+  //   + "    toolChain.addTool(toolObj);"
+  //   + "    toolDic[toolId] = toolObj;"
+  //   + "  });"
+  //   + "}; call();";
+  const toolObj = generateTool(toolName, iconBounds);
+  toolChain.addTool(toolObj);
+  toolDic[toolId] = toolObj;
 }
 
 /// 新しいインスタンスを初期化する。

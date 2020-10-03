@@ -80,7 +80,7 @@ import {
 import {
 	getBrowserType,
 	unify_rect,
-	get_getBoundingClientRectWrp,
+	getBoundingClientRectWrp,
 	conv_page_client_to_wnd_client,
 	get_color_as_RGB,
 	get_color_as_RGBA,
@@ -92,8 +92,14 @@ import {
 	register_pointer_event_handler,
 	change_selection,
 	ThicknessSelector,
+	SpKey,
 	KeyStateManager,
 	draw_icon_face,
+	borderColor,
+	activeIconColors,
+	inactiveIconColors,
+	textColor,
+	textCharWidth,
 	draw_icon_face_ex,
 	draw_icon_face_wrp,
 	draw_icon_ex,
@@ -150,9 +156,11 @@ import {
 	MaskTool,
 	get_layer_no,
 	PaintTool,
-	LayerTool
+	LayerTool,
+	generateTool
 } from './oebi-tool.js';
 import {
+	ToolType,
 	CommonSetting,
 	ToolChain,
 	addToolHelper,

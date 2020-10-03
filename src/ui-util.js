@@ -2,161 +2,169 @@
 // All rights reserved.
 
 import {
-	utest_pre_rendering,
-	utest_ImagePatch,
-	utesst_ColorConversion,
-	utest_canvas_2d_context,
-	utest_get_mask_image,
-	utest_half_tone
+  utest_pre_rendering,
+  utest_ImagePatch,
+  utesst_ColorConversion,
+  utest_canvas_2d_context,
+  utest_get_mask_image,
+  utest_half_tone
 } from './_doc/utest.js';
 import {
-	dump_event,
-	assert,
-	dbgv
+  dump_event,
+  assert,
+  dbgv
 } from './dbg-util.js';
 import {
-	get_guide_image,
-	get_mirror_image,
-	get_vert_flip_image,
-	blend_image,
-	fill_image,
-	make_opaque,
-	erase_single_layer,
-	putImageDataEx,
-	erase_canvas,
-	copy_layer,
-	get_destinaton_out_image,
-	get_mask_image,
-	fix_image_w_mask,
-	get_joint_image
+  get_guide_image,
+  get_mirror_image,
+  get_vert_flip_image,
+  blend_image,
+  fill_image,
+  make_opaque,
+  erase_single_layer,
+  putImageDataEx,
+  erase_canvas,
+  copy_layer,
+  get_destinaton_out_image,
+  get_mask_image,
+  fix_image_w_mask,
+  get_joint_image
 } from './imaging.js';
 import {
-	jsPoint,
-	jsRect,
-	JsPoint,
-	JsRect,
-	decode_rect,
-	encode_to_rect,
-	encode_to_rect_in_place,
-	clip_coords,
-	clip_rect_in_place,
-	clip_rect,
-	get_outbounds,
-	get_common_rect,
-	get_chv_dist,
-	get_mht_dist,
-	rect_includes,
-	rects_have_common
+  jsPoint,
+  jsRect,
+  JsPoint,
+  JsRect,
+  decode_rect,
+  encode_to_rect,
+  encode_to_rect_in_place,
+  clip_coords,
+  clip_rect_in_place,
+  clip_rect,
+  get_outbounds,
+  get_common_rect,
+  get_chv_dist,
+  get_mht_dist,
+  rect_includes,
+  rects_have_common
 } from './geometry.js';
 import {
-	pre_render_pixel,
-	pre_render_square,
-	put_point,
-	put_point_1px,
-	draw_line_w_plot_func,
-	draw_line,
-	draw_line_w_runtime_renderer,
-	draw_line_1px,
-	draw_rect,
-	draw_rect_R,
-	draw_circle,
-	FloodFillState,
-	get_max_run_len_histogram,
-	get_halftone_definition,
-	gen_halftones	
+  pre_render_pixel,
+  pre_render_square,
+  put_point,
+  put_point_1px,
+  draw_line_w_plot_func,
+  draw_line,
+  draw_line_w_runtime_renderer,
+  draw_line_1px,
+  draw_rect,
+  draw_rect_R,
+  draw_circle,
+  FloodFillState,
+  get_max_run_len_histogram,
+  get_halftone_definition,
+  gen_halftones
 } from './graphics.js';
 // import {
-// 	getBrowserType,
-// 	unify_rect,
-// 	get_getBoundingClientRectWrp,
-// 	conv_page_client_to_wnd_client,
-// 	get_color_as_RGB,
-// 	get_color_as_RGBA,
-// 	get_components_from_RGBx,
-// 	get_cursor_color,
-// 	add_to_unique_list,
-// 	remove_from_unique_list,
-// 	PointManager,
-// 	register_pointer_event_handler,
-// 	change_selection,
-// 	ThicknessSelector,
-// 	KeyStateManager,
-// 	draw_icon_face,
-// 	draw_icon_face_ex,
-// 	draw_icon_face_wrp,
-// 	draw_icon_ex,
-// 	draw_icon_wrp,
-// 	draw_color_palette,
-// 	MicroSlideBar,
-// 	ListBox
+//   getBrowserType,
+//   unify_rect,
+//   getBoundingClientRectWrp,
+//   conv_page_client_to_wnd_client,
+//   get_color_as_RGB,
+//   get_color_as_RGBA,
+//   get_components_from_RGBx,
+//   get_cursor_color,
+//   add_to_unique_list,
+//   remove_from_unique_list,
+//   PointManager,
+//   register_pointer_event_handler,
+//   change_selection,
+//   ThicknessSelector,
+//   SpKey,
+//   KeyStateManager,
+//   draw_icon_face,
+//   borderColor,
+//   activeIconColors,
+//   inactiveIconColors,
+//   textColor,
+//   textCharWidth,
+//   draw_icon_face_ex,
+//   draw_icon_face_wrp,
+//   draw_icon_ex,
+//   draw_icon_wrp,
+//   draw_color_palette,
+//   MicroSlideBar,
+//   ListBox
 // } from './ui-util.js';
 import {
-	ImagePatch,
-	DrawerBase,
-	NullDrawOp,
-	NullEffect,
-	NullCursor,
-	DrawOp_FreeHand,
-	DrawOp_Rectangle,
-	DrawOp_RectCapture,
-	DrawOp_BoundingRect,
-	EffectBase01,
-	Effect_Pencil,
-	Effect_Eraser,
-	Effect_PencilRect,
-	Effect_RectPaste,
-	Effect_RectEraser,
-	Effect_FlipRect,
-	Effect_Halftone,
-	CursorBase01,
-	Cursor_Circle,
-	Cursor_Square,
-	History,
-	UndoButton,
-	RedoButton
+  ImagePatch,
+  DrawerBase,
+  NullDrawOp,
+  NullEffect,
+  NullCursor,
+  DrawOp_FreeHand,
+  DrawOp_Rectangle,
+  DrawOp_RectCapture,
+  DrawOp_BoundingRect,
+  EffectBase01,
+  Effect_Pencil,
+  Effect_Eraser,
+  Effect_PencilRect,
+  Effect_RectPaste,
+  Effect_RectEraser,
+  Effect_FlipRect,
+  Effect_Halftone,
+  CursorBase01,
+  Cursor_Circle,
+  Cursor_Square,
+  History,
+  UndoButton,
+  RedoButton
 } from './ui-element.js';
 import {
-	PointingEvent,
-	PointingEventClone,
-	VirtualClickEvent,
-	modify_click_event_to_end_in_place,
-	PictureCanvas
+  PointingEvent,
+  PointingEventClone,
+  VirtualClickEvent,
+  modify_click_event_to_end_in_place,
+  PictureCanvas
 } from './picture-canvas.js';
 import {
-	DrawToolBase,
-	PencilTool,
-	FillRectTool,
-	LineRectTool,
-	CopyTool,
-	MirrorTool,
-	VertFlipTool,
-	EraseTool,
-	EraseRectTool,
-	ThicknessTool,
-	ColorPalette,
-	ColorCompoTool,
-	MaskTool,
-	get_layer_no,
-	PaintTool,
-	LayerTool
+  DrawToolBase,
+  PencilTool,
+  FillRectTool,
+  LineRectTool,
+  CopyTool,
+  MirrorTool,
+  VertFlipTool,
+  EraseTool,
+  EraseRectTool,
+  ThicknessTool,
+  ColorPalette,
+  ColorCompoTool,
+  MaskTool,
+  get_layer_no,
+  PaintTool,
+  LayerTool,
+  generateTool
 } from './oebi-tool.js';
 import {
-	CommonSetting,
-	ToolChain,
-	addToolHelper,
-	ToolPalette
+  ToolType,
+  CommonSetting,
+  ToolChain,
+  addToolHelper,
+  ToolPalette
 } from './tool-palette.js';
 
 import {
-	g_pointManager,
-	g_keyStateManager,
-	g_pictureCanvas,
-	g_toolPalette,
-	g_paintTool,
-	g_history,
-	g_UndoButton
-  } from './index.js';
-  
+  g_pointManager,
+  g_keyStateManager,
+  g_pictureCanvas,
+  g_toolPalette,
+  g_paintTool,
+  g_history,
+  g_UndoButton
+} from './index.js';
+
 'use strict';
 
 //
@@ -165,8 +173,7 @@ import {
 
 /// ブラウザを判定する。下記から借用。
 /// http://etc9.hatenablog.com/entry/20110927/1317140891
-export function getBrowserType()
-{
+export function getBrowserType() {
   let userAgent = window.navigator.userAgent.toLowerCase();
   if (userAgent.indexOf('opera') != -1) {
     return 'opera';
@@ -184,8 +191,7 @@ export function getBrowserType()
 }
 
 /// getBoundingClientRect()が返す矩形の環境依存の違いを吸収するwrapper。
-export function unify_rect(rect)
-{
+export function unify_rect(rect) {
   if (rect.x == null) {
     // Chromeのときここに来る。
     // 等倍以外の表示のとき、座標が小数点付きで返されるためMath.ceil()で処置する。
@@ -201,27 +207,26 @@ export function unify_rect(rect)
 }
 
 /// getBoundingClientRect()のブラウザ依存性を吸収するwrapper(関数)を返す関数。
-export function get_getBoundingClientRectWrp()
-{
+function get_getBoundingClientRectWrp() {
   let browserType = getBrowserType();
   console.log("browserType=" + browserType);
   if (browserType == 'ie') {
     // IEは2 pxずれた座標を返すので対策する。下記Webページを参照した。
     // http://terurou.hateblo.jp/entry/20080223/1203705170
     // 実はmiridoのIEは'gecko'だったのでテストできていない…
-    return function(target) {
+    return function (target) {
       // eval(dbgv([ 'document.body.scrollLeft', 'document.documentElement.scrollLeft' ]));
       // eval(dbgv([ 'document.body.scrollTop', 'document.documentElement.scrollTop' ]));
       let b = target.getBoundingClientRect();
       let bounds = new JsRect(b.left, b.top, b.width, b.height);
-      if (document.body.scrollLeft != void(0)) {
+      if (document.body.scrollLeft != void (0)) {
         bounds.x -= document.body.scrollLeft;
-      } else if (document.documentElement.scrollLeft != void(0)) {
+      } else if (document.documentElement.scrollLeft != void (0)) {
         bounds.x -= document.documentElement.scrollLeft;
       }
-      if (document.body.scrollTop != void(0)) {
+      if (document.body.scrollTop != void (0)) {
         bounds.y -= document.body.scrollTop;
-      } else if (document.documentElement.scrollTop != void(0)) {
+      } else if (document.documentElement.scrollTop != void (0)) {
         bounds.y -= document.documentElement.scrollTop;
       }
       return bounds;
@@ -230,7 +235,7 @@ export function get_getBoundingClientRectWrp()
     // Geckoは座標を実数(小数点以下有り)で返す。
     // これが原因で、ImagePatchの取得と復元を繰り返す度に画像がずれていく
     // 問題が発生したので、下記wrapperで整数にする。
-    return function(target) {
+    return function (target) {
       // eval(dbgv([ 'document.body.scrollLeft', 'document.documentElement.scrollLeft' ]));
       // eval(dbgv([ 'document.body.scrollTop', 'document.documentElement.scrollTop' ]));
       let b = target.getBoundingClientRect();
@@ -250,7 +255,7 @@ export function get_getBoundingClientRectWrp()
     // IE以外のgetBoundingClientRect()では座標は問題無いらしい。
     // ただしDOMRectのメンバx, yを持たない無いブラウザが存在する。(Chromeとか)
     // それはunify_rect()で処置しておく。
-    return function(target) {
+    return function (target) {
       // eval(dbgv([ 'document.body.scrollLeft', 'document.documentElement.scrollLeft' ]));
       // eval(dbgv([ 'document.body.scrollTop', 'document.documentElement.scrollTop' ]));
       let bounds = target.getBoundingClientRect();
@@ -260,11 +265,10 @@ export function get_getBoundingClientRectWrp()
 }
 
 /// getBoundingClientRect()のブラウザ依存性を吸収するwrapper。
-const getBoundingClientRectWrp = get_getBoundingClientRectWrp();
+export const getBoundingClientRectWrp = get_getBoundingClientRectWrp();
 
 /// HTMLページのクライアント座標系をウィンドウのクライアント座標系に変換する。
-export function conv_page_client_to_wnd_client(point)
-{
+export function conv_page_client_to_wnd_client(point) {
   return jsPoint(point.x - window.pageXOffset, point.y - window.pageYOffset);
 }
 
@@ -273,22 +277,19 @@ export function conv_page_client_to_wnd_client(point)
 //
 
 /// コンポーネント値からRGB色表現を取得する。
-export function get_color_as_RGB(colors)
-{
+export function get_color_as_RGB(colors) {
   let color = 'rgb(' + colors[0] + ',' + colors[1] + ',' + colors[2] + ')';
   return color;
 }
 
 /// コンポーネント値からRGBA色表現を取得する。
-export function get_color_as_RGBA(colors)
-{
+export function get_color_as_RGBA(colors) {
   let color = 'rgba(' + colors[0] + ',' + colors[1] + ',' + colors[2] + ',' + colors[3] + ')';
   return color;
 }
 
 /// RGBまたはRGBAをコンポーネントに分解する。
-export function get_components_from_RGBx(color)
-{
+export function get_components_from_RGBx(color) {
   let colors = [];
   if (color.match(/^#/)) {
     let hexColors = color.match(/[\da-f][\da-f]/gi);
@@ -305,15 +306,13 @@ export function get_components_from_RGBx(color)
 }
 
 /// カーソルの色を取得する。
-export function get_cursor_color(color)
-{
+export function get_cursor_color(color) {
   let colors = get_components_from_RGBx(color);
   colors[0] ^= 0xff;
   colors[1] ^= 0xff;
   colors[2] ^= 0xff;
-  if ( (colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
-  	|| (colors[0] == 0 && colors[1] == 0 && colors[2] == 0) )
-  {
+  if ((colors[0] == 255 && colors[1] == 255 && colors[2] == 255)
+    || (colors[0] == 0 && colors[1] == 0 && colors[2] == 0)) {
     // 白色(デフォルト背景色と同じ)や黒色は避ける。
     colors[0] = colors[1] = colors[2] = 128;
   }
@@ -323,32 +322,30 @@ export function get_cursor_color(color)
 
 /// 要素をリストに追加する。追加順は保たれる。
 /// ただし、既存項目と重複する要素の登録は失敗する。
-export function add_to_unique_list(list, elem)
-{
+export function add_to_unique_list(list, elem) {
   // 登録済みでないか確認
-	for (let i = 0; i < list.length; ++i) {
-		if (list[i] == elem)
-			return false;
-	}
+  for (let i = 0; i < list.length; ++i) {
+    if (list[i] == elem)
+      return false;
+  }
 
-	// 登録
-	list.push(elem);
+  // 登録
+  list.push(elem);
 
   return true;
 }
 
 /// 要素をリストから削除する。
-export function remove_from_unique_list(list, elem)
-{
+export function remove_from_unique_list(list, elem) {
   // 検索
-	for (let i = 0; i < list.length; ++i) {
-		if (list[i] == elem) {
-			list.splice(i, 1);
-			return true;
-		}
-	}
+  for (let i = 0; i < list.length; ++i) {
+    if (list[i] == elem) {
+      list.splice(i, 1);
+      return true;
+    }
+  }
 
-	return false;
+  return false;
 }
 
 //
@@ -361,8 +358,7 @@ export function remove_from_unique_list(list, elem)
 // http://www.dotapon.sakura.ne.jp/blog/?p=496
 
 /// 新しいインスタンスを初期化する。
-export function PointManager()
-{
+export function PointManager() {
   // 最後にmousedownまたはtouchstartが起きたオブジェクトのリスト(の辞書)
   // リストを、押下ボタン別に記憶する。
   this.m_objOnLastPointStart = {};
@@ -378,8 +374,7 @@ export function PointManager()
 }
 
 /// インスタンスが保持する資源を解放する。
-PointManager.prototype.dispose = function()
-{
+PointManager.prototype.dispose = function () {
   let bSupportTouch = ('ontouchend' in document);
   if (bSupportTouch) {
     document.removeEventListener('touchstart', this);
@@ -392,8 +387,7 @@ PointManager.prototype.dispose = function()
 
 /// mousedownまたはtouchstartが起きたオブジェクトを記憶する。
 /// objはhandleEvent()メソッドを有する前提。
-PointManager.prototype.notifyPointStart = function(obj, e)
-{
+PointManager.prototype.notifyPointStart = function (obj, e) {
   // console.log("******* " + e);
   assert(e && (e.type == 'mousedown' || e.type == 'touchstart'));
   if (!(e.button in this.m_objOnLastPointStart)) {
@@ -403,37 +397,36 @@ PointManager.prototype.notifyPointStart = function(obj, e)
 }
 
 /// イベントリスナ。
-PointManager.prototype.handleEvent = function(e)
-{
+PointManager.prototype.handleEvent = function (e) {
   // console.log("******* " + e);
   switch (e.type) {
-  case 'mousedown':
-  case 'touchstart':
-    /*NOP*/
-    break;
-  case 'mouseup':
-  case 'touchend':
-    if (e.button in this.m_objOnLastPointStart) {
-      let listeners = this.m_objOnLastPointStart[e.button];
-      for (let i = 0; i < listeners.length; ++i) {
-        listeners[i].handleEvent(e);
+    case 'mousedown':
+    case 'touchstart':
+      /*NOP*/
+      break;
+    case 'mouseup':
+    case 'touchend':
+      if (e.button in this.m_objOnLastPointStart) {
+        let listeners = this.m_objOnLastPointStart[e.button];
+        for (let i = 0; i < listeners.length; ++i) {
+          listeners[i].handleEvent(e);
+        }
+        this.m_objOnLastPointStart[e.button] = [];
+        // (e.clientX, e.clientY)は、HTMLページ左上点を原点とする座標。
+        // (e.screenX, e.screenY)は、モニタの左上点を原点とする座標。
+        // いずれもHTMLページのスクロール位置とは無関係。
+        // 原点とスケールが同一HTMLページ内のHTML要素共通であるため、少なくとも上記座標に関しては、
+        // documentのハンドラで受けたeを、異なるHTML要素のハンドラにそのまま渡しても問題無い。
+        // (備考)
+        // (e.clientX, e.clientY)とウィンドウのクライアント領域の左上点を原点とする座標は、
+        // HTMLページのスクロール量だけずれる。前者を後者に座標に変換するには、
+        // （e.clientX - window.pageXOffset, e.clientY - window.pageYOffset)
+        // とする。
       }
-      this.m_objOnLastPointStart[e.button] = [];
-      // (e.clientX, e.clientY)は、HTMLページ左上点を原点とする座標。
-      // (e.screenX, e.screenY)は、モニタの左上点を原点とする座標。
-      // いずれもHTMLページのスクロール位置とは無関係。
-      // 原点とスケールが同一HTMLページ内のHTML要素共通であるため、少なくとも上記座標に関しては、
-      // documentのハンドラで受けたeを、異なるHTML要素のハンドラにそのまま渡しても問題無い。
-      // (備考)
-      // (e.clientX, e.clientY)とウィンドウのクライアント領域の左上点を原点とする座標は、
-      // HTMLページのスクロール量だけずれる。前者を後者に座標に変換するには、
-      // （e.clientX - window.pageXOffset, e.clientY - window.pageYOffset)
-      // とする。
-    }
-    break;
-  default:
-    /*NOP*/
-    break;
+      break;
+    default:
+      /*NOP*/
+      break;
   }
 }
 
@@ -456,16 +449,15 @@ const g_mouse_pointer_events = [
 
 /// マウスやタッチスクリーン等のポインタ系イベントを一括登録する。
 /// codeObjはhandleEvent()メソッドを有する前提。
-export function register_pointer_event_handler(docObj, codeObj)
-{
+export function register_pointer_event_handler(docObj, codeObj) {
   let bSupportTouch = ('ontouchend' in document);
   let pointer_events
     = (bSupportTouch)
-    ? g_touchi_pointer_events
-    : g_mouse_pointer_events;
-	for (let i = 0; i < pointer_events.length; ++i) {
-		docObj.addEventListener(pointer_events[i], codeObj, false);
-	}
+      ? g_touchi_pointer_events
+      : g_mouse_pointer_events;
+  for (let i = 0; i < pointer_events.length; ++i) {
+    docObj.addEventListener(pointer_events[i], codeObj, false);
+  }
 }
 
 //
@@ -473,8 +465,7 @@ export function register_pointer_event_handler(docObj, codeObj)
 //
 
 /// Selection boxの選択項目をプログラムから変更する。
-export function change_selection(selector, exp_value)
-{
+export function change_selection(selector, exp_value) {
   let selection = selector.getElementsByTagName('option');
   for (let i = 0; i < selection.length; ++i) {
     if (selection[i].value == exp_value) {
@@ -490,8 +481,7 @@ export function change_selection(selector, exp_value)
 //
 
 /// 新しいインスタンスを初期化する。
-export function ThicknessSelector()
-{
+export function ThicknessSelector() {
   // DOMオブジェクト取得
   this.m_thick10Selector = document.getElementById("selThickness10");
   this.m_thick01Selector = document.getElementById("selThickness01");
@@ -502,8 +492,7 @@ export function ThicknessSelector()
 }
 
 /// 線の太さをセレクタから取得する。(暫定処置)
-ThicknessSelector.prototype.getThickness = function()
-{
+ThicknessSelector.prototype.getThickness = function () {
   let idx01 = this.m_thick01Selector.selectedIndex;
   let idx10 = this.m_thick10Selector.selectedIndex;
   let val01 = this.m_thick01List[idx01].value;
@@ -514,8 +503,7 @@ ThicknessSelector.prototype.getThickness = function()
 }
 
 /// 線の太さをセレクタに反映する．
-ThicknessSelector.prototype.setThickness = function(value)
-{
+ThicknessSelector.prototype.setThickness = function (value) {
   let bRet;
 
   let val01 = value % 10;
@@ -542,7 +530,7 @@ ThicknessSelector.prototype.setThickness = function(value)
 // Description:
 // キー状態を管理する。
 
-const SpKey = {
+export const SpKey = {
   KY_SHIFT: 0x1,
   KY_CTRL: 0x2,
   KY_ALT: 0x4,
@@ -550,8 +538,7 @@ const SpKey = {
 };
 
 /// 新しいインスタンスを初期化する。
-export function KeyStateManager()
-{
+export function KeyStateManager() {
   // 特殊キー押下状態
   this.m_bShiftDown = false;
   this.m_bCtrlDown = false;
@@ -571,8 +558,7 @@ export function KeyStateManager()
 }
 
 /// インスタンスが保持する資源を解放する。
-KeyStateManager.prototype.dispose = function()
-{
+KeyStateManager.prototype.dispose = function () {
   document.removeEventListener('keydown', this);
   document.removeEventListener('keyup', this);
   document.removeEventListener('mousedown', this);
@@ -582,15 +568,14 @@ KeyStateManager.prototype.dispose = function()
 }
 
 /// イベントリスナ。
-KeyStateManager.prototype.handleEvent = function(e)
-{
+KeyStateManager.prototype.handleEvent = function (e) {
   // 最新キー押下状態取得
   let key_event = (e || window.event);
   // console.log("key_event=(" + key_event.shiftKey + ", " + key_event.ctrlKey + ")");
   this.m_bShiftDown = (key_event.shiftKey);
-	this.m_bCtrlDown = (key_event.ctrlKey);
-	this.m_bAltDown = (key_event.altKey);
-	this.m_bMetaDown = (key_event.metaKey);
+  this.m_bCtrlDown = (key_event.ctrlKey);
+  this.m_bAltDown = (key_event.altKey);
+  this.m_bMetaDown = (key_event.metaKey);
   // console.log("m_bShiftDown=" + this.m_bShiftDown
   //   + ", this.m_bCtrlDown=" + this.m_bCtrlDown
   //   + ", this.m_bAltDown=" + this.m_bAltDown
@@ -623,8 +608,7 @@ KeyStateManager.prototype.handleEvent = function(e)
 }
 
 /// 特殊キーの押下状態を取得する。
-KeyStateManager.prototype.getSpKeyState = function()
-{
+KeyStateManager.prototype.getSpKeyState = function () {
   let state = 0x0;
   if (this.m_bShiftDown) {
     state |= SpKey.KY_SHIFT;
@@ -646,8 +630,7 @@ KeyStateManager.prototype.getSpKeyState = function()
 //
 
 /// アイコンを描画する。
-export function draw_icon_face(iconBounds, colors, context)
-{
+export function draw_icon_face(iconBounds, colors, context) {
   let sx = iconBounds.x;
   let sy = iconBounds.y;
   let w = iconBounds.width;
@@ -672,43 +655,40 @@ export function draw_icon_face(iconBounds, colors, context)
   context.fillRect(sx + w - 2, sy + 1, 1, h - 3);
 }
 
-const borderColor = 'rgb(116,116,171)';   // 枠線
+export const borderColor = 'rgb(116,116,171)';   // 枠線
 
-const activeIconColors = [
+export const activeIconColors = [
   borderColor,          // 枠線
   'rgb(147,151,178)',   // ボタン面
   'rgb(147,151,178)',   // 左上
   'rgb(255,255,255)'    // 右下
 ];
 
-const inactiveIconColors = [
+export const inactiveIconColors = [
   borderColor,          // 枠線
   'rgb(210,216,255)',   // ボタン面
   'rgb(255,255,255)',   // 左上
   'rgb(147,151,178)'    // 右下
 ];
 
-const textColor = 'rgb(90,87,129)';
-const textCharWidth = 12;
+export const textColor = 'rgb(90,87,129)';
+export const textCharWidth = 12;
 
 /// アイコンを描画する。
-export function draw_icon_face_ex(iconBounds, bActive, context)
-{
+export function draw_icon_face_ex(iconBounds, bActive, context) {
   let colors = (bActive) ? activeIconColors : inactiveIconColors;
   draw_icon_face(iconBounds, colors, context);
 }
 
 /// アイコンを描画する。
-export function draw_icon_face_wrp(iconBounds, bActive, e)
-{
+export function draw_icon_face_wrp(iconBounds, bActive, e) {
   let tool_canvas = e.m_sender.getToolPaletteCanvas();
   let context = tool_canvas.getContext('2d');
   draw_icon_face_ex(iconBounds, bActive, context);
 }
 
 /// アイコンを描画する。
-export function draw_icon_ex(iconBounds, text, iconGraphicFunc, bActive, context)
-{
+export function draw_icon_ex(iconBounds, text, iconGraphicFunc, bActive, context) {
   // ボタン面描画
   draw_icon_face_ex(iconBounds, bActive, context);
 
@@ -728,8 +708,7 @@ export function draw_icon_ex(iconBounds, text, iconGraphicFunc, bActive, context
 }
 
 /// アイコンを描画する。
-export function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e)
-{
+export function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e) {
   let tool_canvas = e.m_sender.getToolPaletteCanvas();
   let context = tool_canvas.getContext('2d');
   draw_icon_ex(iconBounds, text, iconGraphicFunc, bActive, context);
@@ -740,8 +719,7 @@ export function draw_icon_wrp(iconBounds, text, iconGraphicFunc, bActive, e)
 //
 
 /// カラーパレットを描画する。
-export function draw_color_palette(iconBounds, color, bActive, context)
-{
+export function draw_color_palette(iconBounds, color, bActive, context) {
   let color_src = (bActive) ? activeIconColors : inactiveIconColors;
   // let mod_colors = Object.assign([], color_src); -- NG. IEは非サポート。
   let mod_colors = [];
@@ -766,8 +744,7 @@ export function MicroSlideBar(
   valIni,             // [in]  初期値
   pfx, sfx,           // [in]  テキストのprefixとpostfix
   exValMin, exValMax  // [in]  表示上の値域(バー先頭位置を決める内分にはこちらを使う)
-)
-{
+) {
   this.m_iconBounds = iconBounds;
   this.m_bVert = bVert;
   this.m_valMin = (valMin != null) ? valMin : 0;
@@ -786,8 +763,7 @@ export function MicroSlideBar(
 }
 
 /// 座標をスライドバー数値に換算する。
-MicroSlideBar.prototype.decodePoint = function(point)
-{
+MicroSlideBar.prototype.decodePoint = function (point) {
   let bIncluds = rect_includes(this.m_iconBounds, point);
   if (!bIncluds)
     return null;
@@ -827,8 +803,7 @@ MicroSlideBar.prototype.decodePoint = function(point)
 }
 
 /// 数値を座標に変換する。
-MicroSlideBar.prototype.encodeToPoint = function(val)
-{
+MicroSlideBar.prototype.encodeToPoint = function (val) {
   let sx = this.m_iconBounds.x;
   let sy = this.m_iconBounds.y;
   let w = this.m_iconBounds.width;
@@ -873,8 +848,7 @@ MicroSlideBar.prototype.encodeToPoint = function(val)
 }
 
 /// 境界と内側を描画する。
-MicroSlideBar.prototype.drawBase = function(context)
-{
+MicroSlideBar.prototype.drawBase = function (context) {
   let sx = this.m_iconBounds.x;
   let sy = this.m_iconBounds.y;
   let w = this.m_iconBounds.width;
@@ -890,8 +864,7 @@ MicroSlideBar.prototype.drawBase = function(context)
 }
 
 /// 数値を表示に反映する。
-MicroSlideBar.prototype.drawValue = function(val, context)
-{
+MicroSlideBar.prototype.drawValue = function (val, context) {
   let sx = this.m_iconBounds.x;
   let sy = this.m_iconBounds.y;
   // let w = this.m_iconBounds.width;
@@ -916,14 +889,12 @@ MicroSlideBar.prototype.drawValue = function(val, context)
 }
 
 /// 最初の表示を行う。
-MicroSlideBar.prototype.show = function(val, context)
-{
+MicroSlideBar.prototype.show = function (val, context) {
   this.drawValue(val, context);
 }
 
 /// 選択直後の初期表示を行う。
-MicroSlideBar.prototype.OnSelected = function(e, val)
-{
+MicroSlideBar.prototype.OnSelected = function (e, val) {
   let tool_canvas = e.m_sender.getToolPaletteCanvas();
   let context = tool_canvas.getContext('2d');
 
@@ -931,8 +902,7 @@ MicroSlideBar.prototype.OnSelected = function(e, val)
 }
 
 /// 数値を表示に反映する。
-MicroSlideBar.prototype.OnPicked = function(e)
-{
+MicroSlideBar.prototype.OnPicked = function (e) {
   let tool_canvas = e.m_sender.getToolPaletteCanvas();
   let context = tool_canvas.getContext('2d');
 
@@ -954,8 +924,7 @@ MicroSlideBar.prototype.OnPicked = function(e)
 // 描画内容(テキストとか、斜線とか)は利用元が描く。
 
 /// 新しいインスタンスを初期化する。
-export function ListBox(iconBounds, depth)
-{
+export function ListBox(iconBounds, depth) {
   this.m_iconBounds = iconBounds;
 
   // ListBoxは内部に1個以上のローカルな区画を持つアイコンである。
@@ -981,8 +950,7 @@ export function ListBox(iconBounds, depth)
 }
 
 /// 最初の表示を行う。
-ListBox.prototype.show = function(selIdx, toolCanvas)
-{
+ListBox.prototype.show = function (selIdx, toolCanvas) {
   this.m_toolCanvas = toolCanvas;
   let context = toolCanvas.getContext('2d');
 
@@ -1006,8 +974,7 @@ ListBox.prototype.show = function(selIdx, toolCanvas)
 }
 
 /// 座標から区画番号を取得する。
-ListBox.prototype.getLocalBoundsIdx = function(point)
-{
+ListBox.prototype.getLocalBoundsIdx = function (point) {
   for (let i = 0; i < this.m_localBounds.length; ++i) {
     if (rect_includes(this.m_localBounds[i], point)) {
       return i;
@@ -1017,22 +984,19 @@ ListBox.prototype.getLocalBoundsIdx = function(point)
 }
 
 /// 選択時呼ばれる。
-ListBox.prototype.OnSelected = function(e)
-{
+ListBox.prototype.OnSelected = function (e) {
   // console.log("ListBox::OnSelected() called.");
   return this.OnPicked(e);
 }
 
 /// 選択解除時呼ばれる。
-ListBox.prototype.OnDiselected = function(e)
-{
+ListBox.prototype.OnDiselected = function (e) {
   // console.log("ListBox::OnDiselected() called.");
   /*NOP*/
 }
 
 /// 再ポイントされたとき呼ばれる。
-ListBox.prototype.OnPicked = function(e)
-{
+ListBox.prototype.OnPicked = function (e) {
   // console.log("ListBox::OnPicked() called.");
   let idx = this.getLocalBoundsIdx(e.m_point);
   if (idx != null) {
@@ -1041,33 +1005,28 @@ ListBox.prototype.OnPicked = function(e)
 }
 
 /// Itemの数を取得する。
-ListBox.prototype.getNumItems = function()
-{
+ListBox.prototype.getNumItems = function () {
   return this.m_localBounds.length;
 }
 
 /// itemを選択する。
-ListBox.prototype.setSelectionIndex = function(index)
-{
+ListBox.prototype.setSelectionIndex = function (index) {
   assert(0 <= index && index < this.m_localBounds.length);
   this.m_selectionIndex = index;
 }
 
 /// 選択中itemのindexを取得する。
-ListBox.prototype.getSelectionIndex = function()
-{
+ListBox.prototype.getSelectionIndex = function () {
   return this.m_selectionIndex;
 }
 
 /// 指定itemの描画領域を取得する。
-ListBox.prototype.getBounds = function(index)
-{
+ListBox.prototype.getBounds = function (index) {
   assert(0 <= index && index < this.m_localBounds.length);
   return this.m_localBounds[index];
 }
 
 /// 描画用コンテキストを取得する。
-ListBox.prototype.getContext2d = function()
-{
+ListBox.prototype.getContext2d = function () {
   return this.m_toolCanvas.getContext('2d');
 }

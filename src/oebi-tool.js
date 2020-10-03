@@ -68,7 +68,7 @@ import {
 import {
   getBrowserType,
   unify_rect,
-  get_getBoundingClientRectWrp,
+  getBoundingClientRectWrp,
   conv_page_client_to_wnd_client,
   get_color_as_RGB,
   get_color_as_RGBA,
@@ -80,8 +80,14 @@ import {
   register_pointer_event_handler,
   change_selection,
   ThicknessSelector,
+  SpKey,
   KeyStateManager,
   draw_icon_face,
+  borderColor,
+  activeIconColors,
+  inactiveIconColors,
+  textColor,
+  textCharWidth,
   draw_icon_face_ex,
   draw_icon_face_wrp,
   draw_icon_ex,
@@ -138,9 +144,11 @@ import {
 // 	MaskTool,
 // 	get_layer_no,
 // 	PaintTool,
-// 	LayerTool
+// 	LayerTool,
+//  generateTool
 // } from './oebi-tool.js';
 import {
+  ToolType,
   CommonSetting,
   ToolChain,
   addToolHelper,
@@ -1360,4 +1368,10 @@ LayerTool.prototype.OnPicked = function (e) {
   let setting = e.m_sender.getCommonSetting();
   this.updateSetting(setting, e);
   this.updateView(setting);
+}
+
+/// 描画ツールを動的に生成する。
+export function generateTool(toolName, iconBounds) {
+  const cmd = "new " + toolName + "(iconBounds)";
+  return eval(cmd);
 }
