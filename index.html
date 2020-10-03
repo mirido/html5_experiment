@@ -1,28 +1,20 @@
 <!-- Copyright (c) 2016, mirido
 All rights reserved. -->
 <html>
+
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>PaintBBS NEO Next Generation</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>PaintBBS NEO Next Generation</title>
 
-<!-- Style -->
-<link href="./default_style.css" rel="stylesheet" type="text/css">
-<link href="./oebi_pane.css" rel="stylesheet" type="text/css">
+  <!-- Style -->
+  <link href="./assets/css/default_style.css" rel="stylesheet" type="text/css">
+  <link href="./assets/css/oebi_pane.css" rel="stylesheet" type="text/css">
 
-<!-- Script -->
-<script type="text/javascript" src="_doc/utest.js"></script>
-<script type="text/javascript" src="dbg-util.js"></script>
-<script type="text/javascript" src="imaging.js"></script>
-<script type="text/javascript" src="geometry.js"></script>
-<script type="text/javascript" src="graphics.js"></script>
-<script type="text/javascript" src="ui-util.js"></script>
-<script type="text/javascript" src="ui-element.js"></script>
-<script type="text/javascript" src="picture-canvas.js"></script>
-<script type="text/javascript" src="oebi-tool.js"></script>
-<script type="text/javascript" src="tool-palette.js"></script>
-<script type="text/javascript" src="submit.js"></script>
-<script type="text/javascript" src="index.js"></script>
+  <!-- Script -->
+  <!--<script type="text/javascript" src="./dist/bundle.js"></script>-->
+  <script type="text/javascript" src="./src/index.js"></script>
 </head>
+
 <body id="samplePage">
   <p>
     TOP
@@ -52,8 +44,7 @@ All rights reserved. -->
       </div>
 
       <!-- [投稿] | 表題 -->
-      <input id="m_submit" type="button" value="投稿"
-             onclick="submit(document.getElementById('target').value);">
+      <input id="m_submit" type="button" value="投稿" onclick="submit(document.getElementById('target').value);">
       (C) PaintBBS NEO Next Generation V0.5.2 alpha
       <!-- 左側サブペイン END　-->
     </div>
@@ -129,4 +120,5 @@ All rights reserved. -->
     BOTTOM
   </p>
 </body>
+
 </html>

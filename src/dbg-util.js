@@ -1,7 +1,7 @@
 // Copyright (c) 2016, mirido
 // All rights reserved.
 
-﻿'use strict';
+'use strict';
 
 //
 //	Debug util

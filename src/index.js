@@ -1,6 +1,17 @@
 // Copyright (c) 2016, mirido
 // All rights reserved.
 
+/// <reference path="_doc/utest.js" />
+/// <reference path="dbg-util.js" />
+/// <reference path="imaging.js" />
+/// <reference path="geometry.js" />
+/// <reference path="graphics.js" />
+/// <reference path="ui-util.js" />
+/// <reference path="ui-element.js" />
+/// <reference path="picture-canvas.js" />
+/// <reference path="oebi-tool.js" />
+/// <reference path="tool-palette.js" />
+
 'use strict';
 
 console.log("index.js starts.");

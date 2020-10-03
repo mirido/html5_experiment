@@ -1,0 +1,38 @@
+{
+    // IntelliSense を使用して利用可能な属性を学べます。
+    // 既存の属性の説明をホバーして表示します。
+    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "perl",
+            "request": "launch",
+            "name": "Perl-Debug local",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}/${relativeFile}",
+            "exec": "perl",
+            "execArgs": [],
+            "root": "${workspaceRoot}/",
+            "inc": [],
+            "args": [
+                "SSO_SE08.json"
+            ],
+            "env": {},
+            "debugRaw": false,
+            "debugLog": false,
+            "stopOnEntry": true,
+            "sessions": "single"
+        },
+        {
+            "type": "perl",
+            "request": "launch",
+            "name": "Perl-Debug remote",
+            "console": "remote",
+            "program": "${workspaceFolder}/${relativeFile}",
+            "root": "${workspaceRoot}/",
+            "stopOnEntry": true,
+            "port": 5000,
+            "sessions": "single"
+        }
+    ]
+}
