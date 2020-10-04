@@ -13,7 +13,7 @@ import {
   dump_event,
   assert,
   dbgv
-} from './dbg-util.js';
+} from './dbg-util';
 import {
   get_guide_image,
   get_mirror_image,

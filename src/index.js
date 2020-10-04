@@ -3,7 +3,7 @@
 
 // 以下の特殊コメントはTypescriptでないと機能しない。
 /// <reference path="_doc/utest.js" />
-/// <reference path="dbg-util.js" />
+/// <reference path="dbg-util.ts" />
 /// <reference path="imaging.js" />
 /// <reference path="geometry.js" />
 /// <reference path="graphics.js" />
@@ -25,7 +25,7 @@ import {
 	dump_event,
 	assert,
 	dbgv
-} from './dbg-util.js';
+} from './dbg-util';
 import {
 	get_guide_image,
 	get_mirror_image,
