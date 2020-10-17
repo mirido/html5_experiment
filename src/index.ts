@@ -1,64 +1,23 @@
-// Copyright (c) 2016, mirido
+// Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
-import { draw_circle } from './graphics.js';
-import { PaintTool } from './oebi-tool.js';
-import { PictureCanvas } from './picture-canvas.js';
-import { ToolPalette } from './tool-palette.js';
-import { History, RedoButton, UndoButton } from './ui-element.js';
-import { KeyStateManager, PointManager } from './ui-util.js';
+import { g_pictureCanvas, onDispose, onInitialize } from './app-global';
+import { draw_circle } from './graphics';
 
 'use strict';
 
 console.log("index.js starts.");
-
-// ポインタ状態管理
-export let g_pointManager;
-
-// キー入力管理
-export let g_keyStateManager;
-
-// 描画キャンバス
-export let g_pictureCanvas;
-
-// ツールパレット
-export let g_toolPalette;
-
-// 塗り潰しツール
-export let g_paintTool;
-
-// 操作履歴
-export let g_history;			// (Undo/Rdo)
-
-// 「元に戻す」ボタン
-export let g_UndoButton;		// (Undo/Rdo)
-
-// 「やり直し」ボタン
-export let g_RedoButton;		// (Undo/Rdo)
 
 // イベントハンドラ登録
 window.onload = init_wnd;
 window.onclose = dispose_wnd;
 
 /// ページのロード完了時に呼ばれる。
-function init_wnd() {
+function init_wnd(): void {
 	console.log("init() called.");
 
 	// インスタンス生成
-	g_pointManager = new PointManager();
-	g_keyStateManager = new KeyStateManager();
-	g_pictureCanvas = new PictureCanvas();
-	g_toolPalette = new ToolPalette(g_pictureCanvas);
-	g_paintTool = new PaintTool(g_toolPalette);
-
-	// 操作履歴追加(Undo/Redo)
-	g_history = new History(g_toolPalette, g_pictureCanvas);
-	g_pictureCanvas.attatchHistory(g_history);
-	g_toolPalette.attatchHistory(g_history);
-
-	// 「元に戻す」/「やり直し」ボタン
-	g_UndoButton = new UndoButton(g_history);
-	g_RedoButton = new RedoButton(g_history);
+	onInitialize();
 
 	// キャンバスを白色でfill
 	g_pictureCanvas.eraseCanvas();
@@ -76,7 +35,7 @@ function init_wnd() {
 	// utest_half_tone();		// UTEST
 
 	// 画像合成
-	let joint_canvas = document.getElementById("joint_canvas");
+	let joint_canvas = <HTMLCanvasElement>document.getElementById("joint_canvas");
 	g_pictureCanvas.getJointImage(joint_canvas);
 
 	// キャンバス状態を記憶(Undo/Redo)
@@ -86,10 +45,7 @@ function init_wnd() {
 
 /// ウィンドウが閉じるとき呼ばれる。
 function dispose_wnd() {
-	g_pointManager.dispose();
-	g_pointManager = null;
-	g_keyStateManager.dispose();
-	g_keyStateManager = null;
+	onDispose();
 	// TBD
 }
 
@@ -97,7 +53,7 @@ function dispose_wnd() {
 //  マルチレイヤーサンプル
 //
 
-function sample01(layer1, layer2) {
+function sample01(layer1: HTMLCanvasElement, layer2: HTMLCanvasElement): void {
 	var ctx = layer1.getContext('2d');
 	/* 半透明度を指定 */
 	// ctx.globalAlpha = 0.5;

@@ -1,503 +1,560 @@
-// Copyright (c) 2016, mirido
+// Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
+import { IPoint, IRect } from 'app-def';
+import { g_keyStateManager, g_pointManager } from './app-global';
 import { assert } from './dbg-util';
 import { jsPoint } from './geometry.js';
 import {
-	blend_image,
-	erase_canvas,
-	erase_single_layer,
-	get_joint_image
+    blend_image,
+    erase_canvas,
+    erase_single_layer,
+    get_joint_image
 } from './imaging.js';
-import { g_keyStateManager, g_pointManager } from './index.js';
+import { ToolPalette } from './tool-palette';
+import { IConfigClosure, IEffect, IReproClosure, UIOpHistory } from './ui-element';
 import {
-	add_to_unique_list,
-	getBoundingClientRectWrp,
-	register_pointer_event_handler,
-	remove_from_unique_list
-} from './ui-util.js';
+    add_to_unique_list,
+    getBoundingClientRectWrp, IDrawCanvas, IDrawTool, isIDrawCanvas, register_pointer_event_handler,
+    remove_from_unique_list
+} from './ui-util';
 
 'use strict';
 
 //
-//	PointingEvent
+//	DrawingEvent
 //
 
 // Description:
 // ポインティングイベントを表す。
 
-/// 新しいインスタンスを初期化する。
-export function PointingEvent(sender, e) {
-	this.m_sender = sender;
-	let bounds = sender.getBoundingDrawAreaRect();
-	this.m_point = jsPoint(
-		e.clientX - bounds.x,
-		e.clientY - bounds.y
-	);
-	this.m_spKey = g_keyStateManager.getSpKeyState();
-	this.m_type = e.type;
-	this.m_button = e.button;
+/// Interface of drawing event.
+export interface IDrawingEvent {
+    m_sender: PictureCanvas;
+    m_point: IPoint;
+    m_spKey: number;
+    m_type: string;
+    m_button: number;
 }
 
-/// クローンを返す。
-export function PointingEventClone(e) {
-	this.m_sender = e.m_sender;
-	this.m_point = jsPoint(e.m_point.x, e.m_point.y);
-	this.m_spKey = e.m_spKey;
-	this.m_type = e.m_type;
-	this.m_button = e.m_button;
-};
+/// 新しいインスタンスを初期化する。
+export class DrawingEvent implements IDrawingEvent {
+    m_sender: PictureCanvas;
+    m_point: IPoint;
+    m_spKey: number;
+    m_type: string;
+    m_button: number;
+
+    constructor(sender: PictureCanvas, e: MouseEvent) {
+        this.m_sender = sender;
+        const bounds = sender.getBoundingDrawAreaRect();
+        this.m_point = jsPoint(
+            e.clientX - bounds.x,
+            e.clientY - bounds.y
+        );
+        this.m_spKey = g_keyStateManager.getSpKeyState();
+        this.m_type = e.type;
+        this.m_button = e.button;
+    }
+}
 
 /// クリックイベントを合成する。
-export function VirtualClickEvent(sender, iconBounds) {
-	this.m_sender = sender;
-	let bounds = sender.getBoundingDrawAreaRect();
-	let cx, cy;
-	if (iconBounds != null) {
-		cx = Math.floor(iconBounds.x + iconBounds.width / 2);
-		cy = Math.floor(iconBounds.y + iconBounds.height / 2);
-	} else {
-		cx = bounds.x - 1;
-		cy = bounds.y - 1;
-	}
-	this.m_point = jsPoint(cx, cy);
-	this.m_spKey = 0x0;
-	this.m_type = 'mousedown';
-	this.m_button = 1;
+export class VirtualClickEvent implements DrawingEvent {
+    m_sender: PictureCanvas;
+    m_point: IPoint;
+    m_spKey: number;
+    m_type: string;
+    m_button: number;
+
+    constructor(sender: PictureCanvas, iconBounds: IRect) {
+        this.m_sender = sender;
+        const bounds = sender.getBoundingDrawAreaRect();
+        let cx: number;
+        let cy: number;
+        if (iconBounds != null) {
+            cx = Math.floor(iconBounds.x + iconBounds.width / 2);
+            cy = Math.floor(iconBounds.y + iconBounds.height / 2);
+        } else {
+            cx = bounds.x - 1;
+            cy = bounds.y - 1;
+        }
+        this.m_point = jsPoint(cx, cy);
+        this.m_spKey = 0x0;
+        this.m_type = 'mousedown';
+        this.m_button = 1;
+    }
 }
 
 /// クリックイベントをクリック完了イベントに変更する。(In-place)
-export function modify_click_event_to_end_in_place(e) {
-	e.m_type = 'mouseup';
+export function modify_click_event_to_end_in_place(e: DrawingEvent) {
+    e.m_type = 'mouseup';
 }
 
 //
 //	PictureCanvas
 //
 
-/// 新しいインスタンスを初期化する。
-export function PictureCanvas() {
-	// DOMオブジェクト取得
-	this.m_view_port = document.getElementById("viewport");
-	this.m_allLayers = [
-		document.getElementById("canvas_0"),
-		document.getElementById("canvas_1"),
-		document.getElementById("floating"),
-		document.getElementById("surface"),
-		document.getElementById("overlay"),
-	];
-	this.m_joint_canvas = document.getElementById("joint_canvas");
+export class PictureCanvas implements EventListenerObject {
+    // DOMオブジェクト取得
+    m_view_port: HTMLCanvasElement;
+    m_allLayers: HTMLCanvasElement[];
+    m_joint_canvas: HTMLCanvasElement;
+    // レイヤー区分
+    m_workingLayers: HTMLCanvasElement[];
+    m_lastVisibilityList: boolean[];
+    m_floating: HTMLCanvasElement;
+    m_surface: HTMLCanvasElement;
+    m_overlay: HTMLCanvasElement
+    m_floatingLayerUser: HTMLCanvasElement;
+    // 描画担当ツール
+    m_drawers: IDrawTool[];
+    // 描画担当ツールに引き渡す情報
+    m_nTargetLayerNo: number;
+    // ポインタデバイスのドラッグ状態
+    m_draggingButton: number;
+    m_lastEvent: DrawingEvent;
+    // レイヤーのオフセット取得
+    m_layer_left: number;
+    m_layer_top: number;
 
-	// レイヤー区分
-	this.m_workingLayers = [
-		this.m_allLayers[0],
-		this.m_allLayers[1]
-	];
-	this.m_floating = this.m_allLayers[2];
-	this.m_surface = this.m_allLayers[3];
-	this.m_overlay = this.m_allLayers[4];
-	this.m_floatingLayerUser = null;
-	this.m_floating.hidden = true;
+    // レイヤ固定要求リスナ
+    m_layerFixListeners: IDrawTool[];
 
-	// 描画担当ツール
-	// イベントのフックを実現可能なように、複数登録を許す。
-	this.m_drawers = [];
+    // 操作履歴
+    m_history: UIOpHistory;
 
-	// 描画担当ツールに引き渡す情報
-	this.m_nTargetLayerNo = this.m_workingLayers.length - 1;		// 描画対象レイヤー
+    /// 新しいインスタンスを初期化する。
+    constructor() {
+        // DOMオブジェクト取得
+        this.m_view_port = <HTMLCanvasElement>document.getElementById("viewport");
+        this.m_allLayers = [
+            <HTMLCanvasElement>document.getElementById("canvas_0"),
+            <HTMLCanvasElement>document.getElementById("canvas_1"),
+            <HTMLCanvasElement>document.getElementById("floating"),
+            <HTMLCanvasElement>document.getElementById("surface"),
+            <HTMLCanvasElement>document.getElementById("overlay"),
+        ];
+        this.m_joint_canvas = <HTMLCanvasElement>document.getElementById("joint_canvas");
 
-	// ポインタデバイスのドラッグ状態
-	this.m_draggingButton = null;
-	this.m_lastEvent = null;
+        // レイヤー区分
+        this.m_workingLayers = [
+            this.m_allLayers[0],
+            this.m_allLayers[1]
+        ];
+        this.m_lastVisibilityList = [
+            false,
+            false
+        ]
+        this.m_floating = this.m_allLayers[2];
+        this.m_surface = this.m_allLayers[3];
+        this.m_overlay = this.m_allLayers[4];
+        this.m_floatingLayerUser = null;
+        this.m_floating.hidden = true;
 
-	// イベントハンドラ登録
-	register_pointer_event_handler(this.m_view_port, this);
+        // 描画担当ツール
+        // イベントのフックを実現可能なように、複数登録を許す。
+        this.m_drawers = [];
 
-	// コンテキストメニュー無効化
-	// http://tmlife.net/programming/javascript/javascript-right-click.html
-	let avoid_context_menu = function (e) { e.preventDefault(); e.stopPropagation(); }
-	for (let i = 0; i < this.m_allLayers.length; ++i) {
-		this.m_allLayers[i].addEventListener("contextmenu", avoid_context_menu, false);
-	}
-	this.m_view_port.addEventListener("contextmenu", avoid_context_menu, false);
+        // 描画担当ツールに引き渡す情報
+        this.m_nTargetLayerNo = this.m_workingLayers.length - 1;		// 描画対象レイヤー
 
-	// レイヤーのサイズ調整
-	this.fitCanvas();
+        // ポインタデバイスのドラッグ状態
+        this.m_draggingButton = null;
+        this.m_lastEvent = null;
 
-	// レイヤーのオフセット取得
-	// fitCanvas()呼出し後である必要がある。
-	this.m_layer_left = parseInt(this.m_allLayers[0].style.left);
-	this.m_layer_top = parseInt(this.m_allLayers[0].style.top);
+        // イベントハンドラ登録
+        register_pointer_event_handler(this.m_view_port, this);
 
-	// レイヤ固定要求リスナ
-	this.m_layerFixListeners = [];
+        // コンテキストメニュー無効化
+        // http://tmlife.net/programming/javascript/javascript-right-click.html
+        const avoid_context_menu = function (e: MouseEvent) { e.preventDefault(); e.stopPropagation(); }
+        for (let i = 0; i < this.m_allLayers.length; i++) {
+            this.m_allLayers[i].addEventListener("contextmenu", avoid_context_menu, false);
+        }
+        this.m_view_port.addEventListener("contextmenu", avoid_context_menu, false);
 
-	// 操作履歴
-	// attatchHistory()メソッドで設定する。
-	this.m_history = null;    // (Undo/Redo)
-}
+        // レイヤーのサイズ調整
+        this.fitCanvas();
 
-/// イベントリスナ。
-PictureCanvas.prototype.handleEvent = function (e) {
-	// console.log("Event: " + e.type);
-	// console.dir(e);
-	// console.log("event=" + e.type + ", button=" + e.button);
+        // レイヤーのオフセット取得
+        // fitCanvas()呼出し後である必要がある。
+        this.m_layer_left = parseInt(this.m_allLayers[0].style.left);
+        this.m_layer_top = parseInt(this.m_allLayers[0].style.top);
 
-	// 描画ツールに引き渡す情報を構成
-	let mod_e = new PointingEvent(this, e);
-	// this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー	-- NG. IEは非サポート
-	this.m_lastEvent = new PointingEvent(this, e);
-	// console.dir(this.m_lastEvent);
+        // レイヤ固定要求リスナ
+        this.m_layerFixListeners = [];
 
-	// イベント別処理
-	switch (e.type) {
-		case 'mousedown':
-		case 'touchstart':
-			if (this.m_draggingButton == null) {		// (非ドラッグ状態)
-				// mouseupやtouchendを確実に捕捉するための登録
-				g_pointManager.notifyPointStart(this, e);
+        // 操作履歴
+        // attatchHistory()メソッドで設定する。
+        this.m_history = null;    // (Undo/Redo)
+    }
 
-				// ドラッグ状態に遷移
-				this.m_draggingButton = e.button;
+    /// イベントリスナ。
+    handleEvent(e: MouseEvent): void {
+        // console.log("Event: " + e.type);
+        // console.dir(e);
+        // console.log("event=" + e.type + ", button=" + e.button);
 
-				// 描画ストローク開始を通知
-				for (let i = 0; i < this.m_drawers.length; ++i) {
-					if (this.m_drawers[i].OnDrawStart) {
-						this.m_drawers[i].OnDrawStart(mod_e);
-					}
-				}
-			}
-			break;
-		case 'mouseup':
-		case 'touchend':
-			// 描画終了を通知
-			if (this.m_draggingButton != null) {				// (ドラッグ状態)
-				if (e.button == this.m_draggingButton) {	// (ドラッグ開始したボタンの押下解除イベント)
-					// 描画ストローク終了を通知
-					for (let i = 0; i < this.m_drawers.length; ++i) {
-						if (this.m_drawers[i].OnDrawEnd) {
-							this.m_drawers[i].OnDrawEnd(mod_e);
-						}
-					}
+        // 描画ツールに引き渡す情報を構成
+        const mod_e = new DrawingEvent(this, e);
+        // this.m_lastEvent = Object.assign({}, mod_e);		// 値コピー	-- NG. IEは非サポート
+        this.m_lastEvent = new DrawingEvent(this, e);
+        // console.dir(this.m_lastEvent);
 
-					// ドラッグ状態解除
-					this.m_draggingButton = null;
-				}
-			}
-			break;
-		case 'mousemove':
-		case 'touchmove':
-			// ポインタの移動を通知
-			if (this.m_draggingButton != null) {		// (ドラッグ状態)
-				for (let i = 0; i < this.m_drawers.length; ++i) {
-					if (this.m_drawers[i].OnDrawing) {
-						this.m_drawers[i].OnDrawing(mod_e);
-					}
-				}
-			}
-			break;
-		default:
-			break;
-	}
-}
+        // イベント別処理
+        switch (e.type) {
+            case 'mousedown':
+            case 'touchstart':
+                if (this.m_draggingButton == null) {		// (非ドラッグ状態)
+                    // mouseupやtouchendを確実に捕捉するための登録
+                    g_pointManager.notifyPointStart(this, e);
 
-/// 描画ストローク中か否かを返す。
-PictureCanvas.prototype.isDrawing = function () {
-	return (this.m_draggingButton != null);
-}
+                    // ドラッグ状態に遷移
+                    this.m_draggingButton = e.button;
 
-/// 要素の絶対座標を返す。
-PictureCanvas.prototype.getBoundingDrawAreaRect = function () {
-	let bounds = getBoundingClientRectWrp(this.m_surface);	// hiddenでは有り得ないレイヤーを指定する。
-	return bounds;
-}
+                    // 描画ストローク開始を通知
+                    for (let i = 0; i < this.m_drawers.length; i++) {
+                        const drawer = this.m_drawers[i];
+                        if (isIDrawCanvas(drawer)) {
+                            drawer.OnDrawStart(mod_e);
+                        }
+                    }
+                }
+                break;
+            case 'mouseup':
+            case 'touchend':
+                // 描画終了を通知
+                if (this.m_draggingButton != null) {				// (ドラッグ状態)
+                    if (e.button == this.m_draggingButton) {	// (ドラッグ開始したボタンの押下解除イベント)
+                        // 描画ストローク終了を通知
+                        for (let i = 0; i < this.m_drawers.length; i++) {
+                            const drawer = this.m_drawers[i];
+                            if (isIDrawCanvas(drawer)) {
+                                drawer.OnDrawEnd(mod_e);
+                            }
+                        }
 
-/// 描画ツールを追加する。
-/// 異なる描画ツールを複数追加可能。
-/// その場合、描画イベント発生時に描画イベントハンドラが追加順で呼ばれる。
-/// 同一の描画ツールの複数追加はできない。(2回目以降の追加を無視する。)
-/// イベント通知先ツールから呼ばれる想定。
-PictureCanvas.prototype.addDrawer = function (drawer) {
-	assert(drawer != null);
-	if (this.m_draggingButton != null) {		// (ドラッグ状態)
-		assert(false);
-		return false;
-	}
-	return add_to_unique_list(this.m_drawers, drawer);
-}
+                        // ドラッグ状態解除
+                        this.m_draggingButton = null;
+                    }
+                }
+                break;
+            case 'mousemove':
+            case 'touchmove':
+                // ポインタの移動を通知
+                if (this.m_draggingButton != null) {		// (ドラッグ状態)
+                    for (let i = 0; i < this.m_drawers.length; i++) {
+                        const drawer = this.m_drawers[i];
+                        if (isIDrawCanvas(drawer)) {
+                            drawer.OnDrawing(mod_e);
+                        }
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+    }
 
-/// 指定した描画ツールを削除する。
-PictureCanvas.prototype.removeDrawer = function (drawer) {
-	assert(drawer != null);
-	if (this.m_draggingButton != null) {		// (ドラッグ状態)
-		assert(false);
-		return false;
-	}
-	return remove_from_unique_list(this.m_drawers, drawer);
-}
+    /// 描画ストローク中か否かを返す。
+    isDrawing(): boolean {
+        return (this.m_draggingButton != null);
+    }
 
-/// レイヤー数を取得する。
-PictureCanvas.prototype.getNumLayers = function () {
-	return this.m_workingLayers.length;
-}
+    /// 要素の絶対座標を返す。
+    getBoundingDrawAreaRect(): IRect {
+        const bounds = getBoundingClientRectWrp(this.m_surface);	// hiddenでは有り得ないレイヤーを指定する。
+        return bounds;
+    }
 
-/// レイヤーを取得する。
-PictureCanvas.prototype.getLayer = function (layerNo) {
-	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
-	return this.m_workingLayers[layerNo];
-}
+    /// 描画ツールを追加する。
+    /// 異なる描画ツールを複数追加可能。
+    /// その場合、描画イベント発生時に描画イベントハンドラが追加順で呼ばれる。
+    /// 同一の描画ツールの複数追加はできない。(2回目以降の追加を無視する。)
+    /// イベント通知先ツールから呼ばれる想定。
+    addDrawer(drawer: IDrawTool): boolean {
+        assert(drawer != null);
+        if (this.m_draggingButton != null) {		// (ドラッグ状態)
+            assert(false);
+            return false;
+        }
+        return add_to_unique_list(this.m_drawers, drawer);
+    }
 
-/// カレントレイヤーを変更する。
-PictureCanvas.prototype.changeLayer = function (layerNo) {
-	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
-	// this.raiseLayerFixRequest(this.m_workingLayers[layerNo]);	// イベント最適化
-	this.m_nTargetLayerNo = layerNo;
-	/*=	<イベント最適化>
-	 *	当メソッドを呼び出すのは、現状専らCommonSettingクラスであり、
-	 *	そのときすでにthis.raiseLayerFixRequest()を呼び出しているため、
-	 *	ここでの呼び出しを省略する。
-	 */
-}
+    /// 指定した描画ツールを削除する。
+    removeDrawer(drawer: IDrawTool): boolean {
+        assert(drawer != null);
+        if (this.m_draggingButton != null) {		// (ドラッグ状態)
+            assert(false);
+            return false;
+        }
+        return remove_from_unique_list(this.m_drawers, drawer);
+    }
 
-/// カレントレイヤーを取得する。
-PictureCanvas.prototype.getCurLayer = function () {
-	return this.m_workingLayers[this.m_nTargetLayerNo];
-}
+    /// レイヤー数を取得する。
+    getNumLayers(): number {
+        return this.m_workingLayers.length;
+    }
 
-/// カレントレイヤー番号を返す。
-PictureCanvas.prototype.getCurLayerNo = function () {
-	return this.m_nTargetLayerNo;
-}
+    /// レイヤーを取得する。
+    getLayer(layerNo: number): HTMLCanvasElement {
+        assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
+        return this.m_workingLayers[layerNo];
+    }
 
-/// カレント描画先レイヤーを取得する。
-/// フローティングレイヤーがあればそちらを返し、
-/// 無ければカレントレイヤーを返す。
-PictureCanvas.prototype.getCurDstLayer = function () {
-	if (this.m_floatingLayerUser != null) {
-		return this.m_floating;
-	} else {
-		return this.getCurLayer();
-	}
-}
+    /// カレントレイヤーを変更する。
+    changeLayer(layerNo: number): void {
+        assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
+        // this.raiseLayerFixRequest(this.m_workingLayers[layerNo]);	// イベント最適化
+        this.m_nTargetLayerNo = layerNo;
+        /*=	<イベント最適化>
+         *	当メソッドを呼び出すのは、現状専らCommonSettingクラスであり、
+         *	そのときすでにthis.raiseLayerFixRequest()を呼び出しているため、
+         *	ここでの呼び出しを省略する。
+         */
+    }
 
-/// サーフェスを取得する。
-PictureCanvas.prototype.getSurface = function () {
-	// console.log("this.m_surface: w=" + this.m_surface.width + ", h=" + this.m_surface.height);
-	return this.m_surface;
-}
+    /// カレントレイヤーを取得する。
+    getCurLayer(): HTMLCanvasElement {
+        return this.m_workingLayers[this.m_nTargetLayerNo];
+    }
 
-/// オーバレイを取得する。
-PictureCanvas.prototype.getOverlay = function () {
-	return this.m_overlay;
-}
+    /// カレントレイヤー番号を返す。
+    getCurLayerNo(): number {
+        return this.m_nTargetLayerNo;
+    }
 
-/// レイヤーの可視属性を取得する。
-PictureCanvas.prototype.getLayerVisibility = function (layerNo) {
-	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
-	return !this.m_workingLayers[layerNo].hidden;
-}
+    /// カレント描画先レイヤーを取得する。
+    /// フローティングレイヤーがあればそちらを返し、
+    /// 無ければカレントレイヤーを返す。
+    getCurDstLayer(): HTMLCanvasElement {
+        if (this.m_floatingLayerUser != null) {
+            return this.m_floating;
+        } else {
+            return this.getCurLayer();
+        }
+    }
 
-/// レイヤーの可視属性を設定する。
-PictureCanvas.prototype.setLayerVisibility = function (layerNo, bVisible) {
-	assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
-	this.m_workingLayers[layerNo].hidden = !bVisible;
-}
+    /// サーフェスを取得する。
+    getSurface(): HTMLCanvasElement {
+        // console.log("this.m_surface: w=" + this.m_surface.width + ", h=" + this.m_surface.height);
+        return this.m_surface;
+    }
 
-/// キャンバスを全クリアする。
-/// サーフェス等も含め、全レイヤーをクリアする。
-PictureCanvas.prototype.eraseCanvas = function () {
-	erase_canvas(this.m_allLayers);
-}
+    /// オーバレイを取得する。
+    getOverlay(): HTMLCanvasElement {
+        return this.m_overlay;
+    }
 
-/// 描画レイヤーおよび背景を合成する。
-/// サーフェス等、効果のためのレイヤーは含まない。
-PictureCanvas.prototype.getJointImage = function (dstCanvas) {
-	get_joint_image(this.m_workingLayers, dstCanvas);
-}
+    /// レイヤーの可視属性を取得する。
+    getLayerVisibility(layerNo: number): boolean {
+        assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
+        return !this.m_workingLayers[layerNo].hidden;
+    }
 
-/// View portをキャンバスにfitさせる。
-PictureCanvas.prototype.fitCanvas = function () {
-	const width_margin = 100;
-	const height_margin = 50;
-	const layer_margin_horz = 5;
-	const layer_margin_vert = 5;
-	const layer_client_width_min = 400;
-	const layer_client_height_min = 400;
+    /// レイヤーの可視属性を設定する。
+    setLayerVisibility(layerNo: number, bVisible: boolean): void {
+        assert(0 <= layerNo && layerNo < this.m_workingLayers.length);
+        this.m_workingLayers[layerNo].hidden = !bVisible;
+    }
 
-	// レイヤーのオフセット設定
-	// オフセットの値はCSSで指定してあるが、なぜかプログラムから
-	// 1回は明示的に設定せねばプログラムで値を取得できない。FireFoxにて確認。
-	for (let i = 0; i < this.m_allLayers.length; ++i) {
-		this.m_allLayers[0].style.left = layer_margin_horz + "px";
-		this.m_allLayers[0].style.top = layer_margin_vert + "px";
-	}
+    /// キャンバスを全クリアする。
+    /// サーフェス等も含め、全レイヤーをクリアする。
+    eraseCanvas(): void {
+        erase_canvas(this.m_allLayers);
+    }
 
-	// View portの寸法取得
-	let vport_client_width = this.m_view_port.clientWidth;
-	let vport_client_height = this.m_view_port.clientHeight;
-	let vport_outer_width = this.m_view_port.offsetWidth;
-	let vport_outer_height = this.m_view_port.offsetHeight;
-	// {	/*UTEST*/		// スクロールバーの幅の算出
-	// 	// 次の関係が成り立つ。
-	// 	//   vport_client_width < vport_outer_width == vport_bounds.width
-	// 	// vport_client_widthがスクロールバーを含まない領域幅のようだ。
-	// 	let vport_bounds = this.m_view_port.getBoundingClientRect();
-	// 	console.log("vport_client_width=" + vport_client_width
-	// 	 	+ ", vport_outer_width=" + vport_outer_width
-	// 		+ ", vport_bounds.width=" + vport_bounds.width
-	// 	);
-	// 	console.log("scroll bar width(?)=" + (vport_outer_width - vport_client_width));
-	// 	console.log("layer client width=" + this.m_allLayers[0].clientWidth);
-	// }
+    /// 描画レイヤーおよび背景を合成する。
+    /// サーフェス等、効果のためのレイヤーは含まない。
+    getJointImage(dstCanvas: HTMLCanvasElement): void {
+        get_joint_image(this.m_workingLayers, dstCanvas);
+    }
 
-	// レイヤーの寸法取得
-	let layer_outer_width = this.m_allLayers[0].offsetWidth;
-	let layer_outer_height = this.m_allLayers[0].offsetHeight;
-	{
-		let layer_client_width = this.m_allLayers[0].clientWidth;
-		let layer_client_height = this.m_allLayers[0].clientHeight;
-		if (layer_client_width < layer_client_width_min) {
-			layer_outer_width += (layer_client_width_min - layer_client_width);
-		}
-		if (layer_client_height < layer_client_height_min) {
-			layer_outer_height += (layer_client_height_min - layer_client_height);
-		}
-	}
+    /// View portをキャンバスにfitさせる。
+    fitCanvas(): void {
+        const width_margin = 100;
+        const height_margin = 50;
+        const layer_margin_horz = 5;
+        const layer_margin_vert = 5;
+        const layer_client_width_min = 400;
+        const layer_client_height_min = 400;
 
-	// レイヤーのオフセット取得
-	let layer_left = parseInt(this.m_allLayers[0].style.left);
-	let layer_top = parseInt(this.m_allLayers[0].style.top);
-	// console.log("layer_left=" + layer_left + ", layer_top=" + layer_top);
+        // レイヤーのオフセット設定
+        // オフセットの値はCSSで指定してあるが、なぜかプログラムから
+        // 1回は明示的に設定せねばプログラムで値を取得できない。FireFoxにて確認。
+        for (let i = 0; i < this.m_allLayers.length; i++) {
+            this.m_allLayers[0].style.left = layer_margin_horz + "px";
+            this.m_allLayers[0].style.top = layer_margin_vert + "px";
+        }
 
-	// View portの必要なサイズを取得
-	let delta_w = layer_left + layer_outer_width - vport_client_width;
-	let delta_h = layer_top + layer_outer_height - vport_client_height;
-	let vport_outer_width_min = vport_outer_width + delta_w;
-	let vport_outer_height_min = vport_outer_height + delta_h;
+        // View portの寸法取得
+        const vport_client_width = this.m_view_port.clientWidth;
+        const vport_client_height = this.m_view_port.clientHeight;
+        const vport_outer_width = this.m_view_port.offsetWidth;
+        const vport_outer_height = this.m_view_port.offsetHeight;
+        // {	/*UTEST*/		// スクロールバーの幅の算出
+        // 	// 次の関係が成り立つ。
+        // 	//   vport_client_width < vport_outer_width == vport_bounds.width
+        // 	// vport_client_widthがスクロールバーを含まない領域幅のようだ。
+        // 	const vport_bounds = this.m_view_port.getBoundingClientRect();
+        // 	console.log("vport_client_width=" + vport_client_width
+        // 	 	+ ", vport_outer_width=" + vport_outer_width
+        // 		+ ", vport_bounds.width=" + vport_bounds.width
+        // 	);
+        // 	console.log("scroll bar width(?)=" + (vport_outer_width - vport_client_width));
+        // 	console.log("layer client width=" + this.m_allLayers[0].clientWidth);
+        // }
 
-	// ウィンドウの表示領域サイズで制限をかける
-	// console.log("window.innerWidth=" + window.innerWidth);
-	// console.log("window.innerHeight=" + window.innerHeight);
-	if (vport_outer_width_min > window.innerWidth - width_margin) {
-		vport_outer_width_min = window.innerWidth - width_margin;
-	}
-	if (vport_outer_height_min > window.innerHeight - height_margin) {
-		vport_outer_height_min = window.innerHeight - height_margin;
-	}
+        // レイヤーの寸法取得
+        let layer_outer_width = this.m_allLayers[0].offsetWidth;
+        let layer_outer_height = this.m_allLayers[0].offsetHeight;
+        {
+            const layer_client_width = this.m_allLayers[0].clientWidth;
+            const layer_client_height = this.m_allLayers[0].clientHeight;
+            if (layer_client_width < layer_client_width_min) {
+                layer_outer_width += (layer_client_width_min - layer_client_width);
+            }
+            if (layer_client_height < layer_client_height_min) {
+                layer_outer_height += (layer_client_height_min - layer_client_height);
+            }
+        }
 
-	// View portのサイズ設定
-	this.m_view_port.style.width = vport_outer_width_min + "px";
-	this.m_view_port.style.height = vport_outer_height_min + "px";
-}
+        // レイヤーのオフセット取得
+        const layer_left = parseInt(this.m_allLayers[0].style.left);
+        const layer_top = parseInt(this.m_allLayers[0].style.top);
+        // console.log("layer_left=" + layer_left + ", layer_top=" + layer_top);
 
-/// レイヤー固定要求リスナを追加する。
-PictureCanvas.prototype.addLayerFixListener = function (listener) {
-	// console.log("PictureCanvas::addLayerFixListener() called.")
-	assert(listener != null);
-	return add_to_unique_list(this.m_layerFixListeners, listener);
-}
+        // View portの必要なサイズを取得
+        const delta_w = layer_left + layer_outer_width - vport_client_width;
+        const delta_h = layer_top + layer_outer_height - vport_client_height;
+        let vport_outer_width_min = vport_outer_width + delta_w;
+        let vport_outer_height_min = vport_outer_height + delta_h;
 
-/// レイヤー固定要求リスナを削除する。
-PictureCanvas.prototype.removeLayerFixListener = function (listener) {
-	// console.log("PictureCanvas::removeLayerFixListener() called.")
-	assert(listener != null);
-	return remove_from_unique_list(this.m_layerFixListeners, listener);
-}
+        // ウィンドウの表示領域サイズで制限をかける
+        // console.log("window.innerWidth=" + window.innerWidth);
+        // console.log("window.innerHeight=" + window.innerHeight);
+        if (vport_outer_width_min > window.innerWidth - width_margin) {
+            vport_outer_width_min = window.innerWidth - width_margin;
+        }
+        if (vport_outer_height_min > window.innerHeight - height_margin) {
+            vport_outer_height_min = window.innerHeight - height_margin;
+        }
 
-/// レイヤー固定要求を発生させる。
-PictureCanvas.prototype.raiseLayerFixRequest = function (nextLayer) {
-	// console.log("PictureCanvas::raiseLayerFixRequest() called. n=" + this.m_layerFixListeners.length);
-	if (nextLayer == null) {
-		nextLayer = this.m_workingLayers[this.m_nTargetLayerNo];
-	}
-	for (let i = 0; i < this.m_layerFixListeners.length; ++i) {
-		// console.log("PictureCanvas::raiseLayerFixRequest(): Checking listener...");
-		if (this.m_layerFixListeners[i].OnLayerToBeFixed) {
-			console.log("PictureCanvas::raiseLayerFixRequest(): Calling listener...");
-			this.m_layerFixListeners[i].OnLayerToBeFixed(this, nextLayer);
-		}
-	}
-}
+        // View portのサイズ設定
+        this.m_view_port.style.width = vport_outer_width_min + "px";
+        this.m_view_port.style.height = vport_outer_height_min + "px";
+    }
 
-/// カレントレイヤーにフローティングレイヤーを追加する。
-PictureCanvas.prototype.makeFloatingLayer = function () {
-	// フローティングレイヤー作成済か判定
-	let curLayer = this.getCurLayer();
-	if (this.m_floatingLayerUser == null) {
-		this.m_floatingLayerUser = curLayer;
-	} else {
-		assert(curLayer == this.m_floatingLayerUser);		// ここで引っかかったらreleaseFloatingLayer()の呼び忘れ。
-		return;
-	}
+    /// レイヤー固定要求リスナを追加する。
+    addLayerFixListener(listener: IDrawTool): boolean {
+        // console.log("PictureCanvas::addLayerFixListener() called.")
+        assert(listener != null);
+        return add_to_unique_list(this.m_layerFixListeners, listener);
+    }
 
-	// フローティングレイヤー作成
-	assert(this.m_floating.hidden);
-	let z_idx = parseInt(curLayer.style.zIndex);
-	this.m_floating.style.zIndex = (z_idx + 1).toString(10);
-	this.m_floating.hidden = false;
-	// {	/*UTEST*/
-	// 	let context = this.m_floating.getContext('2d');
-	// 	let w = this.m_floating.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
-	//   let h = this.m_floating.height;  // (同上)
-	// 	context.fillStyle = 'rgba(200,0,255,100)';
-	// 	context.fillRect(0, 0, w, h);
-	// }
-}
+    /// レイヤー固定要求リスナを削除する。
+    removeLayerFixListener(listener: IDrawTool): boolean {
+        // console.log("PictureCanvas::removeLayerFixListener() called.")
+        assert(listener != null);
+        return remove_from_unique_list(this.m_layerFixListeners, listener);
+    }
 
-/// フローティングレイヤーを開放する。
-PictureCanvas.prototype.releaseFloatingLayer = function (/*[opt]*/ bCancel) {
-	this.m_floating.hidden = true;
-	if (!bCancel) {
-		// フローティングレイヤー内容をカレントレイヤーに合成する。
-		let curLayer = this.getCurLayer();
-		let w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
-		let h = curLayer.height;  // (同上)
-		assert(w == this.m_floating.width && h == this.m_floating.height);
-		let ctx_floating = this.m_floating.getContext('2d');
-		let ctx_current = curLayer.getContext('2d');
-		let imgd_floating = ctx_floating.getImageData(0, 0, w, h);
-		let imgd_current = ctx_current.getImageData(0, 0, w, h);
-		blend_image(imgd_floating, imgd_current);
-		ctx_current.putImageData(imgd_current, 0, 0);
-		erase_single_layer(this.m_floating);
-	}
-	this.m_floatingLayerUser = null;
-}
+    /// レイヤー固定要求を発生させる。
+    raiseLayerFixRequest(nextLayer?: HTMLCanvasElement): void {
+        // console.log("PictureCanvas::raiseLayerFixRequest() called. n=" + this.m_layerFixListeners.length);
+        if (nextLayer == null) {
+            nextLayer = this.m_workingLayers[this.m_nTargetLayerNo];
+        }
+        for (let i = 0; i < this.m_layerFixListeners.length; i++) {
+            // console.log("PictureCanvas::raiseLayerFixRequest(): Checking listener...");
+            const drawer = this.m_layerFixListeners[i];
+            if (isIDrawCanvas(drawer)) {
+                console.log("PictureCanvas::raiseLayerFixRequest(): Calling listener...");
+                drawer.OnLayerToBeFixed(this, nextLayer);
+            }
+        }
+    }
 
-/// 操作履歴オブジェクトを登録する。(Undo/Redo)
-/// Undo/Redo機能を使用する場合は、ツールやキャンバスに対する最初の操作が行われる前に呼ぶ必要がある。
-/// Undo/Redo機能を使わない場合は一切呼んではならない。
-PictureCanvas.prototype.attatchHistory = function (history) {
-	this.m_history = history;
-}
+    /// カレントレイヤーにフローティングレイヤーを追加する。
+    makeFloatingLayer(): void {
+        // フローティングレイヤー作成済か判定
+        const curLayer = this.getCurLayer();
+        if (this.m_floatingLayerUser == null) {
+            this.m_floatingLayerUser = curLayer;
+        } else {
+            assert(curLayer == this.m_floatingLayerUser);		// ここで引っかかったらreleaseFloatingLayer()の呼び忘れ。
+            return;
+        }
 
-/// 操作履歴にエフェクト内容を追記する。(Undo/Redo)
-PictureCanvas.prototype.appendEffect = function (effectObj, configClosure, layerNo) {
-	if (this.m_history == null)
-		return;
-	this.m_history.appendEffect(effectObj, configClosure, layerNo);
-}
+        // フローティングレイヤー作成
+        assert(this.m_floating.hidden);
+        const z_idx = parseInt(curLayer.style.zIndex);
+        this.m_floating.style.zIndex = (z_idx + 1).toString(10);
+        this.m_floating.hidden = false;
+        // {	/*UTEST*/
+        // 	const context = this.m_floating.getContext('2d');
+        // 	const w = this.m_floating.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+        //   const h = this.m_floating.height;  // (同上)
+        // 	context.fillStyle = 'rgba(200,0,255,100)';
+        // 	context.fillRect(0, 0, w, h);
+        // }
+    }
 
-/// 操作履歴に点列を追記する。(Undo/Redo)
-PictureCanvas.prototype.appendPoints = function (effectObj, points, reproClosure) {
-	if (this.m_history == null)
-		return;
-	this.m_history.appendPoints(effectObj, points, reproClosure);
-}
+    /// フローティングレイヤーを開放する。
+    releaseFloatingLayer(/*[opt]*/ bCancel?: boolean): void {
+        this.m_floating.hidden = true;
+        if (!bCancel) {
+            // フローティングレイヤー内容をカレントレイヤーに合成する。
+            const curLayer = this.getCurLayer();
+            const w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+            const h = curLayer.height;  // (同上)
+            assert(w == this.m_floating.width && h == this.m_floating.height);
+            const ctx_floating = this.m_floating.getContext('2d');
+            const ctx_current = curLayer.getContext('2d');
+            const imgd_floating = ctx_floating.getImageData(0, 0, w, h);
+            const imgd_current = ctx_current.getImageData(0, 0, w, h);
+            blend_image(imgd_floating, imgd_current);
+            ctx_current.putImageData(imgd_current, 0, 0);
+            erase_single_layer(this.m_floating);
+        }
+        this.m_floatingLayerUser = null;
+    }
 
-/// 塗り潰し操作を追記する。(Undo/Redo)
-PictureCanvas.prototype.appendPaintOperation = function (point, color, layerNo) {
-	if (this.m_history == null)
-		return;
-	this.m_history.appendPaintOperation(point, color, layerNo);
-}
+    /// 操作履歴オブジェクトを登録する。(Undo/Redo)
+    /// Undo/Redo機能を使用する場合は、ツールやキャンバスに対する最初の操作が行われる前に呼ぶ必要がある。
+    /// Undo/Redo機能を使わない場合は一切呼んではならない。
+    attatchHistory(history: UIOpHistory): void {
+        this.m_history = history;
+    }
 
-/// レイヤー可視属性を記憶する。(Undo/Redo)
-PictureCanvas.prototype.recordVisibility = function () {
-	if (this.m_history == null)
-		return;
+    /// 操作履歴にエフェクト内容を追記する。(Undo/Redo)
+    appendEffect(effectObj: IEffect, configClosure: IConfigClosure, layerNo: (number | HTMLCanvasElement)): void {
+        if (this.m_history == null)
+            return;
+        this.m_history.appendEffect(effectObj, configClosure, layerNo);
+    }
 
-	for (let i = 0; i < this.m_workingLayers.length; ++i) {
-		this.m_lastVisibilityList[i] = !(this.m_workingLayers[i].hidden);
-	}
+    /// 操作履歴に点列を追記する。(Undo/Redo)
+    appendPoints(effectObj: IEffect, points: IPoint[], reproClosure: IReproClosure): void {
+        if (this.m_history == null)
+            return;
+        this.m_history.appendPoints(effectObj, points, reproClosure);
+    }
+
+    /// 塗り潰し操作を追記する。(Undo/Redo)
+    appendPaintOperation(point: IPoint, color: string, layerNo: number): void {
+        if (this.m_history == null)
+            return;
+        this.m_history.appendPaintOperation(point, color, layerNo);
+    }
+
+    /// レイヤー可視属性を記憶する。(Undo/Redo)
+    recordVisibility(): void {
+        if (this.m_history == null)
+            return;
+
+        for (let i = 0; i < this.m_workingLayers.length; i++) {
+            this.m_lastVisibilityList[i] = !(this.m_workingLayers[i].hidden);
+        }
+    }
 }
