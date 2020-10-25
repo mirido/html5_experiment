@@ -4,18 +4,25 @@
 import { IPoint, IRect } from 'app-def';
 import { g_keyStateManager, g_pointManager } from './app-global';
 import { assert } from './dbg-util';
-import { jsPoint } from './geometry.js';
+import { jsPoint } from './geometry';
 import {
     blend_image,
     erase_canvas,
     erase_single_layer,
     get_joint_image
-} from './imaging.js';
-import { ToolPalette } from './tool-palette';
-import { IConfigClosure, IEffect, IReproClosure, UIOpHistory } from './ui-element';
+} from './imaging';
+import { IToolUIEvent } from './tool-palette';
+import {
+    IConfigClosure,
+    IEffect,
+    IReproClosure,
+    UIOpHistory
+} from './ui-element';
 import {
     add_to_unique_list,
-    getBoundingClientRectWrp, IDrawCanvas, IDrawTool, isIDrawCanvas, register_pointer_event_handler,
+    getBoundingClientRectWrp,
+    IDrawTool, isIDrawCanvas,
+    register_pointer_event_handler,
     remove_from_unique_list
 } from './ui-util';
 
@@ -86,13 +93,18 @@ export class VirtualClickEvent implements DrawingEvent {
 }
 
 /// クリックイベントをクリック完了イベントに変更する。(In-place)
-export function modify_click_event_to_end_in_place(e: DrawingEvent) {
+export function modify_click_event_to_end_in_place(e: IToolUIEvent) {
     e.m_type = 'mouseup';
 }
 
 //
 //	PictureCanvas
 //
+
+// Type guard
+function isNumber(arg: any): arg is number {
+    return typeof arg === "number";
+}
 
 export class PictureCanvas implements EventListenerObject {
     // DOMオブジェクト取得
@@ -526,12 +538,15 @@ export class PictureCanvas implements EventListenerObject {
     attatchHistory(history: UIOpHistory): void {
         this.m_history = history;
     }
-
     /// 操作履歴にエフェクト内容を追記する。(Undo/Redo)
     appendEffect(effectObj: IEffect, configClosure: IConfigClosure, layerNo: (number | HTMLCanvasElement)): void {
         if (this.m_history == null)
             return;
-        this.m_history.appendEffect(effectObj, configClosure, layerNo);
+        if (isNumber(layerNo)) {
+            this.m_history.appendEffect(effectObj, configClosure, layerNo);
+        } else {
+            throw new Error("*** ERR ***");
+        }
     }
 
     /// 操作履歴に点列を追記する。(Undo/Redo)

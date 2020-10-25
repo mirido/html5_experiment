@@ -16,8 +16,8 @@ import { assert, dump_event } from './dbg-util';
 import { jsPoint, jsRect, JsRect, rect_includes } from './geometry';
 import { draw_line_1px, draw_rect_R } from './graphics';
 import { DrawingEvent, PictureCanvas } from './picture-canvas';
-import { CommonSetting, ToolPalette, IToolUIEvent } from './tool-palette';
-import { UIOpHistory as UIOpHistory } from './ui-element';
+import { CommonSetting, IToolUIEvent } from './tool-palette';
+import { UIOpHistory } from './ui-element';
 
 'use strict';
 
@@ -229,7 +229,7 @@ export interface IDrawTool {
     OnPicked(e: IToolUIEvent): (void | number);
 
     /// クリック終了またはドラッグ終了時に呼ばれる。(IDrawTool)
-    OnPointingEnd(e: IToolUIEvent): void;
+    OnPointingEnd?(e: IToolUIEvent): void;
 }
 
 /// 設定変更リスナ オブジェクト
@@ -612,15 +612,11 @@ export function draw_icon_face_ex<T extends IRect>(
 
 /// アイコンを描画する。
 export function draw_icon_face_wrp<T extends IRect>(
-    iconBounds: T, bActive: boolean, e: DrawingEvent
+    iconBounds: T, bActive: boolean, e: IToolUIEvent
 ): void {
-    if (e.m_sender instanceof ToolPalette) {
-        const tool_canvas: HTMLCanvasElement = e.m_sender.getToolPaletteCanvas();
-        const context = tool_canvas.getContext('2d');
-        draw_icon_face_ex(iconBounds, bActive, context);
-    } else {
-        throw new Error("*** ERR ***");
-    }
+    const tool_canvas: HTMLCanvasElement = e.m_sender.getToolPaletteCanvas();
+    const context = tool_canvas.getContext('2d');
+    draw_icon_face_ex(iconBounds, bActive, context);
 }
 
 /// アイコンを描画する。
@@ -872,38 +868,30 @@ export class MicroSlideBar implements IDrawTool {
     }
 
     /// 選択直後の初期表示を行う。
-    OnSelected(e: DrawingEvent, val: number): void {
-        if (e.m_sender instanceof ToolPalette) {
-            const tool_canvas = e.m_sender.getToolPaletteCanvas();
-            this.show(val, tool_canvas);
-        } else {
-            throw new Error("*** ERR ***");
-        }
+    OnSelected(e: IToolUIEvent, val: number): void {
+        const tool_canvas = e.m_sender.getToolPaletteCanvas();
+        this.show(val, tool_canvas);
     }
 
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         /*pass*/
     }
 
     /// 数値を表示に反映する。
-    OnPicked(e: DrawingEvent): number {
-        if (e.m_sender instanceof ToolPalette) {
-            let tool_canvas = e.m_sender.getToolPaletteCanvas();
-            let context = tool_canvas.getContext('2d');
+    OnPicked(e: IToolUIEvent): number {
+        let tool_canvas = e.m_sender.getToolPaletteCanvas();
+        let context = tool_canvas.getContext('2d');
 
-            let val = this.decodePoint(e.m_point);
-            if (val != null) {
-                val = Math.round(val);
-                this.drawValue(val, context);
-            }
-
-            return this.m_value;
-        } else {
-            throw new Error("*** ERR ***");
+        let val = this.decodePoint(e.m_point);
+        if (val != null) {
+            val = Math.round(val);
+            this.drawValue(val, context);
         }
+
+        return this.m_value;
     }
 
-    OnPointingEnd(e: DrawingEvent) {
+    OnPointingEnd(e: IToolUIEvent) {
         /*pass*/
     }
 
@@ -988,19 +976,19 @@ export class ListBox implements IDrawTool {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
+    OnSelected(e: IToolUIEvent): void {
         // console.log("ListBox::OnSelected() called.");
         return this.OnPicked(e);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         // console.log("ListBox::OnDiselected() called.");
         /*NOP*/
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         // console.log("ListBox::OnPicked() called.");
         const idx = this.getLocalBoundsIdx(e.m_point);
         if (idx != null) {
@@ -1008,7 +996,7 @@ export class ListBox implements IDrawTool {
         }
     }
 
-    OnPointingEnd(e: DrawingEvent) {
+    OnPointingEnd(e: IToolUIEvent) {
         /*pass*/
     }
 

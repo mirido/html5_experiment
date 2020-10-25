@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
-import { IPlot2Func, IPlotFunc, IPoint, IRect } from './app-def';
+import { IPlotFunc, IPoint, IRect } from './app-def';
 import { g_pictureCanvas } from './app-global';
 import { assert } from './dbg-util';
 import {
@@ -38,11 +38,11 @@ import {
 import { MaskTool } from './oebi-tool';
 import { DrawingEvent, IDrawingEvent, PictureCanvas } from './picture-canvas';
 import {
-    CommonSetting, PointingEventClone, ToolPalette, VirtualDrawingStartEvent
+    CommonSetting, ToolPalette, VirtualDrawingStartEvent
 } from './tool-palette';
 import {
     add_to_unique_list,
-    get_components_from_RGBx,
+
     get_cursor_color,
     IDrawCanvas,
     IHistoryRewindListenerObject, remove_from_unique_list,
@@ -776,7 +776,6 @@ export interface IYankFunc {
     (layer: HTMLCanvasElement, rect: IRect): PartialImage;
 }
 
-/// 新しいインスタンスを初期化する。
 export class DrawOp_RectCapture implements IDrawOp {
     m_setting: CommonSetting;
     m_drawOpForGuide: IDrawOp;
@@ -788,7 +787,8 @@ export class DrawOp_RectCapture implements IDrawOp {
     m_pasteGuideImgd: ImageData;    // ペースト時ガイド表示用の画像データ
     m_lastSpKeyState: number;
 
-    constructor(setting: CommonSetting, /*[opt]*/ yankFunc: IYankFunc) {
+    /// 新しいインスタンスを初期化する。
+    constructor(setting: CommonSetting, /*[opt]*/ yankFunc?: IYankFunc) {
         this.m_setting = setting;
         this.m_drawOpForGuide = new DrawOp_Rectangle(setting, false);
 
@@ -1088,23 +1088,27 @@ export class DrawOp_BoundingRect implements IDrawOp {
 // キャンバスに画素を直接置くタイプの効果(鉛筆や消しペン)の他、
 // 将来水彩等にも使えるようにしている(つもり)。
 
-interface IRenderGenForPixel {
+interface IRenderForPixel {
     (x: number, y: number, context: Context2D): IReproClosure;
 }
 
-interface IRenderGenForLine {
+interface IRenderForLine {
     (x1: number, y1: number, x2: number, y2: number, context: Context2D): IReproClosure;
 }
 
-/// 新しいインスタンスを取得する。
+/// ImageBitmapはInternet Explorerで非サポートのため
+/// pre renderd画像の記憶にはHTMLCanvasElementを使用する。
+type RenderedImage = HTMLCanvasElement;
+
 export class EffectBase01 implements IEffect {
     m_ha: number
-    m_pre_rendered: HTMLCanvasElement;
-    m_runtime_renderer1: IRenderGenForPixel;
-    m_runtime_renderer2: IRenderGenForLine;
+    m_pre_rendered: RenderedImage;
+    m_runtime_renderer1: IRenderForPixel;
+    m_runtime_renderer2: IRenderForLine;
     m_fGlobalAlpha: number;
     m_plotFunc: IPlotFunc;
 
+    /// 新しいインスタンスを取得する。
     constructor() {
         this.setParamEx(null, null, null, null, null, false);
     }
@@ -1112,9 +1116,9 @@ export class EffectBase01 implements IEffect {
     /// パラメータを設定する。(クラス固有)
     setParamEx(
         ha: number,                             // [in] Pre-rendering配置オフセット
-        pre_rendered: HTMLCanvasElement,        // [in] Pre-rendering結果
-        runtime_renderer1: IRenderGenForPixel,  // [in] 実行時render関数(1点用)
-        runtime_renderer2: IRenderGenForLine,   // [in] 実行時render関数(2点用)
+        pre_rendered: RenderedImage,            // [in] Pre-rendering結果
+        runtime_renderer1: IRenderForPixel,     // [in] 実行時render関数(1点用)
+        runtime_renderer2: IRenderForLine,      // [in] 実行時render関数(2点用)
         fGlobalAlpha: number,                   // [in] α値([0, 1]で与えるので注意!)
         bCompositeWithCopy: boolean             // [in] Pre-rendering結果をcopyする。(描画先との合成無し)
     ) {
@@ -1124,13 +1128,17 @@ export class EffectBase01 implements IEffect {
         this.m_runtime_renderer2 = runtime_renderer2;
         this.m_fGlobalAlpha = fGlobalAlpha;
         if (pre_rendered != null && bCompositeWithCopy) {
-            const ctx = pre_rendered.getContext('2d');
-            const w = pre_rendered.width;
-            const h = pre_rendered.height;
-            const src_imgd = ctx.getImageData(0, 0, w, h);
-            this.m_plotFunc = function (x, y, context) {
-                putImageDataEx(src_imgd, context, x - ha, y - ha);
-            };
+            if (pre_rendered instanceof HTMLCanvasElement) {
+                const ctx = pre_rendered.getContext('2d');
+                const w = pre_rendered.width;
+                const h = pre_rendered.height;
+                const src_imgd = ctx.getImageData(0, 0, w, h);
+                this.m_plotFunc = function (x, y, context) {
+                    putImageDataEx(src_imgd, context, x - ha, y - ha);
+                };
+            } else {
+                throw new Error("*** ERR ***");
+            }
         } else {
             this.m_plotFunc = null;
         }
@@ -1141,14 +1149,10 @@ export class EffectBase01 implements IEffect {
         let reproClosure: IReproClosure;
         if (points.length == 1) {
             const pt = points[0];
-            if (this.m_pre_rendered) {    // (Pre-rendering結果存在)
+            if (this.m_pre_rendered != null) {    // (Pre-rendering結果存在)
                 if (this.m_plotFunc != null) {
                     this.m_plotFunc(pt.x, pt.y, context);
                 } else {
-                    let imgd: ImageData = this.m_pre_rendered.getContext('2d').getImageData();
-                    createImageBitmap(imgd).then(
-                        let imgd2:ImageData=
-                    )
                     put_point(pt.x, pt.y, this.m_ha, this.m_pre_rendered, context);
                 }
             } else {
@@ -1200,12 +1204,12 @@ export class EffectBase01 implements IEffect {
 //  エフェクト1: 鉛筆
 //
 
-/// 新しいインスタンスを取得する。
 export class Effect_Pencil extends EffectBase01 {
     m_margin: number;
     m_bMakeFloatingLayer: boolean;
     m_prevPRParams: (number | string)[];
 
+    /// 新しいインスタンスを取得する。
     constructor() {
         super();
         this.m_margin = null;
@@ -1226,7 +1230,13 @@ export class Effect_Pencil extends EffectBase01 {
     }
 
     /// 実行時render関数(1点用)。
-    static runtime_renderer1_ex(px: number, py: number, diameter: number, color: string, context: Context2D): void {
+    static runtime_renderer1_ex(
+        px: number,
+        py: number,
+        diameter: number,
+        color: string,
+        context: Context2D
+    ): void {
         // console.log("Effect_Pencil.runtime_renderer1() called.");
         assert(diameter == 1);    // 1 px描画時のみ呼ばれるはず。
         context.fillStyle = color;
@@ -1234,7 +1244,15 @@ export class Effect_Pencil extends EffectBase01 {
     }
 
     /// 実行時render関数(2点用)。
-    static runtime_renderer2_ex(px1: number, py1: number, px2: number, py2: number, diameter: number, color: string, context: Context2D): void {
+    static runtime_renderer2_ex(
+        px1: number,
+        py1: number,
+        px2: number,
+        py2: number,
+        diameter: number,
+        color: string,
+        context: Context2D
+    ): void {
         // console.log("Effect_Pencil.runtime_renderer2() called.");
         assert(diameter == 1);    // 1 px描画時のみ呼ばれるはず。
         context.fillStyle = color;
@@ -1242,17 +1260,19 @@ export class Effect_Pencil extends EffectBase01 {
     }
 
     /// パラメータを設定する。(クラス固有)
-    setParamCustom(diameter: number, color: string, alpha: number) {
+    setParamCustom(diameter: number, color: string, alpha: number): void {
         // マージン決定
         this.m_margin = (diameter > 1) ? Math.ceil(diameter / 2) + 10 : 0;
 
         // 引数仕様合わせのためのクロージャ生成
-        const runtime_renderer1: IPlotFunc = function (px, py, context) {
+        const runtime_renderer1: IRenderForPixel = function (px, py, context) {
             Effect_Pencil.runtime_renderer1_ex(px, py, diameter, color, context);
+            return null;
         };
-        const runtime_renderer2: IPlot2Func = function (px1, py1, px2, py2, context) {
+        const runtime_renderer2: IRenderForLine = function (px1, py1, px2, py2, context) {
             draw_line_1px(px1, py1, px2, py2, context);
             Effect_Pencil.runtime_renderer2_ex(px1, py1, px2, py2, diameter, color, context);
+            return null;
         };
 
         // α合成対応
@@ -1313,7 +1333,7 @@ export class Effect_Pencil extends EffectBase01 {
     }
 
     /// マージンを取得する。
-    getMargin() { return this.m_margin; }
+    getMargin(): number { return this.m_margin; }
 
     /// 画素定着対象レイヤーを取得する。(Optional)
     getMasterLayer(e: IDrawingEvent): HTMLCanvasElement {
@@ -1333,17 +1353,19 @@ export class Effect_Pencil extends EffectBase01 {
 //  エフェクト2: 消しペン
 //
 
-/// 新しいインスタンスを取得する。
 export class Effect_Eraser extends EffectBase01 {
-    constructor(diameter, color) {
-        this.m_effectBase = new EffectBase01();
+    m_margin: number;
+
+    /// 新しいインスタンスを取得する。
+    constructor() {
+        super();
         this.m_margin = null;
     }
 
     // Pre-render関数は無し。
 
     /// 実行時render関数(1点用)。
-    Effect_Eraser.runtime_renderer1_ex(px, py, diameter, context) {
+    static runtime_renderer1_ex(px: number, py: number, diameter: number, context: Context2D) {
         const radius = diameter / 2;
         const sx = Math.ceil(px - radius);
         const sy = Math.ceil(py - radius);
@@ -1353,30 +1375,39 @@ export class Effect_Eraser extends EffectBase01 {
     }
 
     /// 実行時render関数(2点用)。
-    Effect_Eraser.runtime_renderer2_ex(px1, py1, px2, py2, runtime_renderer1, context) {
+    static runtime_renderer2_ex(
+        px1: number,
+        py1: number,
+        px2: number,
+        py2: number,
+        runtime_renderer1: IPlotFunc,
+        context: Context2D
+    ) {
         // console.log("runtime_renderer2() called.");
         // console.dir(runtime_renderer1);
         draw_line_w_runtime_renderer(px1, py1, px2, py2, runtime_renderer1, context);
     }
 
     /// パラメータを設定する。(クラス固有)
-    setParamCustom(diameter, alpha) {
+    setParamCustom(diameter: number, alpha: number): void {
         // マージン決定
         this.m_margin = (diameter > 1) ? Math.ceil((1.5 * diameter) / 2) : 0;
 
         // 引数仕様合わせのためのクロージャ生成
-        const runtime_renderer1 (px, py, context) {
+        const runtime_renderer1: IRenderForPixel = function (px, py, context) {
             Effect_Eraser.runtime_renderer1_ex(px, py, diameter, context);
+            return null;
         };
-        const runtime_renderer2 (px1, py1, px2, py2, context) {
+        const runtime_renderer2: IRenderForLine = function (px1, py1, px2, py2, context) {
             Effect_Eraser.runtime_renderer2_ex(px1, py1, px2, py2, runtime_renderer1, context);
+            return null;
         };
         // console.dir(runtime_renderer1);
         // console.dir(runtime_renderer2);
 
         // 描画条件決定
         const ha = this.m_margin;
-        this.m_effectBase.setParamEx(
+        super.setParamEx(
             ha,
             null,
             runtime_renderer1,
@@ -1387,519 +1418,643 @@ export class Effect_Eraser extends EffectBase01 {
     }
 
     /// パラメータを設定する。
-    setParam(setting) {
+    setParam(setting: CommonSetting): IConfigClosure {
         const diameter = setting.getThickness();
         const alpha = setting.getAlpha();
         this.setParamCustom(diameter, alpha);
 
         // 再設定のためのクロージャを返す(Undo/Redo)
-        return function (obj) { obj.setParamCustom(diameter, alpha); };
+        return function (obj: IEffect): void {
+            if (obj instanceof Effect_Eraser) {
+                obj.setParamCustom(diameter, alpha);
+            } else {
+                throw new Error("*** ERR ***");
+            }
+        };
     }
 
     /// エフェクトを適用する。
-    apply(points, context) {
-        this.m_effectBase.apply(points, context);
+    apply(points: IPoint[], context: Context2D): IReproClosure {
+        return super.apply(points, context);
     }
 
     /// マージンを取得する。
-    getMargin() { return this.m_margin; }
+    getMargin(): number { return this.m_margin; }
 }
 
 //
 //  エフェクト3: 鉛筆による線四角 or 四角
 //
 
-/// 新しいインスタンスを取得する。
-export function Effect_PencilRect(bFilled) {
-    this.m_effectBase = new EffectBase01();
-    this.m_bFilled = bFilled;
-}
+export class Effect_PencilRect extends EffectBase01 {
+    m_bFilled: boolean;
 
-// Pre-render関数は無し。
-
-/// 実行時render関数(1点用)。
-Effect_PencilRect.runtime_renderer1_ex(px, py, color, context) {
-    assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
-}
-
-/// 実行時render関数(2点用)。
-Effect_PencilRect.runtime_renderer2_ex(px1, py1, px2, py2, color, bFilled, context) {
-    const r = encode_to_rect(px1, py1, px2, py2);
-
-    context.fillStyle = color;
-    if (bFilled) {
-        context.fillRect(r.x, r.y, r.width, r.height);
-    } else {
-        draw_rect_R(r, context);
+    /// 新しいインスタンスを取得する。
+    constructor(bFilled: boolean) {
+        super();
+        this.m_bFilled = bFilled;
     }
+
+    // Pre-render関数は無し。
+
+    /// 実行時render関数(1点用)。
+    static runtime_renderer1_ex(px: number, py: number, color: string, context: Context2D): void {
+        assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+    }
+
+    /// 実行時render関数(2点用)。
+    static runtime_renderer2_ex(
+        px1: number,
+        py1: number,
+        px2: number,
+        py2: number,
+        color: string,
+        bFilled: boolean,
+        context: Context2D
+    ) {
+        const r = encode_to_rect(px1, py1, px2, py2);
+
+        context.fillStyle = color;
+        if (bFilled) {
+            context.fillRect(r.x, r.y, r.width, r.height);
+        } else {
+            draw_rect_R(r, context);
+        }
+    }
+
+    /// パラメータを設定する。(クラス固有)
+    setParamCustom(color: string, alpha: number): void {
+        // 引数仕様合わせのためのクロージャ生成
+        const runtime_renderer1: IRenderForPixel = function (px, py, context): IReproClosure {
+            Effect_PencilRect.runtime_renderer1_ex(px, py, color, context);
+            return null;
+        };
+        const bFilled = this.m_bFilled;
+        const runtime_renderer2: IRenderForLine = function (px1, py1, px2, py2, context): IReproClosure {
+            Effect_PencilRect.runtime_renderer2_ex(px1, py1, px2, py2, color, bFilled, context);
+            return null;
+        };
+
+        // 描画条件決定
+        super.setParamEx(
+            0,
+            null,
+            runtime_renderer1,
+            runtime_renderer2,
+            alpha / 255.0,
+            false
+        );
+    }
+
+    /// パラメータを設定する。
+    setParam(setting: CommonSetting): IConfigClosure {
+        const color = setting.getColor();
+        const alpha = setting.getAlpha();
+        this.setParamCustom(color, alpha);
+
+        // 再設定のためのクロージャを返す(Undo/Redo)
+        return function (obj: IEffect) {
+            if (obj instanceof Effect_PencilRect) {
+                obj.setParamCustom(color, alpha);
+            } else {
+                throw new Error("*** ERR ***");
+            }
+        }
+    }
+
+    /// エフェクトを適用する。
+    apply(points: IPoint[], context: Context2D): IReproClosure {
+        return super.apply(points, context);
+    }
+
+    /// マージンを取得する。
+    getMargin(): number { return 0; }
 }
-
-/// パラメータを設定する。(クラス固有)
-Effect_PencilRect.prototype.setParamCustom(color, alpha) {
-    // 引数仕様合わせのためのクロージャ生成
-    const runtime_renderer1 = function (px, py, context) {
-        Effect_PencilRect.runtime_renderer1_ex(px, py, color, context);
-    };
-    const bFilled = this.m_bFilled;
-    const runtime_renderer2 = function (px1, py1, px2, py2, context) {
-        Effect_PencilRect.runtime_renderer2_ex(px1, py1, px2, py2, color, bFilled, context);
-    };
-
-    // 描画条件決定
-    this.m_effectBase.setParamEx(
-        0,
-        null,
-        runtime_renderer1,
-        runtime_renderer2,
-        alpha / 255.0,
-        false
-    );
-}
-
-/// パラメータを設定する。
-Effect_PencilRect.prototype.setParam(setting) {
-    const color = setting.getColor();
-    const alpha = setting.getAlpha();
-    this.setParamCustom(color, alpha);
-
-    // 再設定のためのクロージャを返す(Undo/Redo)
-    return function (obj) { obj.setParamCustom(color, alpha); };
-}
-
-/// エフェクトを適用する。
-Effect_PencilRect.prototype.apply(points, context) {
-    this.m_effectBase.apply(points, context);
-}
-
-/// マージンを取得する。
-Effect_PencilRect.prototype.getMargin() { return 0; }
 
 //
 //  エフェクト4: 矩形領域ペースト
 //
 
-/// 新しいインスタンスを取得する。
-export function Effect_RectPaste(copyAndPasteOp) {
-    this.m_effectBase = new EffectBase01();
-    this.m_copyAndPasteOp = copyAndPasteOp;   // 実行時rendering時に裏で手を握る相手
-}
+export class Effect_RectPaste extends EffectBase01 {
+    m_copyAndPasteOp: DrawOp_RectCapture;
 
-// Pre-render関数は無し。
-
-/// 実行時render関数(1点用)。
-Effect_RectPaste.runtime_renderer1_ex(px, py, color, context) {
-    assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
-}
-
-/// 実行時render関数(2点用)。
-Effect_RectPaste.runtime_renderer2_ex(px1, py1, px2, py2, obj, context) {
-    const r = encode_to_rect(px1, py1, px2, py2);
-
-    // コピーデータのpaste
-    const reproClosure;
-    const yankData = obj.m_copyAndPasteOp.getYankData();
-    if (yankData != null) {
-        const imgd = yankData.m_imgd;
-        assert(imgd.width == px2 - px1 + 1 && imgd.height == py2 - py1 + 1);
-        // context.putImageData(imgd, px1, py1);
-        putImageDataEx(imgd, context, px1, py1);
-
-        // 描画再現クロージャ生成
-        reproClosure = function (obj, points, layer) {
-            const repro_ctx = layer.getContext('2d');
-            putImageDataEx(imgd, repro_ctx, px1, py1);
-        };
-    } else {
-        assert(false);    // ここに来たらバグ。
+    /// 新しいインスタンスを取得する。
+    constructor(copyAndPasteOp: DrawOp_RectCapture) {
+        super();
+        this.m_copyAndPasteOp = copyAndPasteOp;   // 実行時rendering時に裏で手を握る相手
     }
 
-    // 次のモードに遷移
-    obj.m_copyAndPasteOp.gotoNext();
+    // Pre-render関数は無し。
 
-    return reproClosure;
+    /// 実行時render関数(1点用)。
+    static runtime_renderer1_ex(
+        px: number,
+        py: number,
+        color: string,
+        context: Context2D
+    ): IReproClosure {
+        assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+        return null;
+    }
+
+    /// 実行時render関数(2点用)。
+    static runtime_renderer2_ex(
+        px1: number,
+        py1: number,
+        px2: number,
+        py2: number,
+        obj: Effect_RectPaste,
+        context: Context2D
+    ) {
+        const r = encode_to_rect(px1, py1, px2, py2);
+
+        // コピーデータのpaste
+        let reproClosure: IReproClosure;
+        const yankData = obj.m_copyAndPasteOp.getYankData();
+        if (yankData != null) {
+            const imgd = yankData.m_imgd;
+            assert(imgd.width == px2 - px1 + 1 && imgd.height == py2 - py1 + 1);
+            // context.putImageData(imgd, px1, py1);
+            putImageDataEx(imgd, context, px1, py1);
+
+            // 描画再現クロージャ生成
+            reproClosure = function (obj, points, layer) {
+                if (layer instanceof HTMLCanvasElement) {
+                    const repro_ctx = layer.getContext('2d');
+                    putImageDataEx(imgd, repro_ctx, px1, py1);
+                } else {
+                    throw new Error("*** ERR ***");
+                }
+            };
+        } else {
+            assert(false);    // ここに来たらバグ。
+        }
+
+        // 次のモードに遷移
+        obj.m_copyAndPasteOp.gotoNext();
+
+        return reproClosure;
+    }
+
+    /// パラメータを設定する。(クラス固有)
+    setParamCustom(color: string, alpha: number): void {
+        // 引数仕様合わせのためのクロージャ生成
+        const runtime_renderer1: IRenderForPixel = function (px, py, context) {
+            return Effect_RectPaste.runtime_renderer1_ex(px, py, color, context);
+        };
+        const thisObj = this;     // 束縛変数
+        const runtime_renderer2: IRenderForLine = function (px1, py1, px2, py2, context) {
+            return Effect_RectPaste.runtime_renderer2_ex(px1, py1, px2, py2, thisObj, context);
+        };
+
+        // 描画条件決定
+        super.setParamEx(
+            0,
+            null,
+            runtime_renderer1,
+            runtime_renderer2,
+            alpha / 255.0,
+            false
+        );
+    }
+
+    /// パラメータを設定する。
+    setParam(setting: CommonSetting): IConfigClosure {
+        const color = setting.getColor();
+        const alpha = setting.getAlpha();
+        this.setParamCustom(color, alpha);
+
+        // 再設定のためのクロージャを返す(Undo/Redo)
+        return function (obj: IEffect) {
+            if (obj instanceof Effect_RectPaste) {
+                obj.setParamCustom(color, alpha);
+            } else {
+                throw new Error("*** ERR ***");
+            }
+        }
+    }
+
+    /// エフェクトを適用する。
+    apply(points: IPoint[], context: Context2D): IReproClosure {
+        return super.apply(points, context);
+    }
+
+    /// マージンを取得する。
+    getMargin(): number { return 0; }
 }
-
-/// パラメータを設定する。(クラス固有)
-Effect_RectPaste.prototype.setParamCustom(color, alpha) {
-    // 引数仕様合わせのためのクロージャ生成
-    const runtime_renderer1 = function (px, py, context) {
-        Effect_RectPaste.runtime_renderer1_ex(px, py, color, context);
-    };
-    const thisObj = this;     // 束縛変数
-    const runtime_renderer2 = function (px1, py1, px2, py2, context) {
-        return Effect_RectPaste.runtime_renderer2_ex(px1, py1, px2, py2, thisObj, context);
-    };
-
-    // 描画条件決定
-    this.m_effectBase.setParamEx(
-        0,
-        null,
-        runtime_renderer1,
-        runtime_renderer2,
-        alpha / 255.0,
-        false
-    );
-}
-
-/// パラメータを設定する。
-Effect_RectPaste.prototype.setParam(setting) {
-    const color = setting.getColor();
-    const alpha = setting.getAlpha();
-    this.setParamCustom(color, alpha);
-
-    // 再設定のためのクロージャを返す(Undo/Redo)
-    return function (obj) { obj.setParamCustom(color, alpha); };
-}
-
-/// エフェクトを適用する。
-Effect_RectPaste.prototype.apply(points, context) {
-    return this.m_effectBase.apply(points, context);
-}
-
-/// マージンを取得する。
-Effect_RectPaste.prototype.getMargin() { return 0; }
 
 //
 //  エフェクト5: 消し四角
 //
 
-/// 新しいインスタンスを取得する。
-export function Effect_RectEraser() {
-    this.m_effectBase = new EffectBase01();
+export class Effect_RectEraser extends EffectBase01 {
+    /// 新しいインスタンスを取得する。
+    constructor() {
+        super();
+    }
+
+    // Pre-render関数は無し。
+
+    /// 実行時render関数(1点用)。
+    static runtime_renderer1_ex(px: number, py: number, context: Context2D): IReproClosure {
+        assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+        return null;
+    }
+
+    /// 実行時render関数(2点用)。
+    static runtime_renderer2_ex(px1: number, py1: number, px2: number, py2: number, context: Context2D): IReproClosure {
+        const r = encode_to_rect(px1, py1, px2, py2);
+        context.clearRect(r.x, r.y, r.width, r.height);
+        return null;
+    }
+
+    /// パラメータを設定する。(クラス固有)
+    setParamCustom(alpha: number): void {
+        // 引数仕様合わせのためのクロージャ生成
+        const runtime_renderer1: IRenderForPixel = function (px, py, context) {
+            return Effect_RectEraser.runtime_renderer1_ex(px, py, context);
+        };
+        const runtime_renderer2: IRenderForLine = function (px1, py1, px2, py2, context) {
+            return Effect_RectEraser.runtime_renderer2_ex(px1, py1, px2, py2, context);
+        };
+
+        // 描画条件決定
+        super.setParamEx(
+            0,
+            null,
+            runtime_renderer1,
+            runtime_renderer2,
+            alpha / 255.0,
+            false
+        );
+    }
+
+    /// パラメータを設定する。
+    setParam(setting: CommonSetting): IConfigClosure {
+        const alpha = setting.getAlpha();
+        this.setParamCustom(alpha);
+
+        // 再設定のためのクロージャを返す(Undo/Redo)
+        return function (obj: IEffect): void {
+            if (obj instanceof Effect_RectEraser) {
+                obj.setParamCustom(alpha);
+            } else {
+                throw new Error("*** ERR ***");
+            }
+        };
+    }
+
+    /// エフェクトを適用する。
+    apply(points: IPoint[], context: Context2D): IReproClosure {
+        return super.apply(points, context);
+    }
+
+    /// マージンを取得する。
+    getMargin(): number { return 0; }
 }
-
-// Pre-render関数は無し。
-
-/// 実行時render関数(1点用)。
-Effect_RectEraser.runtime_renderer1_ex(px, py, context) {
-    assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
-}
-
-/// 実行時render関数(2点用)。
-Effect_RectEraser.runtime_renderer2_ex(px1, py1, px2, py2, context) {
-    const r = encode_to_rect(px1, py1, px2, py2);
-    context.clearRect(r.x, r.y, r.width, r.height);
-}
-
-/// パラメータを設定する。(クラス固有)
-Effect_RectEraser.prototype.setParamCustom(alpha) {
-    // 引数仕様合わせのためのクロージャ生成
-    const runtime_renderer1 = function (px, py, context) {
-        Effect_RectEraser.runtime_renderer1_ex(px, py, context);
-    };
-    const runtime_renderer2 = function (px1, py1, px2, py2, context) {
-        Effect_RectEraser.runtime_renderer2_ex(px1, py1, px2, py2, context);
-    };
-
-    // 描画条件決定
-    this.m_effectBase.setParamEx(
-        0,
-        null,
-        runtime_renderer1,
-        runtime_renderer2,
-        alpha / 255.0,
-        false
-    );
-}
-
-/// パラメータを設定する。
-Effect_RectEraser.prototype.setParam(setting) {
-    const alpha = setting.getAlpha();
-    this.setParamCustom(alpha);
-
-    // 再設定のためのクロージャを返す(Undo/Redo)
-    return function (obj) { obj.setParamCustom(alpha); };
-}
-
-/// エフェクトを適用する。
-Effect_RectEraser.prototype.apply(points, context) {
-    this.m_effectBase.apply(points, context);
-}
-
-/// マージンを取得する。
-Effect_RectEraser.prototype.getMargin() { return 0; }
 
 //
 //  エフェクト6: 上下 or 左右反転
 //
 
-/// 新しいインスタンスを取得する。
-export function Effect_FlipRect(bVert) {
-    this.m_bVert = bVert;
-    this.m_effectBase = new EffectBase01();
-}
+export class Effect_FlipRect extends EffectBase01 {
+    m_bVert: boolean;
 
-// Pre-render関数は無し。
-
-/// 実行時render関数(1点用)。
-Effect_FlipRect.runtime_renderer1_ex(px, py, context) {
-    assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
-}
-
-/// 実行時render関数(2点用)。
-Effect_FlipRect.runtime_renderer2_ex(px1, py1, px2, py2, bVert, context) {
-    const r = encode_to_rect(px1, py1, px2, py2);
-    const imgd_src = context.getImageData(r.x, r.y, r.width, r.height);
-    const imgd_dst = context.createImageData(r.width, r.height);
-    if (bVert) {
-        get_vert_flip_image(imgd_src, imgd_dst);
-    } else {
-        get_mirror_image(imgd_src, imgd_dst);
+    /// 新しいインスタンスを取得する。
+    constructor(bVert: boolean) {
+        super();
+        this.m_bVert = bVert;
     }
-    context.putImageData(imgd_dst, r.x, r.y);
+
+    // Pre-render関数は無し。
+
+    /// 実行時render関数(1点用)。
+    static runtime_renderer1_ex(px: number, py: number, context: Context2D): IReproClosure {
+        assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+        return null;
+    }
+
+    /// 実行時render関数(2点用)。
+    static runtime_renderer2_ex(
+        px1: number,
+        py1: number,
+        px2: number,
+        py2: number,
+        bVert: boolean,
+        context: Context2D
+    ): IReproClosure {
+        const r = encode_to_rect(px1, py1, px2, py2);
+        const imgd_src = context.getImageData(r.x, r.y, r.width, r.height);
+        const imgd_dst = context.createImageData(r.width, r.height);
+        if (bVert) {
+            get_vert_flip_image(imgd_src, imgd_dst);
+        } else {
+            get_mirror_image(imgd_src, imgd_dst);
+        }
+        context.putImageData(imgd_dst, r.x, r.y);
+        return null;
+    }
+
+    /// パラメータを設定する。(クラス固有)
+    setParamCustom(alpha: number): void {
+        // 引数仕様合わせのためのクロージャ生成
+        const runtime_renderer1: IRenderForPixel = function (px, py, context) {
+            return Effect_FlipRect.runtime_renderer1_ex(px, py, context);
+        };
+        const bVert = this.m_bVert;   // 束縛変数
+        const runtime_renderer2: IRenderForLine = function (px1, py1, px2, py2, context) {
+            return Effect_FlipRect.runtime_renderer2_ex(px1, py1, px2, py2, bVert, context);
+        };
+
+        // 描画条件決定
+        super.setParamEx(
+            0,
+            null,
+            runtime_renderer1,
+            runtime_renderer2,
+            alpha / 255.0,
+            false
+        );
+    }
+
+    /// パラメータを設定する。(クラス固有)
+    setParam(setting: CommonSetting): IConfigClosure {
+        const alpha = setting.getAlpha();
+        this.setParamCustom(alpha);
+
+        // 再設定のためのクロージャを返す(Undo/Redo)
+        return function (obj: IEffect): void {
+            if (obj instanceof Effect_FlipRect) {
+                obj.setParamCustom(alpha);
+            } else {
+                throw new Error("*** ERR ***");
+            }
+        };
+    }
+
+    /// エフェクトを適用する。
+    apply(points: IPoint[], context: Context2D): IReproClosure {
+        return super.apply(points, context);
+    }
+
+    /// マージンを取得する。
+    getMargin(): number { return 0; }
 }
-
-/// パラメータを設定する。(クラス固有)
-Effect_FlipRect.prototype.setParamCustom(alpha) {
-    // 引数仕様合わせのためのクロージャ生成
-    const runtime_renderer1 = function (px, py, context) {
-        Effect_FlipRect.runtime_renderer1_ex(px, py, context);
-    };
-    const bVert = this.m_bVert;   // 束縛変数
-    const runtime_renderer2 = function (px1, py1, px2, py2, context) {
-        Effect_FlipRect.runtime_renderer2_ex(px1, py1, px2, py2, bVert, context);
-    };
-
-    // 描画条件決定
-    this.m_effectBase.setParamEx(
-        0,
-        null,
-        runtime_renderer1,
-        runtime_renderer2,
-        alpha / 255.0,
-        false
-    );
-}
-
-/// パラメータを設定する。(クラス固有)
-Effect_FlipRect.prototype.setParam(setting) {
-    const alpha = setting.getAlpha();
-    this.setParamCustom(alpha);
-
-    // 再設定のためのクロージャを返す(Undo/Redo)
-    return function (obj) { obj.setParamCustom(alpha); };
-}
-
-/// エフェクトを適用する。
-Effect_FlipRect.prototype.apply(points, context) {
-    this.m_effectBase.apply(points, context);
-}
-
-/// マージンを取得する。
-Effect_FlipRect.prototype.getMargin() { return 0; }
 
 //
 //  エフェクト7: ハーフトーン
 //
 
-/// ハーフトーンの最大周期
-/// これを超える周期のハーフトーンは透明とみなす。
-const max_halftone_cyc = 256;
+// /// ハーフトーンの最大周期
+// /// これを超える周期のハーフトーンは透明とみなす。
+// const max_halftone_cyc = 256;
 
-/// 新しいインスタンスを取得する。
-export function Effect_Halftone() {
-    this.m_effectBase = new EffectBase01();
-    this.m_pre_rendered = null;
-    this.m_color = null;
-    this.m_alpha = null;
-    this.m_lastContext = null;
-    this.m_halftone_imgd = null;
-}
+// export class Effect_Halftone extends EffectBase01 {
+//     m_pre_rendered: RenderedImage;
+//     m_color: string;
+//     m_alpha: string;
+//     m_lastContext: Context2D;
+//     m_halftone_imgd: ImageData;
+//     m_margin: number;
 
-/// ハーフトーンパターンを更新する。
-Effect_Halftone.prototype.updateHalftone(alpha, context) {
-    if (!(context === this.m_lastContext)) {
-        const RGB_cc = get_components_from_RGBx(this.m_color);
-        const ptnGenerator = select_lattice_automatically(this.m_alpha, RGB_cc);
-        this.m_halftone_imgd = ptnGenerator(context);
-        this.m_lastContext = context;
-    }
-}
+//     /// 新しいインスタンスを取得する。
+//     constructor() {
+//         super();
+//         this.m_pre_rendered = null;
+//         this.m_color = null;
+//         this.m_alpha = null;
+//         this.m_lastContext = null;
+//         this.m_halftone_imgd = null;
+//         this.m_margin = null;
+//     }
 
-/// ハーフトーンをplotする関数。
-Effect_Halftone.prototype.plotHalftone(px, py, context) {
-    assert(this.m_halftone_imgd != null);
-    assert(this.m_lastContext == context);
-    const cyc_h = this.m_halftone_imgd.width;
-    const cyc_v = this.m_halftone_imgd.height;
-}
+//     /// ハーフトーンパターンを更新する。
+//     updateHalftone(alpha: number, context: Context2D): void {
+//         if (!(context === this.m_lastContext)) {
+//             const RGB_cc = get_components_from_RGBx(this.m_color);
+//             const ptnGenerator = select_lattice_automatically(this.m_alpha, RGB_cc);
+//             this.m_halftone_imgd = ptnGenerator(context);
+//             this.m_lastContext = context;
+//         }
+//     }
 
-// Pre-render関数は無し。
+//     /// ハーフトーンをplotする関数。
+//     plotHalftone(px: number, py: number, context: Context2D): void {
+//         assert(this.m_halftone_imgd != null);
+//         assert(this.m_lastContext == context);
+//         const cyc_h = this.m_halftone_imgd.width;
+//         const cyc_v = this.m_halftone_imgd.height;
+//     }
 
-/// 実行時render関数(1点用)。
-Effect_Halftone.runtime_renderer1_ex(px, py, obj, context) {
-    obj.updateHalftone();
-    assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
-}
+//     // Pre-render関数は無し。
 
-/// 実行時render関数(2点用)。
-Effect_Halftone.runtime_renderer2_ex(px1, py1, px2, py2, color, alpha, context) {
-    obj.updateHalftone();
-    const r = encode_to_rect(px1, py1, px2, py2);
-    const imgd_src = context.getImageData(r.x, r.y, r.width, r.height);
-    const imgd_dst = context.createImageData(r.width, r.height);
-    if (bVert) {
-        get_vert_flip_image(imgd_src, imgd_dst);
-    } else {
-        get_mirror_image(imgd_src, imgd_dst);
-    }
-    context.putImageData(imgd_dst, r.x, r.y);
-}
+//     /// 実行時render関数(1点用)。
+//     static runtime_renderer1_ex(
+//         px: number,
+//         py: number,
+//         obj: Effect_Halftone,
+//         context: Context2D
+//     ): IReproClosure {
+//         obj.updateHalftone();
+//         assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
+//         return null;
+//     }
 
-/// パラメータを設定する。(クラス固有)
-Effect_Halftone.prototype.setParamCustom(color, alpha, diameter) {
-    this.m_margin = (diameter > 1) ? Math.ceil(diameter / 2) + 10 : 0;
-    this.m_pre_rendered = pre_render_pixel(this.m_margin, diameter, 'rgb(0,0,0)', true);
-    this.m_color = color;
-    this.m_alpha = alpha;
+//     /// 実行時render関数(2点用)。
+//     static runtime_renderer2_ex(
+//         px1: number,
+//         py1: number,
+//         px2: number,
+//         py2: number,
+//         color: string,
+//         alpha: number,
+//         obj: Effect_Halftone,
+//         context: Context2D
+//     ): IReproClosure {
+//         obj.updateHalftone();
+//         const r = encode_to_rect(px1, py1, px2, py2);
+//         const imgd_src = context.getImageData(r.x, r.y, r.width, r.height);
+//         const imgd_dst = context.createImageData(r.width, r.height);
+//         if (bVert) {
+//             get_vert_flip_image(imgd_src, imgd_dst);
+//         } else {
+//             get_mirror_image(imgd_src, imgd_dst);
+//         }
+//         context.putImageData(imgd_dst, r.x, r.y);
+//         return null;
+//     }
 
-    // 引数仕様合わせのためのクロージャ生成
-    const obj = this;
-    const runtime_renderer1 = function (px, py, context) {
-        Effect_Halftone.runtime_renderer1_ex(px, py, obj, context);
-    };
-    const runtime_renderer2 = function (px1, py1, px2, py2, context) {
-        Effect_Halftone.runtime_renderer2_ex(px1, py1, px2, py2, obj, context);
-    };
+//     /// パラメータを設定する。(クラス固有)
+//     setParamCustom(color, alpha, diameter) {
+//         this.m_margin = (diameter > 1) ? Math.ceil(diameter / 2) + 10 : 0;
+//         this.m_pre_rendered = pre_render_pixel(this.m_margin, diameter, 'rgb(0,0,0)', true);
+//         this.m_color = color;
+//         this.m_alpha = alpha;
 
-    // 描画条件決定
-    this.m_effectBase.setParamEx(
-        0,
-        null,
-        runtime_renderer1,
-        runtime_renderer2,
-        1.0,  // ハーフトーンツールはα値を不透明な点の密度と解釈し、半透明描画しない。
-        false
-    );
-}
+//         // 引数仕様合わせのためのクロージャ生成
+//         const obj = this;
+//         const runtime_renderer1 = function (px, py, context) {
+//             Effect_Halftone.runtime_renderer1_ex(px, py, obj, context);
+//         };
+//         const runtime_renderer2 = function (px1, py1, px2, py2, context) {
+//             Effect_Halftone.runtime_renderer2_ex(px1, py1, px2, py2, obj, context);
+//         };
 
-/// パラメータを設定する。(クラス固有)
-Effect_Halftone.prototype.setParam(setting) {
-    const color = setting.getColor();
-    const alpha = setting.getAlpha();
-    const diameter = setting.getThickness();
-    this.setParamCustom(color, alpha, diameter);
+//         // 描画条件決定
+//         super.setParamEx(
+//             0,
+//             null,
+//             runtime_renderer1,
+//             runtime_renderer2,
+//             1.0,  // ハーフトーンツールはα値を不透明な点の密度と解釈し、半透明描画しない。
+//             false
+//         );
+//     }
 
-    // 再設定のためのクロージャを返す(Undo/Redo)
-    return function (obj) { obj.setParamCustom(color, alpha, diameter); };
-}
+//     /// パラメータを設定する。(クラス固有)
+//     setParam(setting) {
+//         const color = setting.getColor();
+//         const alpha = setting.getAlpha();
+//         const diameter = setting.getThickness();
+//         this.setParamCustom(color, alpha, diameter);
 
-/// エフェクトを適用する。
-Effect_Halftone.prototype.apply(points, context) {
-    this.m_effectBase.apply(points, context);
-}
+//         // 再設定のためのクロージャを返す(Undo/Redo)
+//         return function (obj) { obj.setParamCustom(color, alpha, diameter); };
+//     }
 
-/// マージンを取得する。
-Effect_Halftone.prototype.getMargin() { return this.m_margin; }
+//     /// エフェクトを適用する。
+//     apply(points, context) {
+//         this.m_effectBase.apply(points, context);
+//     }
+
+//     /// マージンを取得する。
+//     getMargin() { return this.m_margin; }
+// }
 
 //
 //  CursorBase01: 円形や方形等のカーソルの基底クラス
 //
 
-/// 新しいインスタンスを取得する。
-export function CursorBase01(diameter, pixel_pre_renderer) {
-    this.m_pre_renderer = pixel_pre_renderer;
-
-    if (diameter == null) { diameter = 1; }
-    this.setParamCustom(diameter, 'rgb(0,0,0)', pixel_pre_renderer);
+interface ICursorRender {
+    (ha: number, diameter: number, color: string, bFilled: boolean): HTMLCanvasElement;
 }
 
-/// パラメータを設定する。(クラス固有)
-CursorBase01.prototype.setParamCustom(diameter, color, pixel_pre_renderer) {
-    const margin = Math.ceil(diameter / 2);
-    color = get_cursor_color(color);
+export class CursorBase01 implements ICursor {
+    m_pre_renderer: ICursorRender;
+    m_pre_rendered: RenderedImage;
+    m_ha: number;
+    m_prev_pt: IPoint;
+    m_imagePatch: ImagePatch;
 
-    this.m_pre_rendered = null;
-    this.m_ha = 0;
-    this.m_prev_pt = null;
+    /// 新しいインスタンスを取得する。
+    constructor(diameter: number, pixel_pre_renderer: ICursorRender) {
+        this.m_pre_renderer = pixel_pre_renderer;
 
-    if (diameter > 1) {
-        this.m_ha = Math.ceil(diameter / 2 + margin);
-        this.m_pre_rendered = pixel_pre_renderer(this.m_ha, diameter, color, false);
+        if (diameter == null) { diameter = 1; }
+        this.setParamCustom(diameter, 'rgb(0,0,0)', pixel_pre_renderer);
     }
 
-    this.m_imagePatch = null;
-}
+    /// パラメータを設定する。(クラス固有)
+    setParamCustom(diameter: number, color: string, pixel_pre_renderer: ICursorRender): void {
+        const margin = Math.ceil(diameter / 2);
+        color = get_cursor_color(color);
 
-/// パラメータを設定する。
-CursorBase01.prototype.setParam(setting) {
-    const diameter = setting.getThickness();
-    const color = setting.getColor();
-    this.setParamCustom(diameter, color, this.m_pre_renderer);
-}
+        this.m_pre_rendered = null;
+        this.m_ha = 0;
+        this.m_prev_pt = null;
 
-/// カーソルを描画する。
-CursorBase01.prototype.put(e, cur_pt, context) {
-    const layer = e.m_sender.getOverlay();
-    const w = layer.width;    // clientWidthやclientHeightは、非表示化時に0になる@FireFox
-    const h = layer.height;   // (同上)
-    // console.log("layer: w=" + layer.width + ", h=" + layer.height);
+        if (diameter > 1) {
+            this.m_ha = Math.ceil(diameter / 2 + margin);
+            this.m_pre_rendered = pixel_pre_renderer(this.m_ha, diameter, color, false);
+        }
 
-    context.globalCompositeOperation = 'xor';
-    this.m_imagePatch = new ImagePatch(context, w, h, [cur_pt], this.m_ha);
-    if (this.m_pre_rendered) {
-        put_point(cur_pt.x, cur_pt.y, this.m_ha, this.m_pre_rendered, context);
-    } else {
-        put_point_1px(cur_pt.x, cur_pt.y, context);
+        this.m_imagePatch = null;
     }
-    context.globalCompositeOperation = 'source-over';
-    this.m_prev_pt = cur_pt;
-}
 
-/// カーソルをクリアする。
-CursorBase01.prototype.clear(context) {
-    if (this.m_imagePatch) {
-        this.m_imagePatch.restore(context);
+    /// パラメータを設定する。
+    setParam(setting: CommonSetting): void {
+        const diameter = setting.getThickness();
+        const color = setting.getColor();
+        this.setParamCustom(diameter, color, this.m_pre_renderer);
     }
-    this.m_imagePatch = null;
+
+    /// カーソルを描画する。
+    put(e: IDrawingEvent, cur_pt: IPoint, context: Context2D): void {
+        const layer = e.m_sender.getOverlay();
+        const w = layer.width;    // clientWidthやclientHeightは、非表示化時に0になる@FireFox
+        const h = layer.height;   // (同上)
+        // console.log("layer: w=" + layer.width + ", h=" + layer.height);
+
+        context.globalCompositeOperation = 'xor';
+        this.m_imagePatch = new ImagePatch(context, w, h, [cur_pt], this.m_ha);
+        if (this.m_pre_rendered) {
+            put_point(cur_pt.x, cur_pt.y, this.m_ha, this.m_pre_rendered, context);
+        } else {
+            put_point_1px(cur_pt.x, cur_pt.y, context);
+        }
+        context.globalCompositeOperation = 'source-over';
+        this.m_prev_pt = cur_pt;
+    }
+
+    /// カーソルをクリアする。
+    clear(context: Context2D): void {
+        if (this.m_imagePatch) {
+            this.m_imagePatch.restore(context);
+        }
+        this.m_imagePatch = null;
+    }
 }
 
 //
 //  カーソル1: 円形カーソル
 //
 
-/// 新しいインスタンスを取得する。
-export function Cursor_Circle(diameter) {
-    this.m_cursorBase = new CursorBase01(diameter, pre_render_pixel);
-}
+export class Cursor_Circle extends CursorBase01 {
+    /// 新しいインスタンスを取得する。
+    constructor(diameter?: number) {
+        super(diameter, pre_render_pixel);
+    }
 
-/// パラメータを設定する。
-Cursor_Circle.prototype.setParam(setting) {
-    this.m_cursorBase.setParam(setting);
-}
+    /// パラメータを設定する。
+    setParam(setting: CommonSetting): void {
+        super.setParam(setting);
+    }
 
-/// カーソルを描画する。
-Cursor_Circle.prototype.put(e, cur_pt, context) {
-    this.m_cursorBase.put(e, cur_pt, context);
-}
+    /// カーソルを描画する。
+    put(e: IDrawingEvent, cur_pt: IPoint, context: Context2D): void {
+        super.put(e, cur_pt, context);
+    }
 
-/// カーソルをクリアする。
-Cursor_Circle.prototype.clear(context) {
-    this.m_cursorBase.clear(context);
+    /// カーソルをクリアする。
+    clear(context: Context2D): void {
+        super.clear(context);
+    }
 }
 
 //
 //  カーソル2: 方形カーソル
 //
 
-/// 新しいインスタンスを取得する。
-export function Cursor_Square(diameter) {
-    this.m_cursorBase = new CursorBase01(diameter, pre_render_square);
-}
+export class Cursor_Square extends CursorBase01 {
+    /// 新しいインスタンスを取得する。
+    constructor(diameter?: number) {
+        super(diameter, pre_render_square);
+    }
 
-/// パラメータを設定する。(クラス固有)
-Cursor_Square.prototype.setParam(setting) {
-    this.m_cursorBase.setParam(setting);
-}
+    /// パラメータを設定する。(クラス固有)
+    setParam(setting: CommonSetting): void {
+        super.setParam(setting);
+    }
 
-/// カーソルを描画する。
-Cursor_Square.prototype.put(e, cur_pt, context) {
-    this.m_cursorBase.put(e, cur_pt, context);
-}
+    /// カーソルを描画する。
+    put(e: IDrawingEvent, cur_pt: IPoint, context: Context2D): void {
+        super.put(e, cur_pt, context);
+    }
 
-/// カーソルをクリアする。
-Cursor_Square.prototype.clear(context) {
-    this.m_cursorBase.clear(context);
+    /// カーソルをクリアする。
+    clear(context: Context2D): void {
+        super.clear(context);
+    }
 }
 
 //
@@ -2190,7 +2345,7 @@ export class UIOpHistory {
         const prevSnapshot = this.m_imageLog[restorePointIdx];
 
         // 最新スナップショット取得
-        this.attatchImage();
+        this.attachImage();
         const sv_cursor = this.m_historyCursor;
         const lastSnapshot = this.m_imageLog[sv_cursor];
 
@@ -2218,10 +2373,10 @@ export class UIOpHistory {
 
     /// 履歴カーソルが指すエントリに対し、画像添付を予約する。
     /// 当メソッド呼び出しでは履歴カーソルは変化しない。
-    attatchImage(): void {
+    attachImage(): void {
         if (this.m_bDealing)
             return;
-        console.log("DwgHistory::attatchImage() called. Cursor=" + this.m_historyCursor);
+        console.log("DwgHistory::attachImage() called. Cursor=" + this.m_historyCursor);
 
         // 作業中レイヤーを固定
         this.m_pictCanvas.raiseLayerFixRequest();
@@ -2242,7 +2397,7 @@ export class UIOpHistory {
 
         // 画像添付予約
         this.m_imageLog[this.m_historyCursor] = pictureInfo;
-        console.log("DwgHistory::attatchImage(): Reserved to cursor " + this.m_historyCursor + ".");
+        console.log("DwgHistory::attachImage(): Reserved to cursor " + this.m_historyCursor + ".");
         console.log(visibilityList);
     }
 
@@ -2385,8 +2540,13 @@ export class UIOpHistory {
                 reproClosure(effectObj, points, layer);
             }
             if (effectObj.closeStroke != null) {
-                const dummy_e = new PointingEventClone()
-                const dummy_e = { m_sender: this.m_pictCanvas };    // Ad-hoc
+                const dummy_e: IDrawingEvent = {
+                    m_type: 'mouseup',
+                    m_sender: this.m_pictCanvas,
+                    m_point: null,
+                    m_spKey: 0x0,
+                    m_button: 0
+                };    // Ad-hoc
                 effectObj.closeStroke(dummy_e);
             }
         } else if (isPaintHistEnt(histEnt)) {

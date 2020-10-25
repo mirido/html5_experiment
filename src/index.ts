@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
-import { g_pictureCanvas, onDispose, onInitialize } from './app-global';
+import { g_history, g_pictureCanvas, onDispose, onInitialize } from './app-global';
 import { draw_circle } from './graphics';
 
 'use strict';
@@ -40,7 +40,7 @@ function init_wnd(): void {
 
 	// キャンバス状態を記憶(Undo/Redo)
 	// この時点のキャンバス状態がundo/redoの起点となる。
-	g_history.attatchImage();
+	g_history.attachImage();
 }
 
 /// ウィンドウが閉じるとき呼ばれる。

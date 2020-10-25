@@ -3,14 +3,14 @@
 
 import { IIconGraphicFunc, IRect, textColor } from './app-def';
 import { assert, dbgv } from './dbg-util';
-import { draw_line_1px } from './graphics.js';
+import { draw_line_1px } from './graphics';
 import { FloodFillState } from './graphics2';
 import {
     copy_layer, erase_single_layer,
     fix_image_w_mask, get_destinaton_out_image,
     get_mask_image
-} from './imaging.js';
-import { DrawingEvent, PictureCanvas } from './picture-canvas';
+} from './imaging';
+import { DrawingEvent, IDrawingEvent, PictureCanvas } from './picture-canvas';
 import { CommonSetting, IToolUIEvent, ToolPalette, ToolType } from './tool-palette';
 import {
     Cursor_Circle,
@@ -42,21 +42,11 @@ import {
     MicroSlideBar,
     SpKey
 } from './ui-util';
-
 'use strict';
 
 //
 //  DrawToolBase
 //
-
-/// (Helper function)
-function op_getCommonSetting(sender: IToolUIEvent): CommonSetting {
-    if (sender instanceof ToolPalette) {
-        return sender.getCommonSetting();
-    } else {
-        throw new Error("*** ERR ***");
-    }
-}
 
 /// 新しいインスタンスを初期化する。
 export class DrawToolBase implements IDrawTool, IDrawCanvas, ISettingChangeListenerObject {
@@ -121,7 +111,7 @@ export class DrawToolBase implements IDrawTool, IDrawCanvas, ISettingChangeListe
         draw_icon_wrp(this.m_iconBounds, this.m_text, null, true, e);
 
         // 共通設定オブジェクト記憶
-        // this.m_setting = op_getCommonSetting(e.m_sender);
+        // this.m_setting = e.m_sender.getCommonSetting();
         this.m_setting = e.m_sender.getCommonSetting();
 
         // 描画ツール設定
@@ -164,7 +154,7 @@ export class DrawToolBase implements IDrawTool, IDrawCanvas, ISettingChangeListe
     }
 
     /// 描画ストローク開始時に呼ばれる。(IDrawCanvas)
-    OnDrawStart(e: DrawingEvent): void {
+    OnDrawStart(e: IDrawingEvent): void {
         // console.log("DrawerBase.OnDrawStart() called.");
 
         // 最新の描画設定を反映
@@ -188,13 +178,13 @@ export class DrawToolBase implements IDrawTool, IDrawCanvas, ISettingChangeListe
     }
 
     /// 描画ストローク中に随時呼ばれる。(IDrawCanvas)
-    OnDrawing(e: DrawingEvent): void {
+    OnDrawing(e: IDrawingEvent): void {
         // DrawerBaseに委譲
         this.m_drawerCore.OnDrawing(e);
     }
 
     /// 描画ストローク終了時に呼ばれる。(IDrawCanvas)
-    OnDrawEnd(e: DrawingEvent): void {
+    OnDrawEnd(e: IDrawingEvent): void {
         // DrawerBaseに委譲
         this.m_drawerCore.OnDrawEnd(e);
     }
@@ -233,18 +223,19 @@ export class PencilTool extends DrawToolBase {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Pencil);
+    OnSelected(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Pencil);
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Pencil);     /*** */
         super.OnSelected(e);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         super.OnDiselected(e);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         super.OnPicked(e);
     }
 }
@@ -273,22 +264,18 @@ export class FillRectTool extends DrawToolBase {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
-        if (e.m_sender instanceof ToolPalette) {
-            op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Standard);
-        } else {
-            throw new Error("*** ERR ***");
-        }
+    OnSelected(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
         super.OnSelected(e);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         super.OnDiselected(e);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         super.OnPicked(e);
     }
 }
@@ -314,22 +301,18 @@ export class LineRectTool extends DrawToolBase {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
-        if (e.m_sender instanceof ToolPalette) {
-            op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Standard);
-        } else {
-            throw new Error("*** ERR ***");
-        }
+    OnSelected(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
         super.OnSelected(e);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         super.OnDiselected(e);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         super.OnPicked(e);
     }
 }
@@ -358,29 +341,21 @@ export class CopyTool extends DrawToolBase {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
-        if (e.m_sender instanceof ToolPalette) {
-            op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Standard);
-            e.m_sender.addHistoryRewindListener(this);    // (Undo/Redo)
-        } else {
-            throw new Error("*** ERR ***");
-        }
+    OnSelected(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
+        e.m_sender.addHistoryRewindListener(this);    // (Undo/Redo)
         this.m_captureOp.resetCapture();
         super.OnSelected(e);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         super.OnDiselected(e);
-        if (e.m_sender instanceof ToolPalette) {
-            e.m_sender.removeHistoryRewindListener(this);   // (Undo/Redo)
-        } else {
-            throw new Error("*** ERR ***");
-        }
+        e.m_sender.removeHistoryRewindListener(this);   // (Undo/Redo)
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         super.OnPicked(e);
     }
 
@@ -413,18 +388,18 @@ export class MirrorTool extends DrawToolBase {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Standard);
+    OnSelected(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
         super.OnSelected(e);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         super.OnDiselected(e);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         super.OnPicked(e);
     }
 }
@@ -450,18 +425,18 @@ export class VertFlipTool extends DrawToolBase {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Standard);
+    OnSelected(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
         super.OnSelected(e);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         super.OnDiselected(e);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         super.OnPicked(e);
     }
 }
@@ -488,18 +463,18 @@ export class EraseTool extends DrawToolBase {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Eraser);
+    OnSelected(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Eraser);
         super.OnSelected(e);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         super.OnDiselected(e);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         super.OnPicked(e);
     }
 }
@@ -525,18 +500,18 @@ export class EraseRectTool extends DrawToolBase {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Standard);
+    OnSelected(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
         super.OnSelected(e);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         super.OnDiselected(e);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         super.OnPicked(e);
     }
 }
@@ -571,44 +546,42 @@ export class ThicknessTool implements IDrawTool {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
+    OnSelected(e: IToolUIEvent): void {
         // console.log("ThicknessTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Independent);
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
 
         // キャンバス記憶
-        if (e.m_sender instanceof ToolPalette) {
-            this.m_toolCanvas = e.m_sender.getToolPaletteCanvas();
-        }
+        this.m_toolCanvas = e.m_sender.getToolPaletteCanvas();
 
         // 設定変更追跡のための登録
-        this.m_setting = op_getCommonSetting(e.m_sender);
+        this.m_setting = e.m_sender.getCommonSetting();
         this.m_setting.addListener(this);
 
-        const val = op_getCommonSetting(e.m_sender).getThickness();
+        const val = e.m_sender.getCommonSetting().getThickness();
         this.m_slideBar.OnSelected(e, val);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         // console.log("ThicknessTool::OnDiselected() called. ");
 
         // 設定変更追跡のための登録を解除
-        const setting = op_getCommonSetting(e.m_sender);
+        const setting = e.m_sender.getCommonSetting();
         setting.removeListener(this);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         // console.log("ThicknessTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
         const val: number = this.m_slideBar.OnPicked(e);
 
         // 共通設定変更
-        assert(this.m_setting == op_getCommonSetting(e.m_sender));
+        assert(this.m_setting == e.m_sender.getCommonSetting());
         this.m_setting.setThickness(val);
     }
 
     /// クリック終了またはドラッグ終了時に呼ばれる。
-    OnPointingEnd(e: DrawingEvent): void {
+    OnPointingEnd(e: IToolUIEvent): void {
         /*pass*/
     }
 
@@ -661,24 +634,20 @@ export class ColorPalette implements IDrawTool {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
+    OnSelected(e: IToolUIEvent): void {
         // console.log("ColorPalette::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Standard);
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Standard);
 
-        if (e.m_sender instanceof ToolPalette) {
-            // アイコン描画(選択状態)
-            const context = e.m_sender.getToolPaletteCanvas().getContext('2d');
-            draw_color_palette(this.m_iconBounds, this.m_color, true, context);
+        // アイコン描画(選択状態)
+        const context = e.m_sender.getToolPaletteCanvas().getContext('2d');
+        draw_color_palette(this.m_iconBounds, this.m_color, true, context);
 
-            // 設定更新
-            this.m_setting = op_getCommonSetting(e.m_sender);
-            this.m_setting.setColor(this.m_color);
+        // 設定更新
+        this.m_setting = e.m_sender.getCommonSetting();
+        this.m_setting.setColor(this.m_color);
 
-            // キャンバス記憶
-            this.m_toolCanvas = e.m_sender.getToolPaletteCanvas();
-        } else {
-            throw new Error("*** ERR ***");
-        }
+        // キャンバス記憶
+        this.m_toolCanvas = e.m_sender.getToolPaletteCanvas();
 
         // スポイト操作のための登録
         e.m_sender.addDrawer(this);
@@ -688,9 +657,9 @@ export class ColorPalette implements IDrawTool {
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         // console.log("ColorPalette::OnDiselected() called. ");
-        const setting = op_getCommonSetting(e.m_sender);
+        const setting = e.m_sender.getCommonSetting();
 
         // 設定変更追跡のための登録を解除
         setting.removeListener(this);
@@ -699,22 +668,18 @@ export class ColorPalette implements IDrawTool {
         e.m_sender.removeDrawer(this);
 
         // アイコン描画(非選択状態)
-        if (e.m_sender instanceof ToolPalette) {
-            const context = e.m_sender.getToolPaletteCanvas().getContext('2d');
-            draw_color_palette(this.m_iconBounds, this.m_color, false, context);
-        } else {
-            throw new Error("*** ERR ***");
-        }
+        const context = e.m_sender.getToolPaletteCanvas().getContext('2d');
+        draw_color_palette(this.m_iconBounds, this.m_color, false, context);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         // console.log("ColorPalette::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
         /*NOP*/
     }
 
     /// クリック終了またはドラッグ終了時に呼ばれる。
-    OnPointingEnd(e: DrawingEvent): void {
+    OnPointingEnd(e: IToolUIEvent): void {
         /*pass*/
     }
 
@@ -733,7 +698,7 @@ export class ColorPalette implements IDrawTool {
     }
 
     /// 描画ストローク開始時に呼ばれる。(IDrawCanvas)
-    OnDrawStart(e: DrawingEvent): void {
+    OnDrawStart(e: IToolUIEvent): void {
         // スポイト操作
         if ((e.m_spKey & SpKey.KY_CTRL) != 0) {
             // 画像合成
@@ -887,33 +852,33 @@ export class ColorCompoTool implements IDrawTool {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
+    OnSelected(e: IToolUIEvent): void {
         // console.log("ColorCompoTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
-        op_getCommonSetting(e.m_sender).beginEdit(this.m_objId);
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Independent);
-        const setting = op_getCommonSetting(e.m_sender);
+        e.m_sender.getCommonSetting().beginEdit(this.m_objId);
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
+        const setting = e.m_sender.getCommonSetting();
         const val = this.getValue(setting);
         this.m_slideBar.OnSelected(e, val);
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         // console.log("ColorCompoTool::OnDiselected() called. ");
-        op_getCommonSetting(e.m_sender).releaseEdit(this.m_objId);
+        e.m_sender.getCommonSetting().releaseEdit(this.m_objId);
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         // console.log("ColorCompoTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
-        op_getCommonSetting(e.m_sender).extendEdit(this.m_objId);
+        e.m_sender.getCommonSetting().extendEdit(this.m_objId);
         const val = this.m_slideBar.OnPicked(e);
-        const setting = op_getCommonSetting(e.m_sender);
+        const setting = e.m_sender.getCommonSetting();
         this.setValue(val, setting);
     }
 
     /// クリック終了またはドラッグ終了時に呼ばれる。
-    OnPointingEnd(e: DrawingEvent): void {
-        op_getCommonSetting(e.m_sender).endEdit(this.m_objId);
+    OnPointingEnd(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().endEdit(this.m_objId);
     }
 
     /// 設定が変更されたとき呼ばれる。
@@ -1154,40 +1119,36 @@ export class MaskTool implements IDrawTool {
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
+    OnSelected(e: IToolUIEvent): void {
         // console.log("MaskTool::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + "), txt=" + this.m_faceText);
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Independent);
-        if (e.m_sender instanceof ToolPalette) {
-            const toolPalette = e.m_sender;
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
+        const toolPalette = e.m_sender;
 
-            // マスク対象色取得
-            const setting = toolPalette.getCommonSetting();
-            this.m_tgColor = setting.getMaskColor();
+        // マスク対象色取得
+        const setting = toolPalette.getCommonSetting();
+        this.m_tgColor = setting.getMaskColor();
 
-            // マスク画像作成
-            const layer = toolPalette.getCurLayer();
-            const surface = toolPalette.getSurface();
-            this.setupMaskImage(toolPalette, layer, surface);
+        // マスク画像作成
+        const layer = toolPalette.getCurLayer();
+        const surface = toolPalette.getSurface();
+        this.setupMaskImage(toolPalette, layer, surface);
 
-            // アイコン描画
-            const context = toolPalette.getToolPaletteCanvas().getContext('2d');
-            this.drawIcon(this.m_tgColor, context);
+        // アイコン描画
+        const context = toolPalette.getToolPaletteCanvas().getContext('2d');
+        this.drawIcon(this.m_tgColor, context);
 
-            // マスク処理
-            this.OnPicked(e);
+        // マスク処理
+        this.OnPicked(e);
 
-            // レイヤー固定要求リスナ登録
-            this.m_lastToolPalette = toolPalette;
-            toolPalette.addLayerFixListener(this);
+        // レイヤー固定要求リスナ登録
+        this.m_lastToolPalette = toolPalette;
+        toolPalette.addLayerFixListener(this);
 
-            this.m_bActive = true;    // (Undo/Redo)
-        } else {
-            throw new Error("*** ERR ***");
-        }
+        this.m_bActive = true;    // (Undo/Redo)
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         const toolPalette = e.m_sender;
 
         // レイヤー固定要求リスナ登録解除
@@ -1203,36 +1164,32 @@ export class MaskTool implements IDrawTool {
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         // console.log("MaskTool::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
-        if (e.m_sender instanceof ToolPalette) {
-            const toolPalette = e.m_sender;
-            const setting = toolPalette.getCommonSetting();
-            const context = toolPalette.getToolPaletteCanvas().getContext('2d');
+        const toolPalette = e.m_sender;
+        const setting = toolPalette.getCommonSetting();
+        const context = toolPalette.getToolPaletteCanvas().getContext('2d');
 
-            // CTRLキーが押されていたら対象色を変更する。
-            if ((e.m_spKey & SpKey.KY_CTRL) != 0) {
-                this.m_tgColor = setting.getColor();
-                setting.setMaskColor(this.m_tgColor);
-                this.drawIcon(this.m_tgColor, context);
+        // CTRLキーが押されていたら対象色を変更する。
+        if ((e.m_spKey & SpKey.KY_CTRL) != 0) {
+            this.m_tgColor = setting.getColor();
+            setting.setMaskColor(this.m_tgColor);
+            this.drawIcon(this.m_tgColor, context);
 
-                // イベント最適化
-                // マスクツールがCTRLキーとともにクリックされたということは、
-                // それに先立つ描画色の変更でマスク画像定着はすでに実施済みのため、
-                // ここでの定着は省略する。
-                // // マスク画像定着(もしあれば)
-                // if (this.m_surfaceUser != null) {
-                //   const toolPalette = e.m_sender;
-                //   const layer = this.m_surfaceUser;
-                //   const surface = toolPalette.getSurface();
-                //   this.fixMaskImage(surface, layer);
-                // }
-                //
-                // // マスク画像作成
-                // this.setupMaskImage(toolPalette, layer, surface);
-            }
-        } else {
-            throw new Error("*** ERR ***");
+            // イベント最適化
+            // マスクツールがCTRLキーとともにクリックされたということは、
+            // それに先立つ描画色の変更でマスク画像定着はすでに実施済みのため、
+            // ここでの定着は省略する。
+            // // マスク画像定着(もしあれば)
+            // if (this.m_surfaceUser != null) {
+            //   const toolPalette = e.m_sender;
+            //   const layer = this.m_surfaceUser;
+            //   const surface = toolPalette.getSurface();
+            //   this.fixMaskImage(surface, layer);
+            // }
+            //
+            // // マスク画像作成
+            // this.setupMaskImage(toolPalette, layer, surface);
         }
     }
 
@@ -1296,10 +1253,10 @@ export class PaintTool implements IDrawTool {
         };
     }
 
-    OnPicked(e: DrawingEvent): number | void {
+    OnPicked(e: IToolUIEvent): number | void {
         throw new Error('Method not implemented.');
     }
-    OnPointingEnd(e: DrawingEvent): void {
+    OnPointingEnd(e: IToolUIEvent): void {
         throw new Error('Method not implemented.');
     }
     OnSettingChanged(setting: CommonSetting): void {
@@ -1312,13 +1269,13 @@ export class PaintTool implements IDrawTool {
     }
 
     /// ツール選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
+    OnSelected(e: IToolUIEvent): void {
         console.log("PaintTool::OnSelected() called.");
         e.m_sender.addDrawer(this);
     }
 
     /// ツール選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         console.log("PaintTool::OnDiselected() called.");
         e.m_sender.removeDrawer(this);
     }
@@ -1335,11 +1292,7 @@ export class PaintTool implements IDrawTool {
             const color = setting.getColor();
             const ffst = new FloodFillState(layer, e.m_point.x, e.m_point.y, color);
             ffst.fill();
-            if (e.m_sender instanceof PictureCanvas) {
-                e.m_sender.appendPaintOperation(e.m_point, color, e.m_sender.getCurLayerNo());    // (Undo/Redo)
-            } else {
-                throw new Error("*** ERR ***");
-            }
+            e.m_sender.appendPaintOperation(e.m_point, color, e.m_sender.getCurLayerNo());    // (Undo/Redo)
         }
     }
 }
@@ -1359,7 +1312,7 @@ export class LayerTool implements IDrawTool {
         this.m_listBox = null;
     }
 
-    OnPointingEnd(e: DrawingEvent): void {
+    OnPointingEnd(e: IToolUIEvent): void {
         throw new Error('Method not implemented.');
     }
 
@@ -1377,7 +1330,7 @@ export class LayerTool implements IDrawTool {
     }
 
     /// レイヤー選択に従い設定を更新する。
-    updateSetting(setting: CommonSetting, e: DrawingEvent): void {
+    updateSetting(setting: CommonSetting, e: IToolUIEvent): void {
         // クリックされたレイヤー番号を特定
         const selIdx = this.m_listBox.getSelectionIndex();
         const nitems = this.m_listBox.getNumItems();
@@ -1429,25 +1382,25 @@ export class LayerTool implements IDrawTool {
     }
 
     /// ツール選択時呼ばれる。
-    OnSelected(e: DrawingEvent): void {
-        op_getCommonSetting(e.m_sender).selectTool(ToolType.TL_Independent);
+    OnSelected(e: IToolUIEvent): void {
+        e.m_sender.getCommonSetting().selectTool(ToolType.TL_Independent);
         this.m_listBox.OnSelected(e);
 
-        const setting = op_getCommonSetting(e.m_sender);
+        const setting = e.m_sender.getCommonSetting();
         this.updateSetting(setting, e);
         this.updateView(setting);
     }
 
     /// ツール選択解除時呼ばれる。
-    OnDiselected(e: DrawingEvent): void {
+    OnDiselected(e: IToolUIEvent): void {
         /*NOP*/
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: DrawingEvent): void {
+    OnPicked(e: IToolUIEvent): void {
         this.m_listBox.OnSelected(e);
 
-        const setting = op_getCommonSetting(e.m_sender);
+        const setting = e.m_sender.getCommonSetting();
         this.updateSetting(setting, e);
         this.updateView(setting);
     }

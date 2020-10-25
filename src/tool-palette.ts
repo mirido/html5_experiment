@@ -2,30 +2,39 @@
 // All rights reserved.
 
 import { IPoint, IRect } from './app-def';
-import { g_pictureCanvas, g_pointManager, g_keyStateManager } from './app-global';
+import { g_keyStateManager, g_pictureCanvas, g_pointManager } from './app-global';
 import { assert } from './dbg-util';
-import { jsPoint, jsRect, rect_includes } from './geometry.js';
-import { draw_rect_R } from './graphics.js';
+import { jsPoint, jsRect, rect_includes } from './geometry';
+import { draw_rect_R } from './graphics';
 import {
-    ColorCompoTool, ColorPalette, CopyTool,
-    EraseRectTool, EraseTool, FillRectTool, generateTool,
-    LayerTool, LineRectTool,
-    MaskTool, MirrorTool,
-    PaintTool, PencilTool,
-    ThicknessTool, VertFlipTool
+    ColorCompoTool,
+    ColorPalette,
+    CopyTool,
+    EraseRectTool,
+    EraseTool,
+    FillRectTool,
+    generateTool,
+    LayerTool,
+    LineRectTool,
+    MaskTool,
+    MirrorTool,
+    PaintTool,
+    PencilTool,
+    ThicknessTool,
+    VertFlipTool
 } from './oebi-tool';
 import {
-    modify_click_event_to_end_in_place,
-    PictureCanvas,
-    DrawingEvent,
     IDrawingEvent,
+    modify_click_event_to_end_in_place,
+    PictureCanvas
 } from './picture-canvas';
 import { UIOpHistory } from './ui-element';
 import {
     add_to_unique_list,
     getBoundingClientRectWrp,
-    IDrawCanvas,
     IDrawTool,
+    IHistoryRewindListenerObject,
+    ISettingChangeListenerObject,
     register_pointer_event_handler,
     remove_from_unique_list
 } from './ui-util';
@@ -160,7 +169,7 @@ export class CommonSetting {
     m_layerVisibility: boolean[]; // レイヤーの可視属性
     m_maskColor: string;          // マスク色
     // 設定変更リスナのリスト
-    m_changeListeners: IDrawTool[];
+    m_changeListeners: ISettingChangeListenerObject[];
     // イベント発行制御
     m_editingObjs: { [key: string]: boolean };
     m_bEditing: boolean;
@@ -293,12 +302,12 @@ export class CommonSetting {
     }
 
     /// イベントハンドラを追加する。
-    addListener(listener: IDrawTool) {
+    addListener(listener:     ISettingChangeListenerObject        ) {
         add_to_unique_list(this.m_changeListeners, listener);
     }
 
     /// イベントハンドラを削除する。
-    removeListener(listener: IDrawTool) {
+    removeListener(listener: ISettingChangeListenerObject) {
         remove_from_unique_list(this.m_changeListeners, listener);
     }
 
@@ -667,7 +676,7 @@ export function addToolHelper(
     toolDic: { [key: number]: IDrawTool }
 ) {
     const iconBounds = toolChain.getIconBounds();
-    const uri = "./oebi-tool.js";
+    // const uri = "./oebi-tool.js";
     // Cross origin in JavaScript import moduleの禁止に伴い
     // 以下のようなeval()で実行するcmd内でのimportは禁止になった模様。
     // （file:ではnGで、https:が必要？)
@@ -908,10 +917,10 @@ export class ToolPalette implements EventListenerObject {
         (<ColorCompoTool>toolDic[2400]).show(this.m_setting, 3, this.m_palette);  // A
         this.op_show(toolDic[2700]);            // レイヤーツール
 
-        this.m_layerTool = toolDic[2700];       // (Undo/Redo)
-        this.m_maskTools.push(toolDic[601]);    // (Undo/Redo)
-        this.m_maskTools.push(toolDic[602]);    // (Undo/Redo)
-        this.m_normalTool = toolDic[600];       // (Undo/Redo)
+        this.m_layerTool = <LayerTool>toolDic[2700];       // (Undo/Redo)
+        this.m_maskTools.push(<MaskTool>toolDic[601]);    // (Undo/Redo)
+        this.m_maskTools.push(<MaskTool>toolDic[602]);    // (Undo/Redo)
+        this.m_normalTool = <MaskTool>toolDic[600];       // (Undo/Redo)
     }
 
     /// ドラッグ開始処理。
@@ -1207,14 +1216,14 @@ export class ToolPalette implements EventListenerObject {
     }
 
     /// 操作履歴巻き戻しリスナを追加する。(Undo/Redo)
-    addHistoryRewindListener(listener: IDrawTool) {
+    addHistoryRewindListener(listener: IHistoryRewindListenerObject) {
         if (this.m_history != null) {
             this.m_history.addHistoryRewindListener(listener);
         }
     }
 
     /// 操作履歴変更リスナを削除する。(Undo/Redo)
-    removeHistoryRewindListener(listener) {
+    removeHistoryRewindListener(listener: IHistoryRewindListenerObject) {
         if (this.m_history != null) {
             this.m_history.removeHistoryRewindListener(listener);
         }

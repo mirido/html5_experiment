@@ -1,4 +1,4 @@
-// Copyright (c) 2016, mirido
+// Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
 import { bShowAllProperty } from './app-def';

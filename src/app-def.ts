@@ -57,7 +57,7 @@ export interface IPlotFunc {
   (x: number, y: number, context: CanvasRenderingContext2D): void;
 }
 
-export interface IPlot2Func {
+export interface ILineFunc {
   (x1: number, y1: number, x2: number, y2: number, context: CanvasRenderingContext2D): void;
 }
 
@@ -72,17 +72,6 @@ export interface IGetBoundingClientRect {
 export interface IIconGraphicFunc {
   (iconBounds: IRect, context: CanvasRenderingContext2D): void;
 }
-
-// # picture-canvas
-export interface modify_click_event_to_end_in_place { }
-export interface IToolPaletteUI {
-  getBoundingDrawAreaRect(): IRect;
-}
-
-// // CommonSetting
-// export interface IPointingEventListener {
-//   (e: DrawingEvent): void;
-// }
 
 // # oebi-tool
 

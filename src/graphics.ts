@@ -70,7 +70,7 @@ export function put_point(
   px: number,
   py: number,
   ha: number,
-  pre_rendered: ImageBitmap,
+  pre_rendered: (HTMLCanvasElement | ImageBitmap),
   context: CanvasRenderingContext2D
 ) {
   context.drawImage(pre_rendered, px - ha, py - ha);
@@ -144,7 +144,7 @@ export function draw_line(
   x1: number,
   y1: number,
   ha: number,
-  pre_rendered: ImageBitmap,
+  pre_rendered: (HTMLCanvasElement | ImageBitmap),
   context: CanvasRenderingContext2D
 ) {
   const plotFunc: IPlotFunc = function (x, y, context) {
