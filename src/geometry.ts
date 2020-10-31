@@ -20,6 +20,7 @@ export function decode_rect<T extends IRect>(rect: T, coords: number[]): void {
 
 /// 矩形にエンコードする。
 export function encode_to_rect<T extends IRect>(
+	ctor: { new(x: number, y: number, width: number, height: number): T; },
 	px1: number, py1: number, px2: number, py2: number
 ): T {
 	if (px1 > px2) {
@@ -30,7 +31,6 @@ export function encode_to_rect<T extends IRect>(
 	}
 	const w = px2 - px1 + 1;
 	const h = py2 - py1 + 1;
-	let ctor: { new(x: number, y: number, width: number, height: number): T };
 	const rect: T = new ctor(px1, py1, w, h);
 	return rect;
 }
@@ -86,20 +86,25 @@ export function clip_rect_in_place<T extends IRect>(
 }
 
 /// 矩形を座標内にクリップする。
-export function clip_rect<T extends IRect>(rect: T, width: number, height: number): T {
+export function clip_rect<T extends IRect>(
+	ctor: { new(x: number, y: number, width: number, height: number): T; },
+	rect: T, width: number, height: number
+): T {
 	const coords: number[] = [];
 	decode_rect(rect, coords);
 	clip_coords(width, height, coords);
-	return encode_to_rect(coords[0], coords[1], coords[2], coords[3]);
+	return encode_to_rect(ctor, coords[0], coords[1], coords[2], coords[3]);
 }
 
 /// 矩形の共通部分を取得する。
-export function get_common_rect<T extends IRect>(rectA: T, rectB: T): T {
+export function get_common_rect<T extends IRect>(
+	ctor: { new(x: number, y: number, width: number, height: number): T; },
+	rectA: T, rectB: T
+): T {
 	const sx = Math.max(rectA.x, rectB.x);
 	const sy = Math.max(rectA.y, rectB.y);
 	const ex = Math.min(rectA.x + rectA.width, rectB.x + rectB.width);
 	const ey = Math.min(rectA.y + rectA.height, rectB.y + rectB.height);
-	let ctor: { new(x: number, y: number, width: number, height: number): T };
 	return new ctor(sx, sy, ex - sx, ey - sy);
 }
 
@@ -122,6 +127,7 @@ export function rects_have_common<T extends IRect>(rect1: T, rect2: T): boolean 
 
 /// 点列を包含する矩形を取得する。
 export function get_outbounds<T extends IRect, U extends IPoint>(
+	ctor: { new(x: number, y: number, width: number, height: number): T; },
 	points: U[], margin: number
 ): T {
 	if (points.length <= 0) {
@@ -141,7 +147,6 @@ export function get_outbounds<T extends IRect, U extends IPoint>(
 	sy -= margin;
 	lx += margin;
 	ly += margin;
-	let ctor: { new(x: number, y: number, width: number, height: number): T };
 	const bounds = new ctor(sx, sy, lx - sx + 1, ly - sy + 1);
 	return bounds;
 }

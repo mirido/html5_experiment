@@ -86,6 +86,11 @@ export interface ICommonSetting { }
 //  Type guard
 //
 
+// Typeguard of Number
+export function isNumber(arg: any): arg is number {
+  return typeof arg === "number";
+}
+
 // Following type guards only judge necessity minimum for this application.
 // Therefore those can be used in this application only.
 // Please do not forget that those can't be used for general use.

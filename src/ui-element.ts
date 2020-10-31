@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
-import { IPlotFunc, IPoint, IRect } from './app-def';
+import { IPlotFunc, IPoint, IRect, isNumber } from './app-def';
 import { g_pictureCanvas } from './app-global';
 import { assert } from './dbg-util';
 import {
@@ -153,7 +153,7 @@ export class ImagePatch {
         }
 
         // 点列pointsを包含する矩形を取得
-        this.m_bounds = get_outbounds(points, margin);
+        this.m_bounds = get_outbounds(JsRect, points, margin);
 
         // 中心点を記憶
         this.m_center = new JsPoint(
@@ -162,7 +162,7 @@ export class ImagePatch {
         );
 
         // 領域のクリッピング
-        this.m_abs_dirty = clip_rect(this.m_bounds, src_width, src_height);
+        this.m_abs_dirty = clip_rect(JsRect, this.m_bounds, src_width, src_height);
 
         // 画像データを記憶
         const r = this.m_abs_dirty;    // Alias
@@ -212,7 +212,7 @@ export class ImagePatch {
         mod_img_bounds.y -= ofs_y;
 
         // Dirty rect確定
-        const dirty = get_common_rect(this.m_abs_dirty, mod_img_bounds);
+        const dirty = get_common_rect(JsRect, this.m_abs_dirty, mod_img_bounds);
         dirty.x -= this.m_abs_dirty.x;
         dirty.y -= this.m_abs_dirty.y;
 
@@ -724,7 +724,7 @@ export class DrawOp_Rectangle implements IDrawOp {
             // ガイド矩形決定
             const pt1 = points[0];
             const pt2 = points[points.length - 1];
-            const r = encode_to_rect(pt1.x, pt1.y, pt2.x, pt2.y);
+            const r = encode_to_rect(JsRect, pt1.x, pt1.y, pt2.x, pt2.y);
 
             // ガイド矩形描画
             // context.globalCompositeOperation = 'xor';   // ガイドなのでxor描画
@@ -955,7 +955,7 @@ export class DrawOp_RectCapture implements IDrawOp {
             if (points.length >= 2) {
                 // 画像データ取得
                 assert(points.length == 2);
-                const r = get_outbounds(points, 0);
+                const r = get_outbounds(JsRect, points, 0);
                 const curLayer = e.m_sender.getCurLayer();
                 this.m_yankData = this.m_yankFunc(curLayer, r);   // ここでm_yankFuncに従い画像変換が行われる。
 
@@ -1472,7 +1472,7 @@ export class Effect_PencilRect extends EffectBase01 {
         bFilled: boolean,
         context: Context2D
     ) {
-        const r = encode_to_rect(px1, py1, px2, py2);
+        const r = encode_to_rect(JsRect, px1, py1, px2, py2);
 
         context.fillStyle = color;
         if (bFilled) {
@@ -1566,7 +1566,7 @@ export class Effect_RectPaste extends EffectBase01 {
         obj: Effect_RectPaste,
         context: Context2D
     ) {
-        const r = encode_to_rect(px1, py1, px2, py2);
+        const r = encode_to_rect(JsRect, px1, py1, px2, py2);
 
         // コピーデータのpaste
         let reproClosure: IReproClosure;
@@ -1663,7 +1663,7 @@ export class Effect_RectEraser extends EffectBase01 {
 
     /// 実行時render関数(2点用)。
     static runtime_renderer2_ex(px1: number, py1: number, px2: number, py2: number, context: Context2D): IReproClosure {
-        const r = encode_to_rect(px1, py1, px2, py2);
+        const r = encode_to_rect(JsRect, px1, py1, px2, py2);
         context.clearRect(r.x, r.y, r.width, r.height);
         return null;
     }
@@ -1743,7 +1743,7 @@ export class Effect_FlipRect extends EffectBase01 {
         bVert: boolean,
         context: Context2D
     ): IReproClosure {
-        const r = encode_to_rect(px1, py1, px2, py2);
+        const r = encode_to_rect(JsRect, px1, py1, px2, py2);
         const imgd_src = context.getImageData(r.x, r.y, r.width, r.height);
         const imgd_dst = context.createImageData(r.width, r.height);
         if (bVert) {
@@ -2085,7 +2085,7 @@ class DwgHistEnt {
     // [2] エフェクト設定クロージャ
     m_configClosure: IConfigClosure;
     // [3] 対象レイヤー番号
-    m_layerNo: number;
+    m_layerNo: (number | HTMLCanvasElement);
     // [4] 点列
     m_pointSeq: IPoint[];
     // [5] マスクツール
@@ -2219,7 +2219,11 @@ export class UIOpHistory {
 
     /// エフェクト内容を追記する。
     /// 当メソッド呼び出しで、履歴カーソルが1エントリ進む。
-    appendEffect(effectObj: IEffect, configClosure: IConfigClosure, layerNo: number): void {
+    appendEffect(
+        effectObj: IEffect,
+        configClosure: IConfigClosure,
+        layerNo: (number | HTMLCanvasElement)
+    ): void {
         if (this.m_bDealing)
             return;
 
@@ -2244,7 +2248,7 @@ export class UIOpHistory {
         }
 
         // イベント追記
-        let histEnt: DwgHistEnt;                    // 通常の描画イベント
+        let histEnt = new DwgHistEnt();             // 通常の描画イベント
         histEnt.m_effect = effectObj;               // エフェクト
         histEnt.m_configClosure = configClosure;    // エフェクトを設定するクロージャ
         histEnt.m_layerNo = layerNo;                // 対象レイヤー番号
@@ -2314,7 +2318,7 @@ export class UIOpHistory {
         }
 
         // イベント追記
-        let histEnt: PaintHistEnt;          // 塗り潰しイベント
+        let histEnt = new PaintHistEnt();   // 塗り潰しイベント
         histEnt.m_startPoint = point;       // 開始点
         histEnt.m_color = color;            // 配置色
         histEnt.m_layerNo = layerNo;        // 対象レイヤー番号
@@ -2521,7 +2525,11 @@ export class UIOpHistory {
             if (effectObj.getMasterLayer != null) {
                 layer = layerNo;    // Ad-hoc; このときlayerNoの中身はlayerへの参照。
             } else {
-                layer = this.m_pictCanvas.getLayer(layerNo);
+                if (isNumber(layerNo)) {
+                    layer = this.m_pictCanvas.getLayer(layerNo);
+                } else {
+                    throw new Error("*** ERR ***");
+                }
             }
 
             // 描画

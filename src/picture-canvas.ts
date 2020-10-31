@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
-import { IPoint, IRect } from 'app-def';
+import { IPoint, IRect } from './app-def';
 import { g_keyStateManager, g_pointManager } from './app-global';
 import { assert } from './dbg-util';
 import { jsPoint } from './geometry';
@@ -100,11 +100,6 @@ export function modify_click_event_to_end_in_place(e: IToolUIEvent) {
 //
 //	PictureCanvas
 //
-
-// Type guard
-function isNumber(arg: any): arg is number {
-    return typeof arg === "number";
-}
 
 export class PictureCanvas implements EventListenerObject {
     // DOMオブジェクト取得
@@ -542,11 +537,7 @@ export class PictureCanvas implements EventListenerObject {
     appendEffect(effectObj: IEffect, configClosure: IConfigClosure, layerNo: (number | HTMLCanvasElement)): void {
         if (this.m_history == null)
             return;
-        if (isNumber(layerNo)) {
-            this.m_history.appendEffect(effectObj, configClosure, layerNo);
-        } else {
-            throw new Error("*** ERR ***");
-        }
+        this.m_history.appendEffect(effectObj, configClosure, layerNo);
     }
 
     /// 操作履歴に点列を追記する。(Undo/Redo)

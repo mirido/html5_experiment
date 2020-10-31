@@ -5,34 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "perl",
+            "name": "Launch Chrome",
             "request": "launch",
-            "name": "Perl-Debug local",
-            "console": "integratedTerminal",
-            "program": "${workspaceFolder}/${relativeFile}",
-            "exec": "perl",
-            "execArgs": [],
-            "root": "${workspaceRoot}/",
-            "inc": [],
-            "args": [
-                "SSO_SE08.json"
-            ],
-            "env": {},
-            "debugRaw": false,
-            "debugLog": false,
-            "stopOnEntry": true,
-            "sessions": "single"
+            "type": "pwa-chrome",
+            "url": "http://localhost:5501",
+            "webRoot": "${workspaceFolder}"
         },
-        {
-            "type": "perl",
-            "request": "launch",
-            "name": "Perl-Debug remote",
-            "console": "remote",
-            "program": "${workspaceFolder}/${relativeFile}",
-            "root": "${workspaceRoot}/",
-            "stopOnEntry": true,
-            "port": 5000,
-            "sessions": "single"
-        }
     ]
 }

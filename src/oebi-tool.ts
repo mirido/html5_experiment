@@ -605,7 +605,7 @@ export class ThicknessTool implements IDrawTool {
 //
 
 /// 新しいインスタンスを初期化する。
-export class ColorPalette implements IDrawTool {
+export class ColorPalette implements IDrawTool, IDrawCanvas {
     m_iconBounds: IRect;
     m_color: string;
     m_setting: CommonSetting;
@@ -698,7 +698,7 @@ export class ColorPalette implements IDrawTool {
     }
 
     /// 描画ストローク開始時に呼ばれる。(IDrawCanvas)
-    OnDrawStart(e: IToolUIEvent): void {
+    OnDrawStart(e: IDrawingEvent): void {
         // スポイト操作
         if ((e.m_spKey & SpKey.KY_CTRL) != 0) {
             // 画像合成
@@ -719,6 +719,18 @@ export class ColorPalette implements IDrawTool {
             const context = this.m_toolCanvas.getContext('2d');
             draw_color_palette(this.m_iconBounds, this.m_color, true, context);
         }
+    }
+
+    OnDrawing(e: DrawingEvent): void {
+        /*pass*/
+    }
+
+    OnDrawEnd(e: DrawingEvent): void {
+        /*pass*/
+    }
+
+    OnLayerToBeFixed?(canvas: PictureCanvas, layer: HTMLCanvasElement): void {
+        /*pass*/
     }
 }
 
@@ -912,7 +924,7 @@ function get_layer_no(toolPalette: ToolPalette, layer: HTMLCanvasElement) {
 }
 
 /// 新しいインスタンスを初期化する。
-export class MaskTool implements IDrawTool {
+export class MaskTool implements IDrawTool, IDrawCanvas {
     m_iconBounds: IRect;
     m_drawCompoIdx: number;
     m_faceText: string;
@@ -1193,6 +1205,18 @@ export class MaskTool implements IDrawTool {
         }
     }
 
+    OnDrawStart(e: DrawingEvent): void {
+        /*pass*/
+    }
+
+    OnDrawing(e: DrawingEvent): void {
+        /*pass*/
+    }
+
+    OnDrawEnd(e: DrawingEvent): void {
+        /*pass*/
+    }
+
     /// 作業中レイヤーを固定すべきとき呼ばれる。
     OnLayerToBeFixed(pictCanvas: PictureCanvas, nextLayer: HTMLCanvasElement): void {
         console.log("MaskTool::OnLayerToBeFixed() called.");
@@ -1240,7 +1264,7 @@ export class MaskTool implements IDrawTool {
 //
 
 /// 新しいインスタンスを初期化する。
-export class PaintTool implements IDrawTool {
+export class PaintTool implements IDrawTool, IDrawCanvas {
     m_toolPalette: ToolPalette;
     m_PaintButton: HTMLButtonElement;
 
@@ -1251,16 +1275,6 @@ export class PaintTool implements IDrawTool {
         this.m_PaintButton.onclick = function () {
             paintTool.OnClicked();
         };
-    }
-
-    OnPicked(e: IToolUIEvent): number | void {
-        throw new Error('Method not implemented.');
-    }
-    OnPointingEnd(e: IToolUIEvent): void {
-        throw new Error('Method not implemented.');
-    }
-    OnSettingChanged(setting: CommonSetting): void {
-        throw new Error('Method not implemented.');
     }
 
     /// 塗り潰しボタンがクリックされたとき呼ばれる。
@@ -1280,6 +1294,10 @@ export class PaintTool implements IDrawTool {
         e.m_sender.removeDrawer(this);
     }
 
+    OnPicked(e: IToolUIEvent): number | void {
+        /*pass*/
+    }
+
     /// 描画ストローク開始時呼ばれる。
     /// ここでは'mousedown'等、ポインティング開始操作の捕捉のために使っている。
     OnDrawStart(e: DrawingEvent): void {
@@ -1295,6 +1313,14 @@ export class PaintTool implements IDrawTool {
             e.m_sender.appendPaintOperation(e.m_point, color, e.m_sender.getCurLayerNo());    // (Undo/Redo)
         }
     }
+
+    OnDrawing(e: DrawingEvent): void {
+        /*pass*/
+    }
+
+    OnDrawEnd(e: DrawingEvent): void {
+        /*pass*/
+    }
 }
 
 //
@@ -1302,7 +1328,7 @@ export class PaintTool implements IDrawTool {
 //
 
 /// 新しいインスタンスを追加する。
-export class LayerTool implements IDrawTool {
+export class LayerTool implements IDrawTool, ISettingChangeListenerObject {
     m_iconBounds: IRect;
     m_listBox: ListBox;
     m_toolCanvas: HTMLCanvasElement;
@@ -1310,14 +1336,6 @@ export class LayerTool implements IDrawTool {
     constructor(iconBounds: IRect) {
         this.m_iconBounds = iconBounds;
         this.m_listBox = null;
-    }
-
-    OnPointingEnd(e: IToolUIEvent): void {
-        throw new Error('Method not implemented.');
-    }
-
-    OnSettingChanged(setting: CommonSetting): void {
-        throw new Error('Method not implemented.');
     }
 
     /// 最初の表示を行う。
@@ -1403,6 +1421,14 @@ export class LayerTool implements IDrawTool {
         const setting = e.m_sender.getCommonSetting();
         this.updateSetting(setting, e);
         this.updateView(setting);
+    }
+
+    OnPointingEnd(e: IToolUIEvent): void {
+        /*pass*/
+    }
+
+    OnSettingChanged(setting: CommonSetting): void {
+        /*pass*/
     }
 }
 

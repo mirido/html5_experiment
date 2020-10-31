@@ -260,31 +260,26 @@ export interface IDrawCanvas {
 
 /// Type guard for IDrawCanvas
 export function isIDrawCanvas(x: (IDrawCanvas | IDrawTool)): x is IDrawCanvas {
-    assert('OnDrawStart' in x);
-    return true
+    return ('OnDrawStart' in x);
 };
 
-export class PointManager {
+export class PointManager implements EventListenerObject {
     // 最後にmousedownまたはtouchstartが起きたオブジェクトのリストの辞書
     // リストは押下ボタン別。
-    m_objOnLastPointStart: { [key: number]: EventListenerObject[] } = {};
+    m_objOnLastPointStart: { [key: number]: EventListenerObject[] };
 
     /// 新しいインスタンスを初期化する。
     constructor() {
+        this.m_objOnLastPointStart = {};
+
         const bSupportTouch = ('ontouchend' in document);
         if (bSupportTouch) {
-            const listener: EventListener = this.handleEvent;
-            document.addEventListener('touchstart', listener);
-            document.addEventListener('touchend', listener);
+            document.addEventListener('touchstart', this);
+            document.addEventListener('touchend', this);
         } else {
-            const listener: EventListener = this.handleEvent;
-            document.addEventListener('mousedown', listener);
-            document.addEventListener('mouseup', listener);
+            document.addEventListener('mousedown', this);
+            document.addEventListener('mouseup', this);
         }
-        // Web APIの後方互換性により、addEventListener()の第2引数には
-        // handleEvent()メソッドをもつオブジェクトを渡すこともできる。
-        // PNGの元のソースコードはそうしていたが、
-        // TypeScriptへの書き換えを機に関数を渡すモダンな書き方に改める。
     }
 
     /// インスタンスが保持する資源を解放する。
@@ -325,11 +320,13 @@ export class PointManager {
                     break;
                 case 'mouseup':
                 case 'touchend':
-                    const listeners = this.m_objOnLastPointStart[e.button];
-                    for (let i = 0; i < listeners.length; i++) {
-                        listeners[i].handleEvent(e);
+                    if (e.button in this.m_objOnLastPointStart) {
+                        const listeners = this.m_objOnLastPointStart[e.button];
+                        for (let i = 0; i < listeners.length; i++) {
+                            listeners[i].handleEvent(e);
+                        }
+                        this.m_objOnLastPointStart[e.button] = [];
                     }
-                    this.m_objOnLastPointStart[e.button] = [];
                     break;
                 default:
                     assert(false);
