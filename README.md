@@ -1,6 +1,59 @@
 # PaintBBS NEO Next Generation (PNG)
-Copyright (c) 2016, mirido
+Copyright (c) 2016-2020, mirido
 All rights reserved.
+
+# Introduction
+This software is picture drawing tool wich works on web browser.
+
+It aimed to bring the good picture drawing environment on anyware of the World Wide Web.
+
+# System requirement
+Any major web browser based upon HTML5.
+
+# How to use
+Currentry easy installation package is not prepared. (Very sorry.)
+
+You must install build tool first, and build from source code to try this software. 
+
+## Get source code
+Download repository by the known means well in the GitHub.
+
+## Install build tool
+1. Install `node.js`.
+1. Open command prompt (on Windows).
+1. Type next command.
+    ```bat:Install node package
+    npm i -D webpack webpack-cli typescript ts-loader
+    ```
+1. If you will not only use this software but also develop (or debug) it, do following step additionally.
+    1. Install `VSCode`.
+    1. Open VSCode.
+    1. Download following extensions with extension palette.
+        * ESLint
+        * HTMLLint
+        * Live Server
+        * Debugger for Chrome (or Edge)
+
+    (There are linters and debug environment. So not necessary when you only run this software.)
+
+## Build this software
+1. Open command prompt (on Windows).
+1. Type next command.
+    ```bat:Install node package
+    npm run build
+    ```
+    (If you open the workspace of this software with VSCode, you may press `Ctrl+Shift+B` to achieve it.)
+
+## Run this software
+1. Double click the file `index.html` in workspace.<br>(Or open the html with Live Server on VSCode.)
+
+## Debug this software
+1. If you will develop (or debug) it, do operation of `Debugging in Visual Studio Code`.
+
+## *** NOTICE! ***
+Following description of this document may be little old.
+Therefore you should be careful when referring it.
+I think I'll correct it soon.
 
 ## 概要
 PaintBBS互換品をHTML5 + javascriptで書く企画。
