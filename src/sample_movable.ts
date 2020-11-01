@@ -1,9 +1,7 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
-'use strict';
-
-const target_id: string = "png_test";
+const target_id = "png_test";
 
 function my_onload(): void {
     const elem: HTMLElement = document.getElementById(target_id);

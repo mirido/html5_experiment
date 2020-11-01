@@ -1,6 +1,8 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { IIconGraphicFunc, IRect, textColor } from './app-def';
 import { assert, dbgv } from './dbg-util';
 import { draw_line_1px } from './graphics';
@@ -104,7 +106,7 @@ export class DrawToolBase implements IDrawTool, IDrawCanvas, ISettingChangeListe
     }
 
     /// 選択時呼ばれる。
-    OnSelected(e: IToolUIEvent) {
+    OnSelected(e: IToolUIEvent): void {
         // console.log("DrawerBase::OnSelected() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
 
         // 選択時アイコン描画
@@ -133,23 +135,23 @@ export class DrawToolBase implements IDrawTool, IDrawCanvas, ISettingChangeListe
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: IToolUIEvent): void {
+    OnPicked(_e: IToolUIEvent): void {
         // console.log("DrawerBase::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
         /*NOP*/
     }
 
     /// クリック終了またはドラッグ終了時に呼ばれる。
-    OnPointingEnd(e: IToolUIEvent): void {
+    OnPointingEnd(_e: IToolUIEvent): void {
         /*pass*/
     }
 
     /// 設定が変更されたとき呼ばれる。
-    OnSettingChanged(setting: CommonSetting): void {
+    OnSettingChanged(_setting: CommonSetting): void {
         /*pass*/
     }
 
     /// 操作履歴が巻き戻されるとき呼ばれる。(Undo/Redo)
-    OnHistoryRewind(history: UIOpHistory): void {
+    OnHistoryRewind(_history: UIOpHistory): void {
         /*pass*/
     }
 
@@ -190,12 +192,12 @@ export class DrawToolBase implements IDrawTool, IDrawCanvas, ISettingChangeListe
     }
 
     /// レイヤー固定時に呼ばれる。(IDrawCanvas)
-    OnLayerToBeFixed(canvas: PictureCanvas, layer: HTMLCanvasElement): void {
+    OnLayerToBeFixed(_canvas: PictureCanvas, _layer: HTMLCanvasElement): void {
         /*pass*/
     }
 
     /// OnDrawEnd()時に描画したガイドを消す。
-    restoreImageOnDrawEnd() {
+    restoreImageOnDrawEnd(): void {
         // DrawerBaseに委譲
         this.m_drawerCore.restoreImageOnDrawEnd();
     }
@@ -360,7 +362,7 @@ export class CopyTool extends DrawToolBase {
     }
 
     /// 操作履歴が巻き戻されるとき呼ばれる。(Undo/Redo)
-    OnHistoryRewind(history: UIOpHistory) {
+    OnHistoryRewind(history: UIOpHistory): void {
         super.restoreImageOnDrawEnd();
         history.attachImage();
         this.m_captureOp.resetCapture();
@@ -581,7 +583,7 @@ export class ThicknessTool implements IDrawTool {
     }
 
     /// クリック終了またはドラッグ終了時に呼ばれる。
-    OnPointingEnd(e: IToolUIEvent): void {
+    OnPointingEnd(_e: IToolUIEvent): void {
         /*pass*/
     }
 
@@ -595,7 +597,7 @@ export class ThicknessTool implements IDrawTool {
     }
 
     /// 操作履歴が巻き戻されるとき呼ばれる。(Undo/Redo)
-    OnHistoryRewind(history: UIOpHistory): void {
+    OnHistoryRewind(_history: UIOpHistory): void {
         /*pass*/
     }
 }
@@ -626,7 +628,7 @@ export class ColorPalette implements IDrawTool, IDrawCanvas {
     }
 
     /// 最初の表示を行う。
-    show(color: string, bActive: boolean, toolCanvas: HTMLCanvasElement) {
+    show(color: string, bActive: boolean, toolCanvas: HTMLCanvasElement): void {
         const context = toolCanvas.getContext('2d');
 
         this.m_color = color;
@@ -673,18 +675,18 @@ export class ColorPalette implements IDrawTool, IDrawCanvas {
     }
 
     /// 再ポイントされたとき呼ばれる。
-    OnPicked(e: IToolUIEvent): void {
+    OnPicked(_e: IToolUIEvent): void {
         // console.log("ColorPalette::OnPicked() called. (" + e.m_point.x + ", " + e.m_point.y + ")");
         /*NOP*/
     }
 
     /// クリック終了またはドラッグ終了時に呼ばれる。
-    OnPointingEnd(e: IToolUIEvent): void {
+    OnPointingEnd(_e: IToolUIEvent): void {
         /*pass*/
     }
 
     /// 設定が変化したとき呼ばれる。
-    OnSettingChanged(setting: CommonSetting) {
+    OnSettingChanged(setting: CommonSetting): void {
         if (this.m_toolCanvas != null) {
             this.m_color = setting.getColor();
             const context = this.m_toolCanvas.getContext('2d');
@@ -693,7 +695,7 @@ export class ColorPalette implements IDrawTool, IDrawCanvas {
     }
 
     /// 操作履歴が巻き戻されるとき呼ばれる。(Undo/Redo)
-    OnHistoryRewind(history: UIOpHistory): void {
+    OnHistoryRewind(_history: UIOpHistory): void {
         /*pass*/
     }
 
@@ -721,15 +723,15 @@ export class ColorPalette implements IDrawTool, IDrawCanvas {
         }
     }
 
-    OnDrawing(e: DrawingEvent): void {
+    OnDrawing(_e: DrawingEvent): void {
         /*pass*/
     }
 
-    OnDrawEnd(e: DrawingEvent): void {
+    OnDrawEnd(_e: DrawingEvent): void {
         /*pass*/
     }
 
-    OnLayerToBeFixed?(canvas: PictureCanvas, layer: HTMLCanvasElement): void {
+    OnLayerToBeFixed?(_canvas: PictureCanvas, _layer: HTMLCanvasElement): void {
         /*pass*/
     }
 }
@@ -746,7 +748,7 @@ export class ColorCompoTool implements IDrawTool {
     m_toolCanvas: HTMLCanvasElement;
     m_objId: string;
     // Object IDの生成源
-    static m_instanceCnt: number = 0;
+    static m_instanceCnt = 0;
 
     constructor(iconBounds: IRect) {
         this.m_iconBounds = iconBounds;
@@ -758,7 +760,7 @@ export class ColorCompoTool implements IDrawTool {
 
     /// 最初の表示を行う。
     /// ここで与える引数により、RGBAのどのツールなのかが決まる。
-    show(setting: CommonSetting, colorCompoIdx: number, toolCanvas: HTMLCanvasElement) {
+    show(setting: CommonSetting, colorCompoIdx: number, toolCanvas: HTMLCanvasElement): void {
         this.m_colorCompoIdx = colorCompoIdx;
         this.m_toolCanvas = null;
         this.m_objId = "ColorCompoTool_" + colorCompoIdx + "_" + ((ColorCompoTool.m_instanceCnt)++);
@@ -816,7 +818,7 @@ export class ColorCompoTool implements IDrawTool {
     }
 
     /// 共通設定から必要な値を取得する。
-    getValue(setting: CommonSetting) {
+    getValue(setting: CommonSetting): number {
         let val: number = null;
 
         switch (this.m_colorCompoIdx) {
@@ -841,7 +843,7 @@ export class ColorCompoTool implements IDrawTool {
     }
 
     /// 共通設定を変更する。
-    setValue(val: number, setting: CommonSetting) {
+    setValue(val: number, setting: CommonSetting): void {
         switch (this.m_colorCompoIdx) {
             case 0:
             case 1:
@@ -894,7 +896,7 @@ export class ColorCompoTool implements IDrawTool {
     }
 
     /// 設定が変更されたとき呼ばれる。
-    OnSettingChanged(setting: CommonSetting) {
+    OnSettingChanged(setting: CommonSetting): void {
         if (this.m_toolCanvas != null) {
             const val = this.getValue(setting);
             const context = this.m_toolCanvas.getContext('2d');
@@ -903,7 +905,7 @@ export class ColorCompoTool implements IDrawTool {
     }
 
     /// 操作履歴が巻き戻されるとき呼ばれる。(Undo/Redo)
-    OnHistoryRewind(history: UIOpHistory): void {
+    OnHistoryRewind(_history: UIOpHistory): void {
         /*pass*/
     }
 }
@@ -1205,15 +1207,15 @@ export class MaskTool implements IDrawTool, IDrawCanvas {
         }
     }
 
-    OnDrawStart(e: DrawingEvent): void {
+    OnDrawStart(_e: DrawingEvent): void {
         /*pass*/
     }
 
-    OnDrawing(e: DrawingEvent): void {
+    OnDrawing(_e: DrawingEvent): void {
         /*pass*/
     }
 
-    OnDrawEnd(e: DrawingEvent): void {
+    OnDrawEnd(_e: DrawingEvent): void {
         /*pass*/
     }
 
@@ -1271,6 +1273,7 @@ export class PaintTool implements IDrawTool, IDrawCanvas {
     constructor(toolPalette: ToolPalette) {
         this.m_toolPalette = toolPalette;
         this.m_PaintButton = <HTMLButtonElement>document.getElementById('paint');
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const paintTool = this;   // 束縛変数
         this.m_PaintButton.onclick = function () {
             paintTool.OnClicked();
@@ -1294,7 +1297,7 @@ export class PaintTool implements IDrawTool, IDrawCanvas {
         e.m_sender.removeDrawer(this);
     }
 
-    OnPicked(e: IToolUIEvent): number | void {
+    OnPicked(_e: IToolUIEvent): number | void {
         /*pass*/
     }
 
@@ -1314,11 +1317,11 @@ export class PaintTool implements IDrawTool, IDrawCanvas {
         }
     }
 
-    OnDrawing(e: DrawingEvent): void {
+    OnDrawing(_e: DrawingEvent): void {
         /*pass*/
     }
 
-    OnDrawEnd(e: DrawingEvent): void {
+    OnDrawEnd(_e: DrawingEvent): void {
         /*pass*/
     }
 }
@@ -1341,7 +1344,6 @@ export class LayerTool implements IDrawTool, ISettingChangeListenerObject {
     /// 最初の表示を行う。
     show(setting: CommonSetting, toolCanvas: HTMLCanvasElement): void {
         const nlayers = setting.getNumLayers();
-        const curLayerNo = setting.getCurLayerNo();
         this.m_listBox = new ListBox(this.m_iconBounds, nlayers);
         this.m_toolCanvas = toolCanvas;
         this.updateView(setting);
@@ -1410,7 +1412,7 @@ export class LayerTool implements IDrawTool, ISettingChangeListenerObject {
     }
 
     /// ツール選択解除時呼ばれる。
-    OnDiselected(e: IToolUIEvent): void {
+    OnDiselected(_e: IToolUIEvent): void {
         /*NOP*/
     }
 
@@ -1423,17 +1425,17 @@ export class LayerTool implements IDrawTool, ISettingChangeListenerObject {
         this.updateView(setting);
     }
 
-    OnPointingEnd(e: IToolUIEvent): void {
+    OnPointingEnd(_e: IToolUIEvent): void {
         /*pass*/
     }
 
-    OnSettingChanged(setting: CommonSetting): void {
+    OnSettingChanged(_setting: CommonSetting): void {
         /*pass*/
     }
 }
 
 /// 描画ツールを動的に生成する。
-export function generateTool(toolName: string, iconBounds: IRect): IDrawTool {
-    const cmd = "new " + toolName + "(iconBounds)";
+export function generateTool(toolName: string, iconBounds_: IRect): IDrawTool {
+    const cmd = "new " + toolName + "(iconBounds_)";
     return eval(cmd);
 }

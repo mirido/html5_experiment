@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <!-- Copyright (c) 2016, mirido
 All rights reserved. -->
 <html>
@@ -27,10 +28,10 @@ All rights reserved. -->
       <!-- 左側サブペイン BGN -->
 
       <!-- [窓] -->
-      <button id="window">窓</button><BR>
+      <button id="window">窓</button><br>
 
       <!-- [やり直し] | [元に戻す] | [塗り潰し] -->
-      <div align=right>
+      <div align="right">
         <button id="redo">やり直し</button>
         <button id="undo">元に戻す</button>
         <button id="paint" style="margin: 0px 10px 8px 0px;">塗り潰し</button>
@@ -38,16 +39,16 @@ All rights reserved. -->
 
       <!-- キャンバス -->
       <div id="viewport" class="boxContainer">
-        <canvas id="canvas_0" width=400px height=400px style="z-index: 0;"></canvas>
-        <canvas id="canvas_1" width=400px height=400px style="z-index: 2;"></canvas>
-        <canvas id="floating" width=400px height=400px style="z-index: 3;"></canvas>
-        <canvas id="surface" width=400px height=400px style="z-index: 4;"></canvas>
-        <canvas id="overlay" width=400px height=400px style="z-index: 5;"></canvas>
+        <canvas id="canvas_0" width="400px" height="400px" style="z-index: 0;"></canvas>
+        <canvas id="canvas_1" width="400px" height="400px" style="z-index: 2;"></canvas>
+        <canvas id="floating" width="400px" height="400px" style="z-index: 3;"></canvas>
+        <canvas id="surface" width="400px" height="400px" style="z-index: 4;"></canvas>
+        <canvas id="overlay" width="400px" height="400px" style="z-index: 5;"></canvas>
       </div>
 
       <!-- [投稿] | 表題 -->
       <input id="m_submit" type="button" value="投稿" onclick="submit(document.getElementById('target').value);">
-      (C) PaintBBS NEO Next Generation V0.5.2 alpha
+      (C) PaintBBS NEO Next Generation V0.5.3 alpha
       <!-- 左側サブペイン END　-->
     </div>
     <div class="box">
@@ -74,7 +75,7 @@ All rights reserved. -->
       <!-- 線幅 1px～30 px -->
       <!-- 1 px黒/5 px白/10 px白 -->
       <!-- layer1/layer0 -->
-      <canvas id="tool_palette" width=50 height=443 style="padding: 0px 20px 0px 0px;"></canvas>
+      <canvas id="tool_palette" width="50" height="443" style="padding: 0px 20px 0px 0px;"></canvas>
 
       <!-- 右側サブペイン END -->
     </div>
@@ -115,7 +116,7 @@ All rights reserved. -->
   -->
   </p>
   <p>
-    ↓↓↓レイヤー合成結果 <small>（投稿ボタン押下か、スポイトツールで更新）</small><BR>
+    ↓↓↓レイヤー合成結果 <small>（投稿ボタン押下か、スポイトツールで更新）</small><br>
     <canvas id="joint_canvas"></canvas>
   </p>
   <p>

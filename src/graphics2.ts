@@ -94,6 +94,7 @@ export class FloodFillState {
 
     // 左端に移動
     while (px >= 0 && !this.isBorder(px, imgd_tg)) {
+      // eslint-disable-next-line no-param-reassign
       px--;
     }
 
@@ -110,6 +111,7 @@ export class FloodFillState {
     // 塗り潰し範囲決定 & 次の塗り潰し開始位置をスタックにpush
     let prev_up = true;
     let prev_lo = true;
+    // eslint-disable-next-line no-param-reassign
     const px_bgn = px++;
     while (px < this.m_canvas.width && !this.isBorder(px, imgd_tg)) {
       // 直上の画素を確認
@@ -136,6 +138,7 @@ export class FloodFillState {
       imgd_tg.data[base + 2] = this.m_nxtColors[2];
       imgd_tg.data[base + 3] = this.m_nxtColors[3];
 
+      // eslint-disable-next-line no-param-reassign
       px++;
     }
 
@@ -165,13 +168,15 @@ export function get_max_run_len_histogram(
 ): { [key: number]: number } {
   const pixelFunc = function (px: number, py: number) {
     assert(px >= 0 && py >= 0);
+    // eslint-disable-next-line no-param-reassign
     px %= cyc;
+    // eslint-disable-next-line no-param-reassign
     py %= cyc;
     const idx = cyc * py + px;
     return ptn[idx];
   };
 
-  let histogram: { [key: number]: number } = {};
+  const histogram: { [key: number]: number } = {};
   for (let py = 0; py < cyc; py++) {
     let T = 0;
     let bChanged = false;
@@ -261,7 +266,7 @@ export interface DefinitioInfo {
   m_fAlpha: number;
   m_definition: number;
   m_ptn: boolean[];
-};
+}
 
 /// 網点のリストを生成する。
 export function gen_halftones(ha: number): DefinitioInfo[] {
@@ -277,10 +282,10 @@ export function gen_halftones(ha: number): DefinitioInfo[] {
     }
   };
 
-  let ptnList = [];
+  const ptnList = [];
   for (let i = 0; i < N; i++) {
     // iを種として8方向対称パターンを生成
-    let ptn: boolean[] = [];
+    const ptn: boolean[] = [];
     for (let py = 0; py < cyc; py++) {
       for (let px = 0; px < cyc; px++) {
         plotFunc(px, py, false, ptn);

@@ -47,9 +47,18 @@ export function dump_event(func: string, e: Event): void {
 
       // FireFox固有プロパティー
       {
-        const e2: any = <any>e;
-        const str_x = ('layerX' in e2) ? e2.layerX : "<undefined>";
-        const str_y = ('layerY' in e2) ? e2.layerY : "<undefined>";
+        const has_layerX = function (x: unknown): x is { layerX: number } {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return ('layerX' in <any>x);
+        }
+        const has_layerY = function (x: unknown): x is { layerY: number } {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return ('layerY' in <any>x);
+        }
+
+        const e2 = e;
+        const str_x = (has_layerX(e2)) ? e2.layerX : "<undefined>";
+        const str_y = (has_layerY(e2)) ? e2.layerY : "<undefined>";
         console.log(` layer: (${str_x}, ${str_y})`);
       }
 
@@ -98,7 +107,7 @@ export function dump_event(func: string, e: Event): void {
 
 /// Assert関数。以下のコードを参考にTypeScript化したもの。
 /// http://stackoverflow.com/questions/15313418/javascript-assert
-export function assert(condition: boolean, message: string = "*** ERR ***"): void {
+export function assert(condition: boolean, message = "*** ERR ***"): void {
   if (!condition) {
     // 元のJSコードと違い、Errorクラスが未定義の可能性は無いため判定無しで使用する。
     throw new Error(message);
@@ -108,15 +117,15 @@ export function assert(condition: boolean, message: string = "*** ERR ***"): voi
 /// 変数内容を簡単に確認するためのログ出力関数。
 /// 変数fooとbarの値をダンプしたいとき、
 /// eval(dbgv(['foo','bar']))と書く。
-export function dbgv(vars: string[]) {
+export function dbgv(vars: string[]): string {
   let str_vars = '';
   for (let i = 0; i < vars.length; i++) {
     if (i <= 0) {
-      str_vars += '\"';
+      str_vars += '"';
     } else {
-      str_vars += ' + \", ';
+      str_vars += ' + ", ';
     }
-    str_vars += (vars[i] + '=\" + (' + vars[i] + ')');
+    str_vars += (vars[i] + '=" + (' + vars[i] + ')');
   }
   const cmd = "console.log(" + str_vars + ");";
   return cmd;

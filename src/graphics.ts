@@ -72,7 +72,7 @@ export function put_point(
   ha: number,
   pre_rendered: (HTMLCanvasElement | ImageBitmap),
   context: CanvasRenderingContext2D
-) {
+): void {
   context.drawImage(pre_rendered, px - ha, py - ha);
 }
 
@@ -81,7 +81,7 @@ export function put_point_1px(
   px: number,
   py: number,
   context: CanvasRenderingContext2D
-) {
+): void {
   context.fillRect(px, py, 1, 1);
 }
 
@@ -93,26 +93,30 @@ export function draw_line_w_plot_func(
   y1: number,
   plotFunc: IPlotFunc,
   context: CanvasRenderingContext2D
-) {
+): void {
   let tmp;
 
-  let bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
+  const bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
   if (bSteep) {
     // swap(x0, y0);
+    // eslint-disable-next-line no-param-reassign
     tmp = x0, x0 = y0, y0 = tmp;
 
     // swap(x1, y1)
+    // eslint-disable-next-line no-param-reassign
     tmp = x1, x1 = y1, y1 = tmp;
   }
   if (x0 > x1) {
     // swap(x0, x1)
+    // eslint-disable-next-line no-param-reassign
     tmp = x0, x0 = x1, x1 = tmp;
 
     // swap(y0, y1)
+    // eslint-disable-next-line no-param-reassign
     tmp = y0, y0 = y1, y1 = tmp;
   }
-  let deltax = x1 - x0
-  let deltay = Math.abs(y1 - y0)
+  const deltax = x1 - x0
+  const deltay = Math.abs(y1 - y0)
   let error = Math.floor(deltax / 2.0);
   let ystep
   let y = y0
@@ -146,7 +150,7 @@ export function draw_line(
   ha: number,
   pre_rendered: (HTMLCanvasElement | ImageBitmap),
   context: CanvasRenderingContext2D
-) {
+): void {
   const plotFunc: IPlotFunc = function (x, y, context) {
     context.drawImage(pre_rendered, x - ha, y - ha);
   };
@@ -161,7 +165,7 @@ export function draw_line_w_runtime_renderer(
   y1: number,
   run_time_renderer: IPlotFunc,
   context: CanvasRenderingContext2D
-) {
+): void {
   draw_line_w_plot_func(x0, y0, x1, y1, run_time_renderer, context);
 }
 
@@ -172,26 +176,30 @@ export function draw_line_1px(
   x1: number,
   y1: number,
   context: CanvasRenderingContext2D
-) {
+): void {
   let tmp;
 
-  let bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
+  const bSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
   if (bSteep) {
     // swap(x0, y0);
+    // eslint-disable-next-line no-param-reassign
     tmp = x0, x0 = y0, y0 = tmp;
 
     // swap(x1, y1)
+    // eslint-disable-next-line no-param-reassign
     tmp = x1, x1 = y1, y1 = tmp;
   }
   if (x0 > x1) {
     // swap(x0, x1)
+    // eslint-disable-next-line no-param-reassign
     tmp = x0, x0 = x1, x1 = tmp;
 
     // swap(y0, y1)
+    // eslint-disable-next-line no-param-reassign
     tmp = y0, y0 = y1, y1 = tmp;
   }
-  let deltax = x1 - x0
-  let deltay = Math.abs(y1 - y0)
+  const deltax = x1 - x0
+  const deltay = Math.abs(y1 - y0)
   let error = Math.floor(deltax / 2.0);
   let ystep
   let y = y0
@@ -223,7 +231,7 @@ export function draw_rect(
   x1: number,
   y1: number,
   context: CanvasRenderingContext2D
-) {
+): void {
   // console.log("draw_rect: (" + x0 + ", " + y0 + ")-(" + x1 + ", " + y1 + ")");
   draw_line_1px(x0, y0, x1, y0, context);
   if (y0 < y1) {
@@ -242,7 +250,7 @@ export function draw_rect(
 }
 
 /// 塗り潰し無しの矩形を描画する。
-export function draw_rect_R<T extends IRect>(rect: T, context: CanvasRenderingContext2D) {
+export function draw_rect_R<T extends IRect>(rect: T, context: CanvasRenderingContext2D): void {
   draw_rect(
     rect.x, rect.y,
     rect.x + rect.width - 1, rect.y + rect.height - 1,
@@ -258,7 +266,7 @@ export function draw_circle(
   radius: number,
   context: CanvasRenderingContext2D,
   bFilled: boolean
-) {
+): void {
   if (radius <= 0.5) {
     context.fillRect(Math.floor(cx), Math.floor(cy), 1, 1);
     return;

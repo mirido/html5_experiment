@@ -46,7 +46,6 @@ export function get_mirror_image(src_imgd: ImageData, dst_imgd: ImageData): void
   const width = src_imgd.width;
   const height = src_imgd.height;
   assert(dst_imgd.width == width && dst_imgd.height == height);
-  const colors = [];
   for (let py = 0; py < height; py++) {
     const head = py * 4 * width;
     const tail = head + 4 * (width - 1);
@@ -66,7 +65,6 @@ export function get_vert_flip_image(src_imgd: ImageData, dst_imgd: ImageData): v
   const width = src_imgd.width;
   const height = src_imgd.height;
   assert(dst_imgd.width == width && dst_imgd.height == height);
-  const colors = [];
   for (let py = 0; py < height; py++) {
     const head_src = py * 4 * width;
     const head_dst = ((height - 1) - py) * 4 * width;

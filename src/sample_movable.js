@@ -1,8 +1,6 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
-'use strict';
-
 var target_id = "png_test";
 function my_onload() {
     var elem = document.getElementById(target_id);

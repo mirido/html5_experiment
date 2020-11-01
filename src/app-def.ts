@@ -1,14 +1,12 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
-'use strict';
-
 //
 //  Constant
 //
 
 // Dump all property of event
-export const bShowAllProperty: boolean = false;
+export const bShowAllProperty = false;
 
 export const borderColor = 'rgb(116,116,171)';   // 枠線
 
@@ -75,19 +73,19 @@ export interface IIconGraphicFunc {
 
 // # oebi-tool
 
-export interface generateTool { }
-export interface PaintTool { }
+// export interface generateTool { }
+// export interface PaintTool { }
 
 // # tool-palette
 
-export interface ICommonSetting { }
+// export interface ICommonSetting { }
 
 //
 //  Type guard
 //
 
 // Typeguard of Number
-export function isNumber(arg: any): arg is number {
+export function isNumber(arg: unknown): arg is number {
   return typeof arg === "number";
 }
 

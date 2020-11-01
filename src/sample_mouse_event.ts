@@ -46,7 +46,13 @@ function init_wnd(): void {
         }
     });
 
-    function drawLine(context: any, x1: number, y1: number, x2: number, y2: number): void {
+    function drawLine(
+        context: CanvasRenderingContext2D,
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number
+    ): void {
         context.beginPath();
         context.strokeStyle = 'black';
         context.lineWidth = 1;

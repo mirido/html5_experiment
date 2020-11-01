@@ -24,9 +24,11 @@ export function encode_to_rect<T extends IRect>(
 	px1: number, py1: number, px2: number, py2: number
 ): T {
 	if (px1 > px2) {
+		// eslint-disable-next-line no-param-reassign
 		const tmp = px1; px1 = px2; px2 = tmp;
 	}
 	if (py1 > py2) {
+		// eslint-disable-next-line no-param-reassign
 		const tmp = py1; py1 = py2; py2 = tmp;
 	}
 	const w = px2 - px1 + 1;
@@ -40,9 +42,11 @@ export function encode_to_rect_in_place<T extends IRect>(
 	px1: number, py1: number, px2: number, py2: number, rect: T
 ): void {
 	if (px1 > px2) {
+		// eslint-disable-next-line no-param-reassign
 		const tmp = px1; px1 = px2; px2 = tmp;
 	}
 	if (py1 > py2) {
+		// eslint-disable-next-line no-param-reassign
 		const tmp = py1; py1 = py2; py2 = tmp;
 	}
 	const w = px2 - px1 + 1;

@@ -1,6 +1,8 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { IPlotFunc, IPoint, IRect, isNumber } from './app-def';
 import { g_pictureCanvas } from './app-global';
 import { assert } from './dbg-util';
@@ -192,7 +194,7 @@ export class ImagePatch {
         dst_ctx: Context2D,
         dst_width: number,
         dst_height: number
-    ) {
+    ): void {
         if (this.m_imageData == null)
             return;
 
@@ -291,14 +293,14 @@ export class DrawerBase implements IDrawCanvas {
             const effectObj = this.m_effect;
             this.m_strokeFixer = function (e) { effectObj.closeStroke(e); };
         } else {
-            this.m_strokeFixer = function (e) { /*NOP*/ };
+            this.m_strokeFixer = function (_e) { /*NOP*/ };
         }
         if (this.m_drawOp.getAltLayer != null) {
             this.m_altLayerGetter = this.m_drawOp.getAltLayer;
             this.m_altContextGetter = function (layer) { return layer.getContext('2d'); };
         } else {
-            this.m_altLayerGetter = function (e: IDrawingEvent): HTMLCanvasElement { return null; };
-            this.m_altContextGetter = function (layer: HTMLCanvasElement): Context2D { return null; };
+            this.m_altLayerGetter = function (_e: IDrawingEvent): HTMLCanvasElement { return null; };
+            this.m_altContextGetter = function (_layer: HTMLCanvasElement): Context2D { return null; };
         }
     }
 
@@ -409,13 +411,10 @@ export class DrawerBase implements IDrawCanvas {
     /// 描画ストローク終了時に呼ばれる。
     OnDrawEnd(e: IDrawingEvent): void {
         const curLayer = this.m_masterLayerGetter(e);
-        const w = curLayer.width;   // clientWidthやclientHeightは、非表示化時に0になる@FireFox
-        const h = curLayer.height;  // (同上)
         const context = curLayer.getContext('2d');
         const altLayer = this.m_altLayerGetter(e);
         const alt_ctx = this.m_altContextGetter(altLayer);
         const cur_pt = e.m_point;
-        const margin = Math.max(this.m_drawOp.getMargin(), this.m_effect.getMargin());
 
         // CTRLキー押下とともに開始された場合はストローク終了まで一切描画しない。
         if (this.m_bWrtProtect) {
@@ -521,28 +520,34 @@ export class DrawerBase implements IDrawCanvas {
 
 /// 新しいインスタンスを初期化する。
 export class NullDrawOp implements IDrawOp {
-    constructor() { }
+    constructor() {
+        /*pass*/
+    }
 
     /// 描画ストローク開始時の画素固定判断を行う。
-    testOnDrawStart(e: IDrawingEvent, points: IPoint[], context: Context2D): boolean {
+    testOnDrawStart(_e: IDrawingEvent, _points: IPoint[], _context: Context2D): boolean {
         return false;
     }
 
     /// 描画ストローク中の画素固定判断を行う。
-    testOnDrawing(e: IDrawingEvent, points: IPoint[], context: Context2D): boolean {
+    testOnDrawing(_e: IDrawingEvent, _points: IPoint[], _context: Context2D): boolean {
         return false;
     }
 
     /// 描画ストローク終了時の画素固定判断を行う。
-    testOnDrawEnd(e: IDrawingEvent, points: IPoint[], context: Context2D): boolean {
+    testOnDrawEnd(_e: IDrawingEvent, _points: IPoint[], _context: Context2D): boolean {
         return false;
     }
 
     /// 描画ストローク開始時ガイド表示処理。
-    guideOnDrawStart(e: IDrawingEvent, points: IPoint[], context: Context2D): void { }
+    guideOnDrawStart(_e: IDrawingEvent, _points: IPoint[], _context: Context2D): void {
+        /*pass*/
+    }
 
     /// 描画ストローク中ガイド表示処理。
-    guideOnDrawing(e: IDrawingEvent, points: IPoint[], context: Context2D): void { }
+    guideOnDrawing(_e: IDrawingEvent, _points: IPoint[], _context: Context2D): void {
+        /*pass*/
+    }
 
     /// マージンを取得する。
     getMargin(): number { return 0; }
@@ -554,21 +559,23 @@ export class NullDrawOp implements IDrawOp {
 
 /// 新しいインスタンスを取得する。
 export class NullEffect implements IEffect {
-    constructor() { }
+    constructor() {
+        /*pass*/
+    }
 
     /// エフェクトを適用する。
     /// setParam()が返すクロージャ、apply()呼び出し前画像、引き続き与えられる点列points
     /// の3点で描画結果が一意に定まるエフェクトについては戻り値voidまたはnullを返す。
     /// そうでないエフェクトについては、(obj, points, layer)から描画結果を復元する
     /// クロージャ(描画復元クロージャ)を返す約束とする。
-    apply(points: IPoint[], context: Context2D): IReproClosure { return null }
+    apply(_points: IPoint[], _context: Context2D): IReproClosure { return null }
 
     /// マージンを取得する。
-    getMargin() { return 0; }
+    getMargin(): number { return 0; }
 
     /// パラメータ設定のためのplace holder。
-    setParam(setting: CommonSetting): IConfigClosure {
-        return function (setting) { /*NOP*/ };
+    setParam(_setting: CommonSetting): IConfigClosure {
+        return function (_setting) { /*NOP*/ };
     }
 
     /// 画素定着対象レイヤーを取得する。(Optional)
@@ -584,16 +591,24 @@ export class NullEffect implements IEffect {
 
 /// 新しいインスタンスを取得する。
 export class NullCursor implements ICursor {
-    constructor() { }
+    constructor() {
+        /*pass*/
+    }
 
     /// カーソルを描画する。
-    put(e: IDrawingEvent, cur_pt: IPoint, context: Context2D) { }
+    put(_e: IDrawingEvent, _cur_pt: IPoint, _context: Context2D): void {
+        /*pass*/
+    }
 
     /// カーソルをクリアする。
-    clear(context: Context2D) { }
+    clear(_context: Context2D): void {
+        /*pass*/
+    }
 
     /// パラメータ設定のためのplace holder。
-    setParam(setting: CommonSetting) { }
+    setParam(_setting: CommonSetting): void {
+        /*pass*/
+    }
 }
 
 //
@@ -614,7 +629,7 @@ export class DrawOp_FreeHand implements IDrawOp {
     }
 
     /// 描画ストローク中の画素固定判断を行う。
-    testOnDrawing(e: IDrawingEvent, points: IPoint[], context: Context2D): boolean {
+    testOnDrawing(e: IDrawingEvent, points: IPoint[], _context: Context2D): boolean {
         // console.log("testOnDrawing: e.m_spKey=" + e.m_spKey);
 
         if (this.m_bLineMode) {   // (直線ガイドモード)
@@ -643,7 +658,7 @@ export class DrawOp_FreeHand implements IDrawOp {
     }
 
     /// 描画ストローク終了時の画素固定判断を行う。
-    testOnDrawEnd(e: IDrawingEvent, points: IPoint[], context: Context2D): boolean {
+    testOnDrawEnd(_e: IDrawingEvent, _points: IPoint[], _context: Context2D): boolean {
         return true;
     }
 
@@ -687,12 +702,12 @@ export class DrawOp_Rectangle implements IDrawOp {
     }
 
     /// 描画ストローク開始時の画素固定判断を行う。
-    testOnDrawStart(e: IDrawingEvent, points: IPoint[], context: Context2D): boolean {
+    testOnDrawStart(_e: IDrawingEvent, _points: IPoint[], _context: Context2D): boolean {
         return false;
     }
 
     /// 描画ストローク中の画素固定判断を行う。
-    testOnDrawing(e: IDrawingEvent, points: IPoint[], context: Context2D): boolean {
+    testOnDrawing(e: IDrawingEvent, points: IPoint[], _context: Context2D): boolean {
         if (points.length > 2) {
             points.splice(1, points.length - 2);  // 先頭と末尾以外を削除
             return false;
@@ -700,7 +715,7 @@ export class DrawOp_Rectangle implements IDrawOp {
     }
 
     /// 描画ストローク終了時の画素固定判断を行う。
-    testOnDrawEnd(e: IDrawingEvent, points: IPoint[], context: Context2D): boolean {
+    testOnDrawEnd(e: IDrawingEvent, points: IPoint[], _context: Context2D): boolean {
         if (points.length > 2) {
             points.splice(1, points.length - 2);  // 先頭と末尾以外を削除
         }
@@ -749,7 +764,7 @@ export class DrawOp_Rectangle implements IDrawOp {
     }
 
     /// マージンを取得する。
-    getMargin() { return 0; }
+    getMargin(): number { return 0; }
 
     /// 代替描画先レイヤーを指定する。(Optional)
     getAltLayer(e: IDrawingEvent): HTMLCanvasElement {
@@ -796,6 +811,7 @@ export class DrawOp_RectCapture implements IDrawOp {
         if (yankFunc == null) {
             // デフォルトのyank関数
             // 指定レイヤーlayerの矩形領域rect内の画像をそのまま返す。
+            // eslint-disable-next-line no-param-reassign
             yankFunc = function (layer, rect) {
                 const context = layer.getContext('2d');
                 const imgd = context.getImageData(rect.x, rect.y, rect.width, rect.height);
@@ -841,7 +857,7 @@ export class DrawOp_RectCapture implements IDrawOp {
     }
 
     /// ペーストモードのガイド表示を行う。
-    drawPasteModeGuide(e: IDrawingEvent, points: IPoint[], context: Context2D): void {
+    drawPasteModeGuide(e: IDrawingEvent, points: IPoint[], _context: Context2D): void {
         assert(points.length == 2);   // convPointsToPasteArea()による処理済pointsが前提。
         const alt_ctx = e.m_sender.getOverlay().getContext('2d');
 
@@ -1121,7 +1137,7 @@ export class EffectBase01 implements IEffect {
         runtime_renderer2: IRenderForLine,      // [in] 実行時render関数(2点用)
         fGlobalAlpha: number,                   // [in] α値([0, 1]で与えるので注意!)
         bCompositeWithCopy: boolean             // [in] Pre-rendering結果をcopyする。(描画先との合成無し)
-    ) {
+    ): void {
         this.m_ha = ha;
         this.m_pre_rendered = pre_rendered;
         this.m_runtime_renderer1 = runtime_renderer1;
@@ -1195,7 +1211,7 @@ export class EffectBase01 implements IEffect {
 
     /// パラメータ設定
     /// これは派生クラスで定義する。
-    setParam(setting: CommonSetting): IConfigClosure {
+    setParam(_setting: CommonSetting): IConfigClosure {
         throw new Error('Method not implemented.');
     }
 }
@@ -1365,7 +1381,12 @@ export class Effect_Eraser extends EffectBase01 {
     // Pre-render関数は無し。
 
     /// 実行時render関数(1点用)。
-    static runtime_renderer1_ex(px: number, py: number, diameter: number, context: Context2D) {
+    static runtime_renderer1_ex(
+        px: number,
+        py: number,
+        diameter: number,
+        context: Context2D
+    ): void {
         const radius = diameter / 2;
         const sx = Math.ceil(px - radius);
         const sy = Math.ceil(py - radius);
@@ -1382,7 +1403,7 @@ export class Effect_Eraser extends EffectBase01 {
         py2: number,
         runtime_renderer1: IPlotFunc,
         context: Context2D
-    ) {
+    ): void {
         // console.log("runtime_renderer2() called.");
         // console.dir(runtime_renderer1);
         draw_line_w_runtime_renderer(px1, py1, px2, py2, runtime_renderer1, context);
@@ -1458,7 +1479,12 @@ export class Effect_PencilRect extends EffectBase01 {
     // Pre-render関数は無し。
 
     /// 実行時render関数(1点用)。
-    static runtime_renderer1_ex(px: number, py: number, color: string, context: Context2D): void {
+    static runtime_renderer1_ex(
+        _px: number,
+        _py: number,
+        _color: string,
+        _context: Context2D
+    ): void {
         assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
     }
 
@@ -1471,7 +1497,7 @@ export class Effect_PencilRect extends EffectBase01 {
         color: string,
         bFilled: boolean,
         context: Context2D
-    ) {
+    ): void {
         const r = encode_to_rect(JsRect, px1, py1, px2, py2);
 
         context.fillStyle = color;
@@ -1548,10 +1574,10 @@ export class Effect_RectPaste extends EffectBase01 {
 
     /// 実行時render関数(1点用)。
     static runtime_renderer1_ex(
-        px: number,
-        py: number,
-        color: string,
-        context: Context2D
+        _px: number,
+        _py: number,
+        _color: string,
+        _context: Context2D
     ): IReproClosure {
         assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
         return null;
@@ -1565,9 +1591,7 @@ export class Effect_RectPaste extends EffectBase01 {
         py2: number,
         obj: Effect_RectPaste,
         context: Context2D
-    ) {
-        const r = encode_to_rect(JsRect, px1, py1, px2, py2);
-
+    ): IReproClosure {
         // コピーデータのpaste
         let reproClosure: IReproClosure;
         const yankData = obj.m_copyAndPasteOp.getYankData();
@@ -1602,6 +1626,7 @@ export class Effect_RectPaste extends EffectBase01 {
         const runtime_renderer1: IRenderForPixel = function (px, py, context) {
             return Effect_RectPaste.runtime_renderer1_ex(px, py, color, context);
         };
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const thisObj = this;     // 束縛変数
         const runtime_renderer2: IRenderForLine = function (px1, py1, px2, py2, context) {
             return Effect_RectPaste.runtime_renderer2_ex(px1, py1, px2, py2, thisObj, context);
@@ -1656,7 +1681,7 @@ export class Effect_RectEraser extends EffectBase01 {
     // Pre-render関数は無し。
 
     /// 実行時render関数(1点用)。
-    static runtime_renderer1_ex(px: number, py: number, context: Context2D): IReproClosure {
+    static runtime_renderer1_ex(_px: number, _py: number, _context: Context2D): IReproClosure {
         assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
         return null;
     }
@@ -1729,7 +1754,7 @@ export class Effect_FlipRect extends EffectBase01 {
     // Pre-render関数は無し。
 
     /// 実行時render関数(1点用)。
-    static runtime_renderer1_ex(px: number, py: number, context: Context2D): IReproClosure {
+    static runtime_renderer1_ex(_px: number, _py: number, _context: Context2D): IReproClosure {
         assert(false);    // ここに来たらバグ(DrawOpとの連携上有り得ない。)
         return null;
     }
@@ -1950,6 +1975,7 @@ export class CursorBase01 implements ICursor {
     constructor(diameter: number, pixel_pre_renderer: ICursorRender) {
         this.m_pre_renderer = pixel_pre_renderer;
 
+        // eslint-disable-next-line no-param-reassign
         if (diameter == null) { diameter = 1; }
         this.setParamCustom(diameter, 'rgb(0,0,0)', pixel_pre_renderer);
     }
@@ -1957,7 +1983,7 @@ export class CursorBase01 implements ICursor {
     /// パラメータを設定する。(クラス固有)
     setParamCustom(diameter: number, color: string, pixel_pre_renderer: ICursorRender): void {
         const margin = Math.ceil(diameter / 2);
-        color = get_cursor_color(color);
+        const color2 = get_cursor_color(color);
 
         this.m_pre_rendered = null;
         this.m_ha = 0;
@@ -1965,7 +1991,7 @@ export class CursorBase01 implements ICursor {
 
         if (diameter > 1) {
             this.m_ha = Math.ceil(diameter / 2 + margin);
-            this.m_pre_rendered = pixel_pre_renderer(this.m_ha, diameter, color, false);
+            this.m_pre_rendered = pixel_pre_renderer(this.m_ha, diameter, color2, false);
         }
 
         this.m_imagePatch = null;
@@ -2075,7 +2101,7 @@ class ImageSnapshot {
         this.m_imageDataList = imgdList;
         this.m_visibilityList = visibilityList;
     }
-};
+}
 
 class DwgHistEnt {
     // [0] 描画イベント
@@ -2248,7 +2274,7 @@ export class UIOpHistory {
         }
 
         // イベント追記
-        let histEnt = new DwgHistEnt();             // 通常の描画イベント
+        const histEnt = new DwgHistEnt();             // 通常の描画イベント
         histEnt.m_effect = effectObj;               // エフェクト
         histEnt.m_configClosure = configClosure;    // エフェクトを設定するクロージャ
         histEnt.m_layerNo = layerNo;                // 対象レイヤー番号
@@ -2318,7 +2344,7 @@ export class UIOpHistory {
         }
 
         // イベント追記
-        let histEnt = new PaintHistEnt();   // 塗り潰しイベント
+        const histEnt = new PaintHistEnt();   // 塗り潰しイベント
         histEnt.m_startPoint = point;       // 開始点
         histEnt.m_color = color;            // 配置色
         histEnt.m_layerNo = layerNo;        // 対象レイヤー番号
@@ -2406,7 +2432,7 @@ export class UIOpHistory {
     }
 
     /// 指定エントリの画像を復元する。
-    restoreImage(idx: number, pictureCanvas: PictureCanvas) {
+    restoreImage(idx: number, pictureCanvas: PictureCanvas): boolean {
         if (!(idx in this.m_imageLog))
             return false;     // 画像無しエントリならfalseを返す。
         console.log("DwgHistory::restoreImage(): Restoreing cursor " + idx + "...");
@@ -2446,7 +2472,7 @@ export class UIOpHistory {
     }
 
     /// イベントをリセットする。
-    resetEvent(resetPointIdx: number) {
+    resetEvent(resetPointIdx: number): boolean {
         if (resetPointIdx >= this.m_eventHistory.length)
             return false;
 
@@ -2508,7 +2534,6 @@ export class UIOpHistory {
     wayBackTo_Sub(idx: number): void {
         // 描画準備
         const histEnt = this.m_eventHistory[idx];
-        const k = 0;
         if (isDwgHistEnt(histEnt)) {
             const effectObj = histEnt.m_effect;
             const configClosure = histEnt.m_configClosure;
@@ -2585,6 +2610,7 @@ export class UIOpHistory {
             // Redoで可視属性が復元されるように追記
             if (this.isVisibilityChanged()) {   // (可視属性変化有り)
                 this.appendVisibilityChange();
+                // eslint-disable-next-line no-param-reassign
                 idx = this.m_eventHistory.length - 1;
             }
 
@@ -2628,6 +2654,7 @@ export class UndoButton {
     constructor(history: UIOpHistory) {
         this.m_history = history;
         this.m_undoButton = <HTMLButtonElement>document.getElementById('undo');
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const undoButton = this;    // 束縛変数
         this.m_undoButton.onclick = function () {
             undoButton.OnClicked();
@@ -2657,6 +2684,7 @@ export class RedoButton {
     constructor(history: UIOpHistory) {
         this.m_history = history;
         this.m_redoButton = <HTMLButtonElement>document.getElementById('redo');
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const redoButton = this;    // 束縛変数
         this.m_redoButton.onclick = function () {
             redoButton.OnClicked();

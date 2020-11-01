@@ -1,8 +1,6 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
-'use strict';
-
 import { PaintTool } from './oebi-tool';
 import { PictureCanvas } from './picture-canvas';
 import { ToolPalette } from './tool-palette';

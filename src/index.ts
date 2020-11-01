@@ -3,6 +3,8 @@
 
 import { g_history, g_pictureCanvas, onDispose, onInitialize } from './app-global';
 import { draw_circle } from './graphics';
+// Unit test
+// import { utest_ImagePatch } from './utest';
 
 'use strict';
 
@@ -35,7 +37,7 @@ function init_wnd(): void {
 	// utest_half_tone();		// UTEST
 
 	// 画像合成
-	let joint_canvas = <HTMLCanvasElement>document.getElementById("joint_canvas");
+	const joint_canvas = <HTMLCanvasElement>document.getElementById("joint_canvas");
 	g_pictureCanvas.getJointImage(joint_canvas);
 
 	// キャンバス状態を記憶(Undo/Redo)
@@ -54,7 +56,7 @@ function dispose_wnd() {
 //
 
 function sample01(layer1: HTMLCanvasElement, layer2: HTMLCanvasElement): void {
-	var ctx = layer1.getContext('2d');
+	const ctx = layer1.getContext('2d');
 	/* 半透明度を指定 */
 	// ctx.globalAlpha = 0.5;
 	/* 円 #1 */
@@ -73,10 +75,10 @@ function sample01(layer1: HTMLCanvasElement, layer2: HTMLCanvasElement): void {
 	ctx.arc(95, 95, 35, 0, Math.PI * 2, false);
 	ctx.fill();
 	/* canvasに描いた図形から中心部分のイメージを抜き出す */
-	var image = ctx.getImageData(45, 45, 50, 50);
+	const image = ctx.getImageData(45, 45, 50, 50);
 
 	/* 別のlayerの左上に抜き出したイメージを貼り付ける */
-	var ctx2 = layer2.getContext('2d');
+	const ctx2 = layer2.getContext('2d');
 	ctx2.fillStyle = "black";
 	ctx2.fillRect(0, 0, 140, 140);
 	ctx2.putImageData(image, 10, 10);

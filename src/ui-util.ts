@@ -1,6 +1,8 @@
 // Copyright (c) 2016-2020, mirido
 // All rights reserved.
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import {
     activeIconColors,
     borderColor,
@@ -27,7 +29,7 @@ import { UIOpHistory } from './ui-element';
 
 /// ブラウザを判定する。下記から借用。
 /// http://etc9.hatenablog.com/entry/20110927/1317140891
-export function getBrowserType() {
+export function getBrowserType(): string {
     const userAgent = window.navigator.userAgent.toLowerCase();
     if (userAgent.indexOf('opera') != -1) {
         return 'opera';
@@ -172,8 +174,8 @@ export function get_cursor_color(color: string): string {
         // 白色(デフォルト背景色と同じ)や黒色は避ける。
         colors[0] = colors[1] = colors[2] = 128;
     }
-    color = get_color_as_RGB(colors);
-    return color;
+    const color2 = get_color_as_RGB(colors);
+    return color2;
 }
 
 /// 要素をリストに追加する。追加順は保たれる。
@@ -261,7 +263,7 @@ export interface IDrawCanvas {
 /// Type guard for IDrawCanvas
 export function isIDrawCanvas(x: (IDrawCanvas | IDrawTool)): x is IDrawCanvas {
     return ('OnDrawStart' in x);
-};
+}
 
 export class PointManager implements EventListenerObject {
     // 最後にmousedownまたはtouchstartが起きたオブジェクトのリストの辞書
@@ -486,7 +488,7 @@ export class KeyStateManager {
     }
 
     /// インスタンスが保持する資源を解放する。
-    dispose() {
+    dispose(): void {
         const listener1: EventListener = this.handleKeyboardEvent;
         document.removeEventListener('keydown', listener1);
         document.removeEventListener('keyup', listener1);
@@ -574,7 +576,7 @@ export class KeyStateManager {
 /// アイコンを描画する。
 export function draw_icon_face<T extends IRect>(
     iconBounds: T, colors: string[], context: CanvasRenderingContext2D
-) {
+): void {
     const sx = iconBounds.x;
     const sy = iconBounds.y;
     const w = iconBounds.width;
@@ -602,7 +604,7 @@ export function draw_icon_face<T extends IRect>(
 /// アイコンを描画する。
 export function draw_icon_face_ex<T extends IRect>(
     iconBounds: T, bActive: boolean, context: CanvasRenderingContext2D
-) {
+): void {
     const colors = (bActive) ? activeIconColors : inactiveIconColors;
     draw_icon_face(iconBounds, colors, context);
 }
@@ -665,7 +667,7 @@ export function draw_color_palette<T extends IRect>(
     color: string,
     bActive: boolean,
     context: CanvasRenderingContext2D
-) {
+): void {
     const color_src = (bActive) ? activeIconColors : inactiveIconColors;
     // const mod_colors = Object.assign([], color_src); -- NG. IEは非サポート。
     const mod_colors = [];
@@ -870,14 +872,14 @@ export class MicroSlideBar implements IDrawTool {
         this.show(val, tool_canvas);
     }
 
-    OnDiselected(e: IToolUIEvent): void {
+    OnDiselected(_e: IToolUIEvent): void {
         /*pass*/
     }
 
     /// 数値を表示に反映する。
     OnPicked(e: IToolUIEvent): number {
-        let tool_canvas = e.m_sender.getToolPaletteCanvas();
-        let context = tool_canvas.getContext('2d');
+        const tool_canvas = e.m_sender.getToolPaletteCanvas();
+        const context = tool_canvas.getContext('2d');
 
         let val = this.decodePoint(e.m_point);
         if (val != null) {
@@ -888,11 +890,11 @@ export class MicroSlideBar implements IDrawTool {
         return this.m_value;
     }
 
-    OnPointingEnd(e: IToolUIEvent) {
+    OnPointingEnd(_e: IToolUIEvent): void {
         /*pass*/
     }
 
-    OnSettingChanged(setting: CommonSetting): void {
+    OnSettingChanged(_setting: CommonSetting): void {
         /*pass*/
     }
 }
@@ -979,7 +981,7 @@ export class ListBox implements IDrawTool {
     }
 
     /// 選択解除時呼ばれる。
-    OnDiselected(e: IToolUIEvent): void {
+    OnDiselected(_e: IToolUIEvent): void {
         // console.log("ListBox::OnDiselected() called.");
         /*NOP*/
     }
@@ -993,11 +995,11 @@ export class ListBox implements IDrawTool {
         }
     }
 
-    OnPointingEnd(e: IToolUIEvent) {
+    OnPointingEnd(_e: IToolUIEvent): void {
         /*pass*/
     }
 
-    OnSettingChanged(setting: CommonSetting): void {
+    OnSettingChanged(_setting: CommonSetting): void {
         /*pass*/
     }
 

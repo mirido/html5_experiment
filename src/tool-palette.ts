@@ -61,7 +61,7 @@ export class ToolUIEvent implements IToolUIEvent {
 
     constructor(sender: ToolPalette, e: MouseEvent) {
         this.m_sender = sender;
-        let bounds = sender.getBoundingDrawAreaRect();
+        const bounds = sender.getBoundingDrawAreaRect();
         this.m_point = jsPoint(
             e.clientX - bounds.x,
             e.clientY - bounds.y
@@ -101,7 +101,7 @@ export class VirtualClickEvent implements IToolUIEvent {
 
     constructor(sender: ToolPalette, iconBounds: IRect) {
         this.m_sender = sender;
-        let bounds = sender.getBoundingDrawAreaRect();
+        const bounds = sender.getBoundingDrawAreaRect();
         let cx, cy;
         if (iconBounds != null) {
             cx = Math.floor(iconBounds.x + iconBounds.width / 2);
@@ -128,7 +128,6 @@ export class VirtualDrawingStartEvent implements IDrawingEvent {
 
     constructor(sender: PictureCanvas, point: IPoint) {
         this.m_sender = sender;
-        let bounds = sender.getBoundingDrawAreaRect();
         const cx = point.x;
         const cy = point.y;
         this.m_point = jsPoint(cx, cy);
@@ -237,7 +236,7 @@ export class CommonSetting {
         this.m_alpha = value;
         this.callListener();
     }
-    getThickness() {
+    getThickness(): number {
         // this.m_thickness = this.m_thicknessSelector.getThickness();
         return this.m_thickness;
     }
@@ -302,12 +301,12 @@ export class CommonSetting {
     }
 
     /// イベントハンドラを追加する。
-    addListener(listener:     ISettingChangeListenerObject        ) {
+    addListener(listener: ISettingChangeListenerObject): void {
         add_to_unique_list(this.m_changeListeners, listener);
     }
 
     /// イベントハンドラを削除する。
-    removeListener(listener: ISettingChangeListenerObject) {
+    removeListener(listener: ISettingChangeListenerObject): void {
         remove_from_unique_list(this.m_changeListeners, listener);
     }
 
@@ -424,7 +423,7 @@ export class ToolChain {
     }
 
     /// アクティブにする。
-    activate(toolPalette: ToolPalette, /*[opt]*/ targetObj?: IDrawTool) {
+    activate(toolPalette: ToolPalette, /*[opt]*/ targetObj?: IDrawTool): boolean {
         const iconBounds = this.m_iconBounds;
         const mod_e = new VirtualClickEvent(toolPalette, iconBounds);
 
@@ -457,20 +456,20 @@ export class ToolChain {
     }
 
     /// 非アクティブにする。
-    inactivate(toolPalette: ToolPalette) {
+    inactivate(toolPalette: ToolPalette): void {
         const mod_e = new VirtualClickEvent(toolPalette, null);
         this.OnSelection(mod_e);
     }
 
     /// イベントが管轄内か否か判定する。
     /// 検索用で、OnSelection()より軽量。
-    isInControl(e: IToolUIEvent) {
+    isInControl(e: IToolUIEvent): boolean {
         const bIncludes = rect_includes(this.m_iconBounds, e.m_point);
         return bIncludes;
     }
 
     /// ツール選択変更時にツールパレットから呼ばれる。
-    OnSelection(e: IToolUIEvent, /*[opt]*/ targetToolNo?: number) {
+    OnSelection(e: IToolUIEvent, /*[opt]*/ targetToolNo?: number): boolean {
         let bHit = false;
         const bIncludes = rect_includes(this.m_iconBounds, e.m_point);
         // console.dir(this.m_iconBounds);
@@ -559,7 +558,7 @@ export class ToolChain {
     }
 
     /// クリック後、またはドラッグ後に呼ばれる。
-    OnPointingEnd(e: IToolUIEvent) {
+    OnPointingEnd(e: IToolUIEvent): void {
         if (this.m_bActive) {
             const curTool = this.m_tools[this.m_curToolNo];
             if (curTool.OnPointingEnd != null) {
@@ -570,18 +569,18 @@ export class ToolChain {
 
     /// ツールを追加する。
     /// toolObjはOnSelected(), OnPicked(), OnDiselected()の3メソッドを備える前提。
-    addTool(toolObj: IDrawTool) {
+    addTool(toolObj: IDrawTool): void {
         const end_idx = this.m_tools.length;
         this.m_tools[end_idx] = toolObj;
     }
 
     /// Icon描画領域を取得する。
-    getIconBounds() {
+    getIconBounds(): IRect {
         return this.m_iconBounds;
     }
 
     /// ツールチェーン内のアクティブなツールを返す。(Undo/Redo)
-    getActiveTool() {
+    getActiveTool(): IDrawTool {
         if (this.m_bActive) {
             return this.m_tools[this.m_curToolNo];
         } else {
@@ -674,7 +673,7 @@ export function addToolHelper(
     toolName: string,
     toolId: number,
     toolDic: { [key: number]: IDrawTool }
-) {
+): void {
     const iconBounds = toolChain.getIconBounds();
     // const uri = "./oebi-tool.js";
     // Cross origin in JavaScript import moduleの禁止に伴い
@@ -808,7 +807,7 @@ export class ToolPalette implements EventListenerObject {
     }
 
     /// ツールチェーンの枠線を描く。
-    drawToolChainBounds(width: number, height: number) {
+    drawToolChainBounds(width: number, height: number): void {
         const ctx = this.m_palette.getContext('2d');
         ctx.fillStyle = "rgba(232, 239, 255, 255)";
         ctx.fillRect(0, 0, width, height);
@@ -818,6 +817,7 @@ export class ToolPalette implements EventListenerObject {
         ctx.lineWidth = 1;
         for (let i = 0; i < this.m_toolMap.length; i++) {
             const rect = this.m_toolMap[i].getIconBounds();
+            // eslint-disable-next-line no-constant-condition
             if (false) {   // この条件はtrue/falseどちらでも良い。
                 // HTML5の矩形描画機能を使用
                 ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width, rect.height);
@@ -864,9 +864,9 @@ export class ToolPalette implements EventListenerObject {
     }
 
     /// ツールチェーンを初期化する。
-    initToolChain() {
+    initToolChain(): void {
         // ツールアイコン区画をツールに割付け
-        let toolDic: IDrawTool[] = [];
+        const toolDic: IDrawTool[] = [];
         addToolHelper(this.m_toolMap[0], 'PencilTool', 0, toolDic);
         addToolHelper(this.m_toolMap[2], 'FillRectTool', 200, toolDic);
         addToolHelper(this.m_toolMap[2], 'LineRectTool', 201, toolDic);
@@ -1055,7 +1055,7 @@ export class ToolPalette implements EventListenerObject {
         const mod_e = new VirtualClickEvent(this, null);  // 外部ツールはクリック座標不問と想定。
         this.attachImage();    // (Undo/Redo)
         this.m_extTool.OnSelected(mod_e);
-    };
+    }
 
     /// 描画ツールを追加する。
     /// 異なる描画ツールを複数追加可能。
@@ -1216,14 +1216,14 @@ export class ToolPalette implements EventListenerObject {
     }
 
     /// 操作履歴巻き戻しリスナを追加する。(Undo/Redo)
-    addHistoryRewindListener(listener: IHistoryRewindListenerObject) {
+    addHistoryRewindListener(listener: IHistoryRewindListenerObject): void {
         if (this.m_history != null) {
             this.m_history.addHistoryRewindListener(listener);
         }
     }
 
     /// 操作履歴変更リスナを削除する。(Undo/Redo)
-    removeHistoryRewindListener(listener: IHistoryRewindListenerObject) {
+    removeHistoryRewindListener(listener: IHistoryRewindListenerObject): void {
         if (this.m_history != null) {
             this.m_history.removeHistoryRewindListener(listener);
         }

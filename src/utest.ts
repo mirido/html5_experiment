@@ -13,15 +13,15 @@ import { get_components_from_RGBx } from './ui-util';
 'use strict';
 
 /// UTEST: プリレンダリング実験。
-export function utest_pre_rendering() {
-    let diameter = 19;
-    let ha = 32;
-    let px = this.m_lastPoint.x - ha;
-    let py = this.m_lastPoint.y - ha;
+export function utest_pre_rendering(): void {
+    const diameter = 19;
+    const ha = 32;
+    const px = this.m_lastPoint.x - ha;
+    const py = this.m_lastPoint.y - ha;
 
     let mini_canvas = pre_render_pixel(ha, diameter, 'rgb(255, 0, 0)', true);
     // make_opaque(mini_canvas, 255);
-    let ctx = this.m_lastSender.getLayer().getContext('2d');
+    const ctx = this.m_lastSender.getLayer().getContext('2d');
     ctx.globalAlpha = 1.0;
     ctx.drawImage(mini_canvas, px, py);
 
@@ -31,29 +31,29 @@ export function utest_pre_rendering() {
 }
 
 /// UTEST: ImagePatchのテスト。
-export function utest_ImagePatch() {
-    let layer1 = g_pictureCanvas.getLayer(0);
-    let layer2 = g_pictureCanvas.getLayer(1);
+export function utest_ImagePatch(): void {
+    const layer1 = g_pictureCanvas.getLayer(0);
+    const layer2 = g_pictureCanvas.getLayer(1);
 
     {
-        let ctx1 = layer1.getContext('2d');
+        const ctx1 = layer1.getContext('2d');
         ctx1.globalAlpha = 1.0;
         ctx1.fillStyle = 'rgb(255,0,0)';
         ctx1.fillRect(0, 0, layer1.clientWidth, layer1.clientHeight);
     }
 
-    let width = layer2.clientWidth;
-    let height = layer2.clientHeight;
-    let ctx2 = layer2.getContext('2d');
+    const width = layer2.clientWidth;
+    const height = layer2.clientHeight;
+    const ctx2 = layer2.getContext('2d');
     ctx2.globalAlpha = 1.0;
     ctx2.fillStyle = 'rgb(255,255,255)';
     draw_line_1px(0, 105, 399, 105, ctx2);
     draw_line_1px(110, 0, 110, 399, ctx2);
 
-    let patch = new ImagePatch(ctx2, width, height, [jsPoint(100, 100), jsPoint(120, 110)], 50);
+    const patch = new ImagePatch(ctx2, width, height, [jsPoint(100, 100), jsPoint(120, 110)], 50);
 
     // patch.m_bounds描画
-    let r = patch.m_bounds;		// Alias
+    const r = patch.m_bounds;		// Alias
     ctx2.fillStyle = 'rgb(255,0,0)';
     draw_rect_R(r, ctx2);
     draw_line_1px(r.x, r.y, r.x + r.width - 1, r.y + r.height - 1, ctx2);
@@ -78,54 +78,50 @@ export function utest_ImagePatch() {
 }
 
 /// UTEST: 色表現の変換
-export function utesst_ColorConversion() {
-    let colors1 = get_components_from_RGBx("#123456");
+export function utesst_ColorConversion(): void {
+    const colors1 = get_components_from_RGBx("#123456");
     console.dir(colors1);
-    let colors2 = get_components_from_RGBx("rgb(1,2,3)");
+    const colors2 = get_components_from_RGBx("rgb(1,2,3)");
     console.dir(colors2);
-    let colors3 = get_components_from_RGBx("rgba(4,5,6,7)");
+    const colors3 = get_components_from_RGBx("rgba(4,5,6,7)");
     console.dir(colors3);
-    let colors4 = get_components_from_RGBx("#a55abb");
+    const colors4 = get_components_from_RGBx("#a55abb");
     console.dir(colors4);
-    let colors5 = get_components_from_RGBx("#CCDDEEFF");
+    const colors5 = get_components_from_RGBx("#CCDDEEFF");
     console.dir(colors5);
 }
 
 /// UTEST: Canvas 2D Contextの実験
-export function utest_canvas_2d_context(canvas: HTMLCanvasElement) {
+export function utest_canvas_2d_context(canvas: HTMLCanvasElement): void {
     {
-        let ctx1 = canvas.getContext('2d');
+        const ctx1 = canvas.getContext('2d');
         ctx1.fillStyle = 'rgb(255,0,0)';
         ctx1.fillRect(0, 0, 100, 100);    // 赤色の矩形を描画
-        let imgd1 = ctx1.getImageData(0, 0, canvas.width, canvas.height);
+        const imgd1 = ctx1.getImageData(0, 0, canvas.width, canvas.height);
         ctx1.putImageData(imgd1, 1, 1);
     }
     erase_single_layer(canvas);
     {
         // 同一イベント処理内でのコンテキストの取得し直し実験
-        let ctx2 = canvas.getContext('2d');
+        const ctx2 = canvas.getContext('2d');
         ctx2.fillStyle = 'rgb(0,255,0)';
         ctx2.fillRect(100, 100, 100, 100);  // 緑色の矩形を描画
     }
 }
 
 /// UTEST: マスク機能のための基礎関数のテスト。
-export function utest_get_mask_image() {
+export function utest_get_mask_image(): void {
     console.log("utestmask_image() called.");
-    let view_port = document.getElementById("viewport");
-    let layers: HTMLCanvasElement[] = [
+    const layers: HTMLCanvasElement[] = [
         <HTMLCanvasElement>document.getElementById("canvas_0"),
         <HTMLCanvasElement>document.getElementById("canvas_1"),
         // <HTMLCanvasElement>document.getElementById("canvas_2")
     ];
-    let surface = <HTMLCanvasElement>document.getElementById("surface");
-    let joint_canvas = <HTMLCanvasElement>document.getElementById("joint_canvas");
-
-    let tg_layer = layers[1];
-
+    const surface = <HTMLCanvasElement>document.getElementById("surface");
+    const tg_layer = layers[1];
     {
         // tg_layerに描画 -- 黒色円弧の右下が青色矩形で一部欠ける。
-        let ctx_tg = tg_layer.getContext('2d');
+        const ctx_tg = tg_layer.getContext('2d');
         ctx_tg.fillStyle = 'rgb(0,0,255)';
         ctx_tg.fillRect(250, 250, 100, 100);
     }
@@ -136,65 +132,67 @@ export function utest_get_mask_image() {
     // tg_layerにさらに描画(黒色以外)
     // このとき、surfaceにマスク描画されているので、黒色線は一切欠けない。
     {
-        let ctx_tg = tg_layer.getContext('2d');
+        const ctx_tg = tg_layer.getContext('2d');
         ctx_tg.fillStyle = 'rgb(0,255,255)';
         ctx_tg.fillRect(100, 100, 200, 200);
     }
 
     // マスク定着
+    // eslint-disable-next-line no-constant-condition
     if (true) {
         fix_image_w_mask(surface, surface, false, tg_layer);
     } else {
-        let ctx_mask = surface.getContext('2d');
-        let imgd = ctx_mask.getImageData(0, 0, surface.width, surface.height);
-        let ctx_tg = tg_layer.getContext('2d');
+        const ctx_mask = surface.getContext('2d');
+        const imgd = ctx_mask.getImageData(0, 0, surface.width, surface.height);
+        const ctx_tg = tg_layer.getContext('2d');
         ctx_tg.putImageData(imgd, 0, 0);
     }
 
     // surface消去 -- これを行ってももはや画像は変わらない。
     erase_single_layer(surface);
 
+    // eslint-disable-next-line no-constant-condition
     if (false) {
-        let ctx_tg = tg_layer.getContext('2d');
+        const ctx_tg = tg_layer.getContext('2d');
         ctx_tg.fillStyle = 'rgb(255,0,0)';
         ctx_tg.fillRect(10, 10, 300, 350);
-        let imgd = ctx_tg.getImageData(0, 0, 200, 200);
+        const imgd = ctx_tg.getImageData(0, 0, 200, 200);
         ctx_tg.putImageData(imgd, 100, 100);
     }
 }
 
 /// UTEST: ハーフトーン描画のテスト。
-export function utest_half_tone() {
-    let canvas = <HTMLCanvasElement>document.getElementById("canvas_0");
-    let width = canvas.width;
-    let height = canvas.height;
-    let context = canvas.getContext('2d');
+export function utest_half_tone(): void {
+    const canvas = <HTMLCanvasElement>document.getElementById("canvas_0");
+    const width = canvas.width;
+    const height = canvas.height;
+    const context = canvas.getContext('2d');
 
     erase_single_layer(canvas);
 
     // パターン生成
-    let ha = half_tone_std_ha;
-    let ptnList = gen_halftones(ha);
+    const ha = half_tone_std_ha;
+    const ptnList = gen_halftones(ha);
     console.log(ptnList);
 
     // 描画色指定
-    let RGB_cc = get_components_from_RGBx('rgb(255,0,0)');
+    const RGB_cc = get_components_from_RGBx('rgb(255,0,0)');
 
-    let fa = 2 * ha + 1;
-    let cyc = fa - 1;
-    // let sz = 2 * cyc;
-    let sz = 11;
-    let ncolumns = 32;
+    const fa = 2 * ha + 1;
+    const cyc = fa - 1;
+    // const sz = 2 * cyc;
+    const sz = 11;
+    const ncolumns = 32;
 
     let ptn_x = 0;
     let ptn_y = 0;
     let py_end = 0;
     let z_fAlpha = -1;
-    for (let k = 0; k < ptnList.length; ++k) {
-        let ent = ptnList[k];
-        let fAlpha = ent.m_fAlpha;
-        let definition = ent.m_definition;
-        let ptn = ent.m_ptn;
+    for (let k = 0; k < ptnList.length; k++) {
+        const ent = ptnList[k];
+        const fAlpha = ent.m_fAlpha;
+        const definition = ent.m_definition;
+        const ptn = ent.m_ptn;
         console.log("k=" + k + ", fAlpha=" + fAlpha + ", definition=" + definition);
 
         // 描画先決定
@@ -208,13 +206,13 @@ export function utest_half_tone() {
             break;
 
         // 描画
-        let imgd = context.createImageData(sz, sz);
-        for (let py = 0; py < sz; ++py) {
-            let head = (4 * sz) * py;
-            let src_head = cyc * (py % cyc);
-            for (let px = 0; px < sz; ++px) {
-                let base = head + 4 * px;
-                let bDot = ptn[src_head + (px % cyc)];
+        const imgd = context.createImageData(sz, sz);
+        for (let py = 0; py < sz; py++) {
+            const head = (4 * sz) * py;
+            const src_head = cyc * (py % cyc);
+            for (let px = 0; px < sz; px++) {
+                const base = head + 4 * px;
+                const bDot = ptn[src_head + (px % cyc)];
                 if (bDot) {
                     imgd.data[base + 0] = RGB_cc[0];
                     imgd.data[base + 1] = RGB_cc[1];

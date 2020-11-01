@@ -5,6 +5,7 @@
         "sourceMap": true,
         "target": "es5", // TSはECMAScript 5に変換
         "module": "es2015", // TSのモジュールはES Modulesとして出力
-        "noImplicitAny": true //型定義がないものを勝手にanyにしない 
+        "noImplicitAny": true, //型定義がないものを勝手にanyにしない 
+        "outDir": "###dummy###" // 「入力ファイルを上書きすることになるため、ファイル 'd:/proj_picbbs/html5_experiment.current/dist/bundle.js' を書き込めません。」対策
     }
 }

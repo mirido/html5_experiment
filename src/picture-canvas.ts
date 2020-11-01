@@ -93,7 +93,7 @@ export class VirtualClickEvent implements DrawingEvent {
 }
 
 /// クリックイベントをクリック完了イベントに変更する。(In-place)
-export function modify_click_event_to_end_in_place(e: IToolUIEvent) {
+export function modify_click_event_to_end_in_place(e: IToolUIEvent): void {
     e.m_type = 'mouseup';
 }
 
@@ -470,6 +470,7 @@ export class PictureCanvas implements EventListenerObject {
     raiseLayerFixRequest(nextLayer?: HTMLCanvasElement): void {
         // console.log("PictureCanvas::raiseLayerFixRequest() called. n=" + this.m_layerFixListeners.length);
         if (nextLayer == null) {
+            // eslint-disable-next-line no-param-reassign
             nextLayer = this.m_workingLayers[this.m_nTargetLayerNo];
         }
         for (let i = 0; i < this.m_layerFixListeners.length; i++) {
